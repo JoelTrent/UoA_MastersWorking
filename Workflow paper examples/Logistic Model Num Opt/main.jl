@@ -4,7 +4,7 @@ using Interpolations, Random, Distributions
 using Roots, NLopt
 gr()
 
-Random.seed!(12345)
+Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt")
 
 # Workflow functions ##########################################################################
@@ -699,8 +699,8 @@ C0samples_boundary=zeros(2*N)
 Ksamples_boundary=zeros(2*N)
 
 # Fix λ and estimate C0 that puts it on the log likelihood boundary, optimising out K using the MLE estimate for K
-count=0
 ϵ=(C0max-C0min)/10^8
+count=0
 while count < N 
     x=rand(Uniform(λmin,λmax))
     y0=rand(Uniform(C0min,C0max))
@@ -773,8 +773,7 @@ end
             
 CU2_boundary = maximum(Ctrace2_boundary, dims=2)
 CL2_boundary = minimum(Ctrace2_boundary, dims=2)
-            
-        
+              
 pp1=plot(tt, Ctrace2_boundary[:,:], color=:grey, xlabel="t", ylabel="C(t)", 
             ylims=(0,120),xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 pp1=plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
@@ -829,12 +828,12 @@ end
 Ctrace2_grid = zeros(length(tt),Q^2)
 count=0
 for i in 1:Q^2
-        if llsamples_grid[i] > llstar  
-            global count+=1  
-            Ctrace2_grid[:,count]=model(tt, 
-                                        [λsamples_grid[i], Ksamples_grid[i], C0samples_grid[i]],
-                                        σ)
-        end
+    if llsamples_grid[i] > llstar  
+        global count+=1  
+        Ctrace2_grid[:,count]=model(tt, 
+                                    [λsamples_grid[i], Ksamples_grid[i], C0samples_grid[i]],
+                                    σ)
+    end
 end
 
 # plot model values
@@ -855,3 +854,223 @@ pp1=plot!(tt, CL2_grid, lw=3, color=:red)
 pp3=plot(aa2, pp1, layout=(1,2))
 display(pp3)
 savefig(pp3, joinpath(fileDirectory, "bivariateLC0_grid.pdf"))
+
+#############################################################################################
+# Compute and propogate uncertainty forward from the bivariate likelihood for parameter K and C0
+function bivariateKC0(K,C0)
+    function funKC0(a); return loglhood(data,[a[1],K,C0],σ) end
+
+    θG = [λ]
+    lb=[λmin]
+    ub=[λmax]
+    (xopt,fopt)  = optimise(funKC0,θG,lb,ub)
+    llb=fopt-fmle
+    return llb,xopt[1]
+end 
+
+# bivariate profile likelihood for K and C0 #################################################
+# Bisection method to locate points in K, C0 space that are on the 95% confidence interval threshold for log likelihood
+f(x,y) = bivariateKC0(x,y)
+g(x,y)=f(x,y)[1]-llstar
+
+Ksamples_boundary=zeros(2*N)
+C0samples_boundary=zeros(2*N)
+λsamples_boundary=zeros(2*N)
+
+# Fix K and estimate C0 that puts it on the log likelihood boundary, optimising out λ using the MLE estimate for λ
+ϵ=(C0max-C0min)/10^8        
+count=0
+while count < N
+    x=rand(Uniform(Kmin,Kmax))
+    y0=rand(Uniform(C0min,C0max))
+    y1=rand(Uniform(C0min,C0max))
+            
+    if g(x,y0)*g(x,y1) < 0 
+        global count+=1
+        println(count)
+        while abs(y1-y0) > ϵ && y1 < C0max && y1 > C0min
+            y2=(y1+y0)/2;
+            if g(x,y0)*g(x,y2) < 0 
+                y1=y2
+            else
+                y0=y2
+            end
+        end
+            
+        Ksamples_boundary[count]=x;
+        C0samples_boundary[count]=y1;
+        λsamples_boundary[count]=f(x,y1)[2]
+    end
+end 
+
+# Fix C0 and estimate K that puts it on the log likelihood boundary, optimising out λ using the MLE estimate for λ
+ϵ=1(Kmax-Kmin)/10^8
+count=0
+while count < N 
+    y=rand(Uniform(C0min,C0max))
+    x0=rand(Uniform(Kmin,Kmax))
+    x1=rand(Uniform(Kmin,Kmax))
+        
+    if g(x0,y)*g(x1,y) < 0 
+        global count+=1
+        println(count)
+
+        while abs(x1-x0) > ϵ && x1 < Kmax && x1 > Kmin
+            x2=(x1+x0)/2;
+            if g(x0,y)*g(x2,y) < 0 
+                x1=x2
+            else
+                x0=x2
+            end
+        end
+
+        Ksamples_boundary[N+count]=x1;
+        C0samples_boundary[N+count]=y;
+        λsamples_boundary[N+count]=f(x1,y)[2]
+    end
+end 
+    
+    
+    
+      
+a3=scatter([Kmle], [C0mle], xlims=(Kmin,Kmax), ylims=(C0min,C0max), markersize=3,
+            markershape=:circle, markercolor=:fuchsia, msw=0, ms=5, xlabel="K", 
+            ylabel="C(0)", label=false)
+display(a3)
+
+for i in 1:2*N
+    global a3=scatter!([Ksamples_boundary[i]], [C0samples_boundary[i]], xlims=(80,120),
+                         ylims=(C0min,35), xticks=[80,100,120], yticks=[0,15,30],
+                         markersize=3, markershape=:circle,markercolor=:blue, msw=0, 
+                         ms=5, label=false)
+end
+display(a3)
+    
+#############################################################################################
+# Compute model for parameter values on the boundary
+Ctrace3_boundary = zeros(length(tt),2*N)
+
+for i in 1:2*N
+    Ctrace3_boundary[:,i]=model(tt, [λsamples_boundary[i], Ksamples_boundary[i],
+                                C0samples_boundary[i]], σ);
+end
+
+CU3_boundary = maximum(Ctrace3_boundary, dims=2)
+CL3_boundary = minimum(Ctrace3_boundary, dims=2)
+
+pp1=plot(tt, Ctrace3_boundary[:,:], color=:grey, xlabel="t", ylabel="C(t)", 
+            ylims=(0,120),xticks=[0,500,1000], yticks=[0,50,100], legend=false)
+pp1=plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
+pp1=plot!(tt, CU3_boundary, lw=3, color=:red)
+pp1=plot!(tt, CL3_boundary, lw=3,color=:red)
+pp3=plot(a3, pp1, layout=(1,2))
+display(pp3)
+savefig(pp3, joinpath(fileDirectory, "bivariateKC0_boundary.pdf")) 
+         
+# bivariate profile likelihood for K and C0 #################################################
+# MESH method to locate points in lambda, C0 space that are on the 95% confidence interval threshold for log likelihood
+Q=20;
+KK=LinRange(80,120,Q);
+CC0=LinRange(0,35,Q);
+
+# contours of log likelihood across the 20*20 mesh
+aa3=contourf(KK, CC0, (KK,CC0)->f(KK,CC0)[1], lw=0, xlabel="K", ylabel="C(0)", c=:greens,
+            colorbar=false)
+aa3=contour!(KK, CC0, (KK,CC0)->f(KK,CC0)[1], levels=[llstar], lw=4, xlabel="K", ylabel="C(0)",
+            c=:red)
+aa3=scatter!([Kmle], [C0mle], markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0,
+             ms=5,label=false)
+for ii in 1:length(KK)
+    for jj in 1:length(CC0)
+        global aa3=scatter!([KK[ii]], [CC0[jj]], markersize=2, markershape=:x, 
+                            markercolor=:gold, msw=0, label=false)
+    end
+end
+display(aa3)
+
+# find the parameter combinations of K and C0 that are inside the 95% confidence interval threshold for log likelihood
+λsamples_grid=zeros(Q^2)
+Ksamples_grid=zeros(Q^2)
+C0samples_grid=zeros(Q^2)
+llsamples_grid=zeros(Q^2)
+
+count=0
+for i in 1:Q
+    for j in 1:Q
+        global count+=1
+        Ksamples_grid[count]=KK[i]
+        C0samples_grid[count]=CC0[j]
+        λsamples_grid[count]=f(KK[i],CC0[j])[2]
+        llsamples_grid[count]=loglhood(data,
+                                        [λsamples_grid[count], Ksamples_grid[count],
+                                        C0samples_grid[count]],
+                                        σ)-fmle   
+    end
+end
+
+# compute model for given parameter values inside the log likelihood threshold boundary
+Ctrace3_grid = zeros(length(tt),Q^2)
+count=0
+for i in 1:Q^2
+    if llsamples_grid[i] > llstar  
+        global count+=1  
+        Ctrace3_grid[:,count]=model(tt, 
+                                    [λsamples_grid[i], Ksamples_grid[i], C0samples_grid[i]],
+                                    σ)
+    end
+end
+
+# plot model values
+Ctrace_withingrid3=zeros(length(tt),count)
+
+for i in 1:count
+Ctrace_withingrid3[:,i]=Ctrace3_grid[:,i]
+end 
+
+CU3_grid = maximum(Ctrace_withingrid3, dims=2)
+CL3_grid = minimum(Ctrace_withingrid3, dims=2)
+
+pp1=plot(tt, Ctrace_withingrid3[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
+            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
+pp1=plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
+pp1=plot!(tt, CU3_grid, lw=3, color=:red)
+pp1=plot!(tt, CL3_grid, lw=3, color=:red)
+pp1=plot(aa3, pp1, layout=(1,2))
+display(pp1)
+
+savefig(pp1, joinpath(fileDirectory, "bivariateKC0_grid.pdf"))
+
+###########################################################################################
+# Construct approximate prediction intervals from union of bivariate profile intervals (MESH and boundary methods)
+# Compare to intervals obtained from the full likelihood
+
+
+CU_grid = max.(CU1_grid, CU2_grid, CU3_grid)
+CL_grid = max.(CL1_grid, CL2_grid, CL3_grid)
+
+CU_boundary = max.(CU1_boundary, CU2_boundary, CU3_boundary)
+CL_boundary = min.(CL1_boundary, CL2_boundary, CL3_boundary)
+
+
+qq1 = plot(tt, CtraceF[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
+            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
+qq1 = plot!(tt, CUF, lw=3, color=:gold)
+qq1 = plot!(tt, CLF, lw=3, color=:gold)
+qq1 = plot!(tt, CU_boundary, lw=3, linestyle=:dash, color=:red)
+qq1 = plot!(tt, CL_boundary, lw=3, linestyle=:dash, color=:red)
+qq1 = plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
+
+display(qq1)
+savefig(qq1, joinpath(fileDirectory, "Bivariatecomparison_boundary.pdf"))
+
+
+qq1 = plot(tt, CtraceF[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
+            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
+qq1 = plot!(tt, CUF, lw=3, color=:gold)
+qq1 = plot!(tt, CLF, lw=3, color=:gold)
+qq1 = plot!(tt, CU_grid, lw=3, linestyle=:dash, color=:red)
+qq1 = plot!(tt, CL_grid, lw=3, linestyle=:dash, color=:red)
+qq1 = plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
+
+display(qq1)
+savefig(qq1, joinpath(fileDirectory, "Bivariatecomparison_grid.pdf"))
