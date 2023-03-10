@@ -1,3 +1,4 @@
+# Section 1: set up packages and parameter values
 using Plots, DifferentialEquations
 using .Threads 
 using Interpolations, Random, Distributions
@@ -8,14 +9,66 @@ Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt")
 
 # Workflow functions ##########################################################################
+# plotting functions #################
+function plot1DProfile(parRange, parProfile, llstar, parMLE; 
+    xlims, ylims, xlabel, ylabel, legend=false)
 
-# Logistic growth ODE
+    profilePlot=plot(parRange, parProfile, ylims=ylims, xlims=xlims, legend=legend, lw=3)
+    profilePlot=hline!([llstar], lw=3)
+    profilePlot=vline!([parMLE], lw=3, xlabel=xlabel, ylabel=ylabel)
+
+    return profilePlot
+end
+
+function plot2DBoundary(parBoundarySamples, parMLEs, N; 
+    xlims, ylims, xticks, yticks, xlabel, ylabel, legend=false)
+
+    boundaryPlot=scatter([parMLEs[1]], [parMLEs[2]], xlims=xlims, ylims=ylims, 
+            markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=5, 
+            xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, legend=legend)
+
+    for i in 1:2*N
+        boundaryPlot=scatter!([parBoundarySamples[1][i]], [parBoundarySamples[2][i]], 
+                                markersize=3, markershape=:circle, markercolor=:blue,
+                                msw=0, ms=5)
+    end
+    return boundaryPlot
+end
+
+function plotPrediction(tt, predictions, confEstimate; confColor, xlabel,
+    ylabel, ylims, xticks, yticks, legend=false)
+
+    predictionPlot = plot(tt, predictions[:,:], color=:grey, xlabel=xlabel, ylabel=ylabel, 
+                            ylims=ylims, xticks=xticks, yticks=yticks, legend=legend)
+    predictionPlot = plot!(tt, confEstimate[1], lw=3, color=confColor)
+    predictionPlot = plot!(tt, confEstimate[2], lw=3, color=confColor)
+    predictionPlot = plot!(ymle, tt[1], tt[end], lw=3, color=:turquoise1)
+
+    return predictionPlot
+end
+
+function plotPredictionComparison(tt, predictionsFull, confFull, confEstimate; xlabel,
+    ylabel, ylims, xticks, yticks, legend=false)
+
+    predictionPlot = plot(tt, predictionsFull[:,:], color=:grey, xlabel=xlabel, ylabel=ylabel, 
+                            ylims=ylims, xticks=xticks, yticks=yticks, legend=legend)
+    predictionPlot = plot!(tt, confFull[1], lw=3, color=:gold)
+    predictionPlot = plot!(tt, confFull[2], lw=3, color=:gold)
+    predictionPlot = plot!(tt, confEstimate[1], lw=3, linestyle=:dash, color=:red)
+    predictionPlot = plot!(tt, confEstimate[2], lw=3, linestyle=:dash, color=:red)
+    predictionPlot = plot!(ymle, tt[1], tt[end], lw=3, color=:turquoise1)
+
+    return predictionPlot
+end
+####################################
+
+# Section 2: Define ODE model
 function DE!(dC, C, p, t)
     λ,K=p
     dC[1]= λ * C[1] * (1.0 - C[1]/K)
 end
 
-# model solver
+# Section 3: Solve ODE model
 function odesolver(t, λ, K, C0)
     p=(λ,K)
     tspan=(0.0, maximum(t))
@@ -24,13 +77,13 @@ function odesolver(t, λ, K, C0)
     return sol[1,:]
 end
 
-# model solved at each time point
+# Section 4: Define function to solve ODE model 
 function model(t, a, σ)
     y=odesolver(t, a[1],a[2],a[3])
     return y
 end
 
-# log-loglikelihood of model given data
+# Section 6: Define loglikelihood function
 function loglhood(data, a, σ)
     y=model(t, a, σ)
     e=0
@@ -39,7 +92,7 @@ function loglhood(data, a, σ)
     return sum(e)
 end
 
-# Optimisation 
+# Section 7: Numerical optimisation 
 function optimise(fun, θ₀, lb, ub;
     dv = false,
     method = dv ? :LD_LBFGS : :LN_BOBYQA,
@@ -60,6 +113,7 @@ function optimise(fun, θ₀, lb, ub;
     return res[[2,1]]
 end
 
+# Section 8: Function to be optimised for MLE
 # note this function pulls in the globals, data and σ and would break if used outside of 
 # this file's scope
 function funmle(a); return loglhood(data, a, σ) end 
@@ -86,9 +140,9 @@ lb = [λmin, Kmin, C0min]
 ub = [λmax, Kmax, C0max]
 
 ##############################################################################################
+# Section 9: Find MLE by numerical optimisation, visually compare data and MLE solution
 # Use Nelder-Mead algorithm to estimate maximum likelihood solution for parameters given 
 # noisy data
-
 (xopt, fopt) = optimise(funmle, θG, lb, ub)
 fmle=fopt
 λmle, Kmle, C0mle = xopt
@@ -103,8 +157,16 @@ p1 = scatter!(t, data, legend=false, msw=0, ms=7,
 display(p1)
 savefig(p1, joinpath(fileDirectory,"mle.pdf"))
 
+# Section 10: Depending on MLE we can refine our bounds if required
+# λmin=0.0
+# λmax=0.05
+# Kmin=70
+# Kmax=130
+# C0min=0
+# C0max=40
 
 ##############################################################################################
+# Section 11: Prediction interval from the full likelihood
 # Compute and propogate uncertainty forward from the full 3D likelihood function ######
 df = 3 # degrees of freedom
 llstar = -quantile(Chisq(df), 0.95)/2 # 95% confidence interval threshold for log likelihood
@@ -139,8 +201,6 @@ end
 Ksampled=zeros(M)
 C0sampled=zeros(M)
 CtraceF = zeros(length(tt),M)
-CUF=zeros(length(tt))
-CLF=zeros(length(tt))
 j=0
 for i in 1:N
     if lls[i] > llstar
@@ -153,24 +213,20 @@ for i in 1:N
 end
 
 # evaluate the lower and upper bounds of the confidence intervals
-for i in 1:length(tt)
-    CUF[i] = maximum(CtraceF[i,:])
-    CLF[i] = minimum(CtraceF[i,:])
-end
+CUF = maximum(CtraceF, dims=2)
+CLF = minimum(CtraceF, dims=2)
 
-# plot the traces, lower and upper confidence bounds and maximum likelihood solution given data
-qq1 = plot(tt, CtraceF[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120), 
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-
-qq1 = plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
-qq1 = plot!(tt, CUF, lw=3, color=:gold)
-qq1 = plot!(tt, CLF, lw=3, color=:gold)
+# plot the family of curves, lower and upper confidence bounds and maximum likelihood solution given data
+qq1 = plotPrediction(tt, CtraceF, (CUF, CLF), confColor=:gold, xlabel="t", 
+            ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 ##############################################################################################
+# Section 12: Prediction interval from the univariate profile likelihoods
 # Compute and propogate uncertainty forward from the univariate likelihood for parameter λ
 df = 1
 llstar = -quantile(Chisq(df), 0.95)/2
-    
+
+# Function to define univariate profile for λ    
 function univariateλ(λ)
     a=zeros(2)    
     function funλ(a); return loglhood(data,[λ,a[1],a[2]],σ) end
@@ -192,13 +248,12 @@ for i in 1:M
     global ff[i] = univariateλ(λrange[i])[1]
 end
 
-q1=plot(λrange, ff, ylims=(-3,0.), xlims=(λmin,0.04), legend=false, lw=3)
-q1=hline!([llstar], lw=3)
-q1=vline!([λmle], lw=3, xlabel="λ", ylabel="ll")
+q1 = plot1DProfile(λrange, ff, llstar, λmle, xlims=(λmin,0.04), ylims=(-3,0.),
+                    xlabel="λ", ylabel="ll")
 display(q1)
  
 #############################################################################################
-# Bisection method to find values of λ that intersect the 95% confidence interval threshold for log likelihood
+# Bisection method to find values of λ in the profile that intersect the 95% confidence interval threshold for log likelihood
 g(x)=f(x)[1]-llstar
 ϵ=(λmax-λmin)/10^6
 
@@ -248,22 +303,15 @@ end
 
 # compute model for given parameter values
 CUnivariatetrace1 = zeros(length(tt),N)
-CU1=zeros(length(tt))
-CL1=zeros(length(tt))
 for i in 1:N
     CUnivariatetrace1[:,i]=model(tt,[λsampled[i],Ksampled[i],C0sampled[i]],σ);
 end
 
-for i in 1:length(tt)
-    CU1[i] = maximum(CUnivariatetrace1[i,:])
-    CL1[i] = minimum(CUnivariatetrace1[i,:])
-end
+CU1 = maximum(CUnivariatetrace1, dims=2)
+CL1 = minimum(CUnivariatetrace1, dims=2)
 
-pp1 = plot(tt, CUnivariatetrace1[:,:], color=:grey, xlims=(0,1000), ylims=(0,120), 
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false, lw=3)
-pp1 = plot!(tt, CU1, color=:red, lw=3)
-pp1 = plot!(tt, CL1, color=:red, lw=3)
-pp1 = plot!(ymle, 0, 1000, color=:turquoise1, lw=3, xlabel="t", ylabel="C(t)")
+pp1 = plotPrediction(tt, CUnivariatetrace1, (CU1, CL1), confColor=:red, xlabel="t", 
+            ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(pp1)
 savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionLambda.pdf") )
@@ -293,9 +341,8 @@ for i in 1:M
     global ff[i]=univariateK(Krange[i])[1]
 end
 
-q2 = plot(Krange, ff, ylims=(-3,0.), xlims=(80,120), legend=false, lw=3)
-q2 = hline!([llstar], lw=3)
-q2 = vline!([Kmle], lw=3, xlabel="K", ylabel="ll")
+q2 = plot1DProfile(Krange, ff, llstar, Kmle, xlims=(80,120), ylims=(-3,0.),
+                    xlabel="K", ylabel="ll")
 display(q2)
 
 #############################################################################################
@@ -356,15 +403,12 @@ for i in 1:N
 end
    
 for i in 1:length(tt)
-CU2[i] = maximum(CUnivariatetrace2[i,:])
-CL2[i] = minimum(CUnivariatetrace2[i,:])
+    CU2[i] = maximum(CUnivariatetrace2[i,:])
+    CL2[i] = minimum(CUnivariatetrace2[i,:])
 end
-       
-pp1=plot(tt ,CUnivariatetrace2[:,:], color=:grey, xlims=(0,1000), ylims=(0,120), 
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false, lw=3)
-pp1=plot!(tt, CU2, color=:red, lw=3)
-pp1=plot!(tt, CL2, color=:red, lw=3)
-pp1=plot!(ymle, 0, 1000, color=:turquoise1, lw=3, xlabel="t", ylabel="C(t)")
+
+pp1 = plotPrediction(tt, CUnivariatetrace2, (CU2, CL2), confColor=:red, xlabel="t", 
+            ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(pp1)
 savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionK.pdf"))
@@ -392,16 +436,14 @@ for i in 1:M
     global ff[i]=univariateC0(C0range[i])[1]
 end
 
-q3=plot(C0range,ff,ylims=(-3,0.),xlims=(C0min,30),legend=false,lw=3)
-q3=hline!([llstar], lw=3)
-q3=vline!([C0mle], xlabel="C(0)",ylabel="ll", lw=3)
+q3= plot1DProfile(C0range, ff, llstar, C0mle, xlims=(C0min,30), ylims=(-3,0.),
+                    xlabel="C(0)", ylabel="ll")
 display(q3)
    
 q4=plot(q1,q2,q3,layout=(1,3),legend=false)
 display(q4)
 savefig(q4, joinpath(fileDirectory, "univariate.pdf")) 
-   
-   
+
 #############################################################################################
 # Bisection method to find values of C0 that intersect the 95% confidence interval threshold for log likelihood     
 g(x)=f(x)[1]-llstar
@@ -463,11 +505,8 @@ for i in 1:length(tt)
     CL3[i] = minimum(CUnivariatetrace3[i,:])
 end
     
-pp1 = plot(tt, CUnivariatetrace3[:,:], color=:grey, xlims=(0,1000), ylims=(0,120), 
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false, lw=3)
-pp1 = plot!(tt, CU3, color=:red, lw=3)
-pp1 = plot!(tt, CL3, color=:red, lw=3)
-pp1 = plot!(ymle, 0, 1000, color=:turquoise1, lw=3, xlabel="t", ylabel="C(t)")
+pp1 = plotPrediction(tt, CUnivariatetrace3, (CU3, CL3), confColor=:red, xlabel="t", 
+            ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(pp1)
 savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionC0.pdf"))
@@ -477,24 +516,21 @@ savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionC0.pdf"))
 # Compare to intervals obtained from the full likelihood
 CU = max.(CU1, CU2, CU3)
 CL = max.(CL1, CL2, CL3)
-   
-qq1 = plot(tt, CtraceF[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-qq1 = plot!(tt, CUF, lw=3, color=:gold)
-qq1 = plot!(tt, CLF, lw=3, color=:gold)
-qq1 = plot!(tt, CU, lw=3, linestyle=:dash, color=:red)
-qq1 = plot!(tt, CL, lw=3, linestyle=:dash, color=:red)
-qq1 = plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
+
+qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU, CL), 
+                                xlabel="t", ylabel="C(t)", ylims=(0,120),
+                                xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(qq1)
 savefig(qq1, joinpath(fileDirectory, "PredictionComparisonUni.pdf"))
 
 
 ##############################################################################################
+# Section 16: Construct bivariate profiles and associated pair-wise predictions starting with the bivariate profile likelihood for (λ,K )  
 # Compute and propogate uncertainty forward from the bivariate likelihood for parameter λ and K
 df=2
 llstar=-quantile(Chisq(df),0.95)/2
-#Construct bivariates
+# Define function to compute the bivariate profile
 function bivariateλK(λ,K)
     function funλK(a); return loglhood(data,[λ,K,a[1]],σ) end
     
@@ -519,12 +555,15 @@ C0samples_boundary=zeros(2*N)
 
 # Fix λ and estimate K that puts it on the log likelihood boundary, optimising out C0 using the MLE estimate for C0
 count=0
+# Define small parameter on the scale of parameter K
 ϵ=(Kmax-Kmin)/10^8
 while count < N
     x=rand(Uniform(λmin,λmax))
     y0=rand(Uniform(Kmin,Kmax))
     y1=rand(Uniform(Kmin,Kmax))
 
+    #If the points (x,y0) and (x,y1) are either side of the appropriate threshold, use the bisection algorithm to find the location of the threshold on the 
+    #vertical line separating the two points
     if g(x,y0)*g(x,y1) < 0 
         global count+=1
         println(count)
@@ -551,6 +590,8 @@ while count < N
     x0=rand(Uniform(λmin,λmax))
     x1=rand(Uniform(λmin,λmax))
     
+    #If the points (x0,y) and (x1,y) are either side of the appropriate threshold, use the bisection algorithm to find the location of the threshold on the 
+    #horizontal line separating the two points   
     if g(x0,y)*g(x1,y) < 0 
         global count+=1
         println(count)
@@ -569,17 +610,12 @@ while count < N
         C0samples_boundary[N+count]=f(x1,y)[2]
     end
 end 
-    
-a1=scatter([λmle], [Kmle], xlims=(λmin,λmax), ylims=(Kmin,Kmax), 
-            markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=5, 
-            xlabel="λ", ylabel="K", label=false)
-display(a1)
 
-for i in 1:2*N
-    global a1=scatter!([λsamples_boundary[i]], [Ksamples_boundary[i]], xlims=(0,0.03), 
-                    ylims=(80,120), markersize=3, markershape=:circle, markercolor=:blue,
-                    msw=0, ms=5, label=false)
-end
+# Plot the MLE and the 2N points identified on the boundary
+a1 = plot2DBoundary((λsamples_boundary, Ksamples_boundary), (λmle, Kmle), N, 
+                    xticks=[0,0.15,0.03], yticks=[80, 100, 120],
+                    xlims=(0,0.03), ylims=(80,120), xlabel="λ", ylabel="K", legend=false)
+
 display(a1)
 
 #############################################################################################
@@ -593,24 +629,23 @@ end
 CU1_boundary = maximum(Ctrace1_boundary, dims=2)
 CL1_boundary = minimum(Ctrace1_boundary, dims=2)
 
-pp1 = plot(tt, Ctrace1_boundary[:,:], color=:grey, xlabel="t", ylabel="C(t)",
-                ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-pp1 = plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
-pp1 = plot!(tt, CU1_boundary, lw=3, color=:red)
-pp1 = plot!(tt, CL1_boundary, lw=3, color=:red)
+pp1 = plotPrediction(tt, Ctrace1_boundary, (CU1_boundary, CL1_boundary), confColor=:red,
+                    xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
+                    yticks=[0,50,100], legend=false)
 pp3 = plot(a1, pp1, layout=(1,2))
 
 display(pp3)
 savefig(pp3, joinpath(fileDirectory, "bivariateLK_boundary.pdf"))
 
 #############################################################################################
+# Section 16.  Instead of identifying the boundary, evaluate the log-likelihood on a Q × Q uniform grid of the bivariate 
 # bivariate profile likelihood for λ and K ##################################################
 # MESH method to locate points in lambda, K space that are on the 95% confidence interval threshold for log likelihood
 Q=20; 
 λλ=LinRange(0,0.03,Q);
 KK=LinRange(80,120,Q);
 
-# contours of log likelihood across the 20*20 mesh
+# Filled contour plot of the bivariate profile likelihood function, superimpose the MLE and the curve at the threshold value
 aa1=contourf(λλ, KK, (λλ,KK)->f(λλ,KK)[1], lw=0, xlabel="λ", ylabel="K", c=:greens,
             colorbar=false)
 aa1=contour!(λλ, KK, (λλ,KK)->f(λλ,KK)[1], levels=[llstar], lw=4, xlabel="λ", ylabel="K",
@@ -666,17 +701,16 @@ end
         
 CU1_grid = maximum(Ctrace_withingrid1, dims=2)
 CL1_grid = minimum(Ctrace_withingrid1, dims=2)
-    
-pp1 = plot(tt, Ctrace_withingrid1[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-pp1 = plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
-pp1 = plot!(tt, CU1_grid, lw=3, color=:red)
-pp1 = plot!(tt, CL1_grid, lw=3, color=:red)
+
+pp1 = plotPrediction(tt, Ctrace_withingrid1, (CU1_grid, CL1_grid), confColor=:red,
+                    xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
+                    yticks=[0,50,100], legend=false)
 pp3 = plot(aa1, pp1, layout=(1,2))
 display(pp3)
 savefig(pp3, joinpath(fileDirectory, "bivariateLK_grid.pdf"))
 
 #############################################################################################
+# Section 17: Repeat Section 16 for the (λ,C(0)) bivariate   
 # Compute and propogate uncertainty forward from the bivariate likelihood for parameter λ and K
 function bivariateλC0(λ,C0)
     function funλC0(a); return loglhood(data,[λ,a[1],C0],σ) end
@@ -751,16 +785,8 @@ while count < N
     end
 end 
 
-a2=scatter([λmle], [C0mle], xlims=(λmin,λmax), ylims=(C0min,C0max), markersize=3,
-            markershape=:circle, markercolor=:fuchsia, msw=0, ms=5,
-            xlabel="λ", ylabel="C(0)", label=false)
-display(a2)
-
-for i in 1:2*N
-    global a2=scatter!([λsamples_boundary[i]], [C0samples_boundary[i]], xlims=(0,0.03),
-                        ylims=(0,35), xticks=[0,0.015,0.03], yticks=[0,15,30], markersize=3,
-                        markershape=:circle, markercolor=:blue, msw=0, ms=5, label=false)
-end
+a2 = plot2DBoundary((λsamples_boundary, C0samples_boundary), (λmle, C0mle), N, 
+                    xlims=(0.0,0.03), ylims=(0,35), xticks=[0,0.015,0.03], yticks=[0,15,30], xlabel="λ", ylabel="C(0)", legend=false)
 display(a2)
 
 #############################################################################################
@@ -773,12 +799,10 @@ end
             
 CU2_boundary = maximum(Ctrace2_boundary, dims=2)
 CL2_boundary = minimum(Ctrace2_boundary, dims=2)
-              
-pp1=plot(tt, Ctrace2_boundary[:,:], color=:grey, xlabel="t", ylabel="C(t)", 
-            ylims=(0,120),xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-pp1=plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
-pp1=plot!(tt, CU2_boundary, lw=3, color=:red)
-pp1=plot!(tt, CL2_boundary, lw=3,color=:red)
+
+pp1 = plotPrediction(tt, Ctrace2_boundary, (CU2_boundary, CL2_boundary), confColor=:red,
+                    xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
+                    yticks=[0,50,100], legend=false)
 pp3=plot(a2, pp1, layout=(1,2))
 display(pp3)
 savefig(pp3, joinpath(fileDirectory, "bivariateLC0_boundary.pdf")) 
@@ -846,11 +870,9 @@ end
 CU2_grid = maximum(Ctrace_withingrid2, dims=2)
 CL2_grid = minimum(Ctrace_withingrid2, dims=2)
     
-pp1=plot(tt, Ctrace_withingrid2[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-pp1=plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
-pp1=plot!(tt, CU2_grid, lw=3, color=:red)
-pp1=plot!(tt, CL2_grid, lw=3, color=:red)
+pp1 = plotPrediction(tt, Ctrace_withingrid2, (CU2_grid, CL2_grid), confColor=:red,
+                    xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
+                    yticks=[0,50,100], legend=false)
 pp3=plot(aa2, pp1, layout=(1,2))
 display(pp3)
 savefig(pp3, joinpath(fileDirectory, "bivariateLC0_grid.pdf"))
@@ -930,20 +952,9 @@ while count < N
     end
 end 
     
-    
-    
+a3 = plot2DBoundary((Ksamples_boundary, C0samples_boundary), (Kmle, C0mle), N, 
+                    xlims=(80, 120), ylims=(C0min,35), xticks=[80,100,120], yticks=[0,15,30], xlabel="K", ylabel="C(0)", legend=false)
       
-a3=scatter([Kmle], [C0mle], xlims=(Kmin,Kmax), ylims=(C0min,C0max), markersize=3,
-            markershape=:circle, markercolor=:fuchsia, msw=0, ms=5, xlabel="K", 
-            ylabel="C(0)", label=false)
-display(a3)
-
-for i in 1:2*N
-    global a3=scatter!([Ksamples_boundary[i]], [C0samples_boundary[i]], xlims=(80,120),
-                         ylims=(C0min,35), xticks=[80,100,120], yticks=[0,15,30],
-                         markersize=3, markershape=:circle,markercolor=:blue, msw=0, 
-                         ms=5, label=false)
-end
 display(a3)
     
 #############################################################################################
@@ -958,11 +969,9 @@ end
 CU3_boundary = maximum(Ctrace3_boundary, dims=2)
 CL3_boundary = minimum(Ctrace3_boundary, dims=2)
 
-pp1=plot(tt, Ctrace3_boundary[:,:], color=:grey, xlabel="t", ylabel="C(t)", 
-            ylims=(0,120),xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-pp1=plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
-pp1=plot!(tt, CU3_boundary, lw=3, color=:red)
-pp1=plot!(tt, CL3_boundary, lw=3,color=:red)
+pp1 = plotPrediction(tt, Ctrace3_boundary, (CU3_boundary, CL3_boundary), confColor=:red,
+                    xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
+                    yticks=[0,50,100], legend=false)
 pp3=plot(a3, pp1, layout=(1,2))
 display(pp3)
 savefig(pp3, joinpath(fileDirectory, "bivariateKC0_boundary.pdf")) 
@@ -1030,11 +1039,9 @@ end
 CU3_grid = maximum(Ctrace_withingrid3, dims=2)
 CL3_grid = minimum(Ctrace_withingrid3, dims=2)
 
-pp1=plot(tt, Ctrace_withingrid3[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-pp1=plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
-pp1=plot!(tt, CU3_grid, lw=3, color=:red)
-pp1=plot!(tt, CL3_grid, lw=3, color=:red)
+pp1 = plotPrediction(tt, Ctrace_withingrid3, (CU3_grid, CL3_grid), confColor=:red,
+                    xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
+                    yticks=[0,50,100], legend=false)
 pp1=plot(aa3, pp1, layout=(1,2))
 display(pp1)
 
@@ -1044,33 +1051,27 @@ savefig(pp1, joinpath(fileDirectory, "bivariateKC0_grid.pdf"))
 # Construct approximate prediction intervals from union of bivariate profile intervals (MESH and boundary methods)
 # Compare to intervals obtained from the full likelihood
 
-
+# Compute the union of the three pair-wise profile predictions using the grid
 CU_grid = max.(CU1_grid, CU2_grid, CU3_grid)
 CL_grid = max.(CL1_grid, CL2_grid, CL3_grid)
 
+# Compute the union of the three pair-wise profile predictions using the identified boundary
 CU_boundary = max.(CU1_boundary, CU2_boundary, CU3_boundary)
 CL_boundary = min.(CL1_boundary, CL2_boundary, CL3_boundary)
 
-
-qq1 = plot(tt, CtraceF[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-qq1 = plot!(tt, CUF, lw=3, color=:gold)
-qq1 = plot!(tt, CLF, lw=3, color=:gold)
-qq1 = plot!(tt, CU_boundary, lw=3, linestyle=:dash, color=:red)
-qq1 = plot!(tt, CL_boundary, lw=3, linestyle=:dash, color=:red)
-qq1 = plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
+# Plot the family of predictions made using the boundary tracing method, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihood 
+qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU_boundary, CL_boundary), 
+                                xlabel="t", ylabel="C(t)", ylims=(0,120),
+                                xticks=[0,500,1000], yticks=[0,50,100], legend=false)
+display(qq1)
 
 display(qq1)
 savefig(qq1, joinpath(fileDirectory, "Bivariatecomparison_boundary.pdf"))
 
-
-qq1 = plot(tt, CtraceF[:,:], color=:grey, xlabel="t", ylabel="C(t)", ylims=(0,120),
-            xticks=[0,500,1000], yticks=[0,50,100], legend=false)
-qq1 = plot!(tt, CUF, lw=3, color=:gold)
-qq1 = plot!(tt, CLF, lw=3, color=:gold)
-qq1 = plot!(tt, CU_grid, lw=3, linestyle=:dash, color=:red)
-qq1 = plot!(tt, CL_grid, lw=3, linestyle=:dash, color=:red)
-qq1 = plot!(ymle, 0, 1000, lw=3, color=:turquoise1)
+# Plot the family of predictions made using the grid, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihood 
+qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU_grid, CL_grid), 
+                                xlabel="t", ylabel="C(t)", ylims=(0,120),
+                                xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(qq1)
 savefig(qq1, joinpath(fileDirectory, "Bivariatecomparison_grid.pdf"))

@@ -1,3 +1,5 @@
+#Produces results in Simpson and Maclaren: Code should be executed in Sections as described in the comments
+#Section 1: set up packages and parameter values
 using Plots, DifferentialEquations
 using .Threads 
 using Interpolations, Random, Distributions
@@ -7,11 +9,14 @@ a=zeros(3)
 λ =0.01; K=100.0; C0=10.0; t=0:100:1000; σ=10.0;
 tt=0:5:1000;
 
+
+#Section 2: Define ODE model
 function DE!(dC,C,p,t)
 λ,K=p
 dC[1]=λ*C[1]*(1.0-C[1]/K);
 end
 
+#Section 3: Solve ODE model
 function odesolver(t,λ,K,C0)
 p=(λ,K)
 tspan=(0.0,maximum(t));
@@ -20,17 +25,21 @@ sol=solve(prob,saveat=t);
 return sol[1,:];
 end
 
+#Section 4: Define function to solve ODE model 
 function model(t,a,σ)
 y=zeros(length(t))
 y=odesolver(t,a[1],a[2],a[3])
 return y
 end
 
+#Section 5: Run model and then add noise to generate data.
 data0=zeros(length(t));
 data=zeros(length(t));
 data0=model(t,[λ,K,C0],σ);
 data=data0+σ*randn(length(t));
 
+
+#Section 6: Define loglikelihood function
 function loglhood(data,a,σ)
     y=zeros(length(t))
     y=model(t,a,σ);
@@ -40,6 +49,7 @@ function loglhood(data,a,σ)
     return sum(e)
 end
 
+#Section 7: Define simple parameter bounds,
 λmin=0.0
 λmax=0.05
 Kmin=50
@@ -49,7 +59,7 @@ C0max=50
 
 
 
-
+#Section 7: Numerical optimisation
 function optimise(fun,θ₀,lb,ub;
     dv = false,
     method = dv ? :LD_LBFGS : :LN_BOBYQA,
@@ -70,11 +80,13 @@ res = optimize(opt,θ₀)
 return res[[2,1]]
 end
 
+#Section 8: Function to be optimised for MLE
 a=zeros(3)
 function funmle(a)
 return loglhood(data,a,σ)
 end
 
+#Section 9: Find MLE by numerical optimisation, visually compare data and MLE solution
 θG = [λ,K,C0]
 lb=[λmin,Kmin,C0min]
 ub=[λmax,Kmax,C0max]
@@ -90,7 +102,7 @@ display(p1)
 savefig(p1, "mle.pdf")
 
 
-
+#Section 10: Depending on MLE we can refine our bounds if required
 λmin=0.0
 λmax=0.05
 Kmin=70
@@ -98,14 +110,12 @@ Kmax=130
 C0min=0
 C0max=40
 
-
+#Section 11: Prediction interval from the full likelihood
 #Let's compute and push forward from the full 3D likelihood function
-
-        
 df=3
 llstar=-quantile(Chisq(df),0.95)/2
 
-N=100000
+N=10^5 #Number of points to consider
 λs=rand(Uniform(λmin,λmax),N);
 Ks=rand(Uniform(Kmin,Kmax),N);
 C0s=rand(Uniform(C0min,C0max),N);
@@ -116,15 +126,15 @@ end
 q1=scatter(lls,legend=false)
 q1=hline!([llstar],lw=2)
 display(q1)
-M=0
 
+#Now consider those locations where the normalised log-likelihood is greater than the appropriate threshold
+M=0
 for i in 1:N
     if lls[i] >= llstar
         M+=1
     end
-
 end
-
+#Solve the model for these points
 λsampled=zeros(M)
 Ksampled=zeros(M)
 C0sampled=zeros(M)
@@ -142,26 +152,25 @@ for i in 1:N
     end
 end
 
-
+#Define point-wise maximum/minimum
 for i in 1:length(tt)
 CUF[i] = maximum(CtraceF[i,:])
 CLF[i] = minimum(CtraceF[i,:])
 end
 
-
-
-
-
+#Plot the family of curves, the MLE and tne envelope of solutions,
 qq1=plot(tt,CtraceF[:,:],color=:grey,xlabel="t",ylabel="C(t)",ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 pp1=plot!(ymle,0,1000,lw=3,color=:turquoise1,xlabel="t",ylabel="C(t)",ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 qq1=plot!(tt,CUF,lw=3,color=:gold,ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 qq1=plot!(tt,CLF,lw=3,color=:gold,ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],xlabel="t",ylabel="C(t)",legend=false)
 
 
-#Compute univariate and push forward
+
+#Section 12: Prediction interval from the univariate profile liklihoods
+#Compute univariate profile likelihoods and perform parameterwise predictions
 df=1
 llstar=-quantile(Chisq(df),0.95)/2
-    
+#Function to define univariate profile for λ    
 function univariateλ(λ)
 a=zeros(2)    
 function funλ(a)
@@ -175,6 +184,7 @@ llb=fopt-fmle
 return llb,xopt
 end 
 f(x) = univariateλ(x)[1]
+#Take a grid of M points to plot the univariate profile likelihood
 M=100;
 λrange=LinRange(λmin,λmax,M)
 ff=zeros(M)
@@ -187,7 +197,7 @@ q1=hline!([llstar],legend=false,lw=3)
 q1=vline!([λmle],legend=false,xlabel="λ",ylabel="ll",lw=3)
 
 
-
+#Calculate location where the profile intersects the threshold log-likelihood
 g(x)=f(x)[1]-llstar
 ϵ=(λmax-λmin)/10^6
 x0=λmle
@@ -214,6 +224,7 @@ if g(x0)*g(x2) < 0
  end
  end
 λλmax = x2
+#Run the model forward for 100 points between the univariate thresholds
 N=100
 λsampled=zeros(N)
 Ksampled=zeros(N)
@@ -224,7 +235,7 @@ for i in 1:N
 Ksampled[i]=univariateλ(λsampled[i])[2][1]
 C0sampled[i]=univariateλ(λsampled[i])[2][2]
 end
-
+#Run the model forward for these points
 CUnivariatetrace1 = zeros(length(tt),N)
 CU1=zeros(length(tt))
 CL1=zeros(length(tt))
@@ -233,14 +244,14 @@ CUnivariatetrace1[:,i]=model(tt,[λsampled[i],Ksampled[i],C0sampled[i]],σ);
 end
 
 
-
+#Calculate the envelope of solutions
 for i in 1:length(tt)
 CU1[i] = maximum(CUnivariatetrace1[i,:])
 CL1[i] = minimum(CUnivariatetrace1[i,:])
 end
     
 
-
+#Plot the results
 pp1=plot(tt,CUnivariatetrace1[:,:],color=:grey,xlims=(0,1000),legend=false)
 pp1=plot!(tt,CU1,lw=3,color=:red,ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 pp1=plot!(tt,CL1,lw=3,color=:red,ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
@@ -252,7 +263,7 @@ savefig(pp1, "UnivatiatePredictionL.pdf")
 
 
 
-  
+#Section 13: Repeat the same caculations for the univariate profile for K  
 function univariateK(K)
  a=zeros(2)    
  function funK(a)
@@ -347,6 +358,7 @@ savefig(pp1, "UnivatiatePredictionK.pdf")
 
 
 
+#Section 14: Repeat the same caculations for the univariate profile for C(0) 
  function univariateC0(C0)
  a=zeros(2)    
  function funC0(a)
@@ -443,6 +455,7 @@ savefig(pp1, "UnivatiatePredictionC0.pdf")
 
 
 
+#Section 15: Given the three parameter-wise prediction intervals for λ, K and C(0), now compute the union 
  CU=zeros(length(tt))
  CL=zeros(length(tt))
 
@@ -464,10 +477,10 @@ savefig(qq1, "PredictionComparisonUni.pdf")
 
 
 
-    
+#Section 16: Construct bivariate profiles and associated pair-wise predictions starting with the bivariate profile likelihood for (λ,K )    
 df=2
 llstar=-quantile(Chisq(df),0.95)/2
-#Construct bivariates
+#Define function to compute the bivariate profile
 function bivariateλK(λ,K)
  function funλK(a)
     return loglhood(data,[λ,K,a[1]],σ)
@@ -479,11 +492,9 @@ function bivariateλK(λ,K)
 llb=fopt-fmle
 return llb,xopt[1]
 end 
-
 f(x,y) = bivariateλK(x,y)
-
-
 g(x,y)=f(x,y)[1]-llstar
+#Define small parameter on the scale of parameter K
 ϵ=(Kmax-Kmin)/10^8
 
 N=100
@@ -492,11 +503,13 @@ Ksamples_boundary=zeros(2*N)
 C0samples_boundary=zeros(2*N)
 count=0
 
+#Identify N points on the boundary by fixing values of λ and picking pairs of values of K 
 while count < N
 x=rand(Uniform(λmin,λmax))
 y0=rand(Uniform(Kmin,Kmax))
 y1=rand(Uniform(Kmin,Kmax))
-
+#If the points (x,y0) and (x,y1) are either side of the appropriate threshold, use the bisection algorithm to find the location of the threshold on the 
+#vertical line separating the two points
 if g(x,y0)*g(x,y1) < 0 
 count+=1
 println(count)
@@ -517,13 +530,15 @@ C0samples_boundary[count]=f(x,y1)[2]
 end
 end 
 
+#Define small number on the scale of the parameter λ
 ϵ=(λmax-λmin)/10^6
 count=0
 while count < N
 y=rand(Uniform(Kmin,Kmax))
 x0=rand(Uniform(λmin,λmax))
 x1=rand(Uniform(λmin,λmax))
-    
+#If the points (x0,y) and (x1,y) are either side of the appropriate threshold, use the bisection algorithm to find the location of the threshold on the 
+#horizontal line separating the two points    
 if g(x0,y)*g(x1,y) < 0 
 count+=1
 println(count)
@@ -545,7 +560,7 @@ while abs(x1-x0) > ϵ && x1 < λmax && x1 > λmin
     C0samples_boundary[N+count]=f(x1,y)[2]
     end
     end 
-    
+#Plot the MLE and the 2N points identified on the boundary
 a1=scatter([λmle],[Kmle],xlims=(λmin,λmax),ylims=(Kmin,Kmax),markersize=3,markershape=:circle,markercolor=:fuchsia,msw=0, ms=5,xlabel="λ",ylabel="K",label=false)
 display(a1)
 for i in 1:2*N
@@ -553,7 +568,7 @@ a1=scatter!([λsamples_boundary[i]],[Ksamples_boundary[i]],xlims=(0,0.03),ylims=
 end
 display(a1)
 
-
+#Solve the model using the parameter values on the boundary of the bivariate profile
 Ctrace1_boundary = zeros(length(tt),2*N)
 CU1_boundary=zeros(length(tt))
 CL1_boundary=zeros(length(tt))
@@ -561,7 +576,7 @@ for i in 1:2*N
 Ctrace1_boundary[:,i]=model(tt,[λsamples_boundary[i],Ksamples_boundary[i],C0samples_boundary[i]],σ);
 end
     
-    
+#Calculate the maximum/minimum envelope of the solutions    
 for i in 1:length(tt)
 CU1_boundary[i] = maximum(Ctrace1_boundary[i,:])
 CL1_boundary[i] = minimum(Ctrace1_boundary[i,:])
@@ -569,7 +584,7 @@ end
     
 
 
-
+#Plot the family of solutions, the maximum/minimum envelope and the MLE
 pp1=plot(tt,Ctrace1_boundary[:,:],color=:grey,xlabel="t",ylabel="C(t)",ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 pp1=plot!(ymle,0,1000,lw=3,color=:turquoise1,xlabel="t",ylabel="C(t)",ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 pp1=plot!(tt,CU1_boundary,lw=3,color=:red,ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
@@ -578,12 +593,12 @@ pp3=plot(a1,pp1,layout=(1,2))
 display(pp3)
 savefig(pp3, "bivariateLK_boundary.pdf")
 
-
+#Section 16.  Instead of identifying the boundary, evaluate the log-likelihood on a Q × Q uniform grid of the bivariate 
 Q=20; 
 λλ=LinRange(0,0.03,Q);
 KK=LinRange(80,120,Q);
 
-
+#Filled contour plot of the bivariate profile likelihood function, superimpose the MLE and the curve at the threshold value
 aa1=contourf(λλ,KK,(λλ,KK)->f(λλ,KK)[1],lw=0,xlabel="λ",ylabel="K",c=:greens,colorbar=false)
 aa1=contour!(λλ,KK,(λλ,KK)->f(λλ,KK)[1],levels=[llstar],lw=4,xlabel="λ",ylabel="K",c=:red,legend=false)
 aa1=scatter!([λmle],[Kmle],markersize=3,markershape=:circle,markercolor=:fuchsia,msw=0, ms=5,label=false)
@@ -600,6 +615,7 @@ Ksamples_grid=zeros(Q^2)
 C0samples_grid=zeros(Q^2)
 llsamples_grid=zeros(Q^2)
 
+#Solve the model for each point on the grid
 count=0
 for i in 1:Q
     for j in 1:Q
@@ -611,7 +627,7 @@ for i in 1:Q
     end
 end
 
-
+#for those grid points within the threshold contour run the model
 Ctrace1_grid = zeros(length(tt),Q^2)
 count=0
 for i in 1:Q^2
@@ -647,6 +663,7 @@ end
     savefig(pp3, "bivariateLK_grid.pdf")
 
 
+#Section 17: Repeat Section 16 for the (λ,C(0)) bivariate   
 function bivariateλC0(λ,C0)
     function funλC0(a)
     return loglhood(data,[λ,a[1],C0],σ)
@@ -827,6 +844,7 @@ end
 
 
 
+#Section 18: Repeat Section 16 for the (K,C(0)) bivariate   
 function bivariateKC0(K,C0)
 function funKC0(a)
 return loglhood(data,[a[1],K,C0],σ)
@@ -1013,7 +1031,7 @@ count+=1
 
 
 
-
+# Compute the union of the three pair-wise profile predictions using the grid
 CU_grid=zeros(length(tt))
 CL_grid=zeros(length(tt))
 for i in 1:length(tt)
@@ -1021,7 +1039,7 @@ CU_grid[i]=max(CU1_grid[i],CU2_grid[i],CU3_grid[i])
 CL_grid[i]=min(CL1_grid[i],CL2_grid[i],CL3_grid[i])
 end
 
-
+# Compute the union of the three pair-wise profile predictions using the identified boundary
 CU_boundary=zeros(length(tt))
 CL_boundary=zeros(length(tt))
 for i in 1:length(tt)
@@ -1029,7 +1047,7 @@ CU_boundary[i]=max(CU1_boundary[i],CU2_boundary[i],CU3_boundary[i])
 CL_boundary[i]=min(CL1_boundary[i],CL2_boundary[i],CL3_boundary[i])
 end
 
-
+#Plot the family of predictions made using the boundary tracing method, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihood 
 qq1=plot(tt,CtraceF[:,:],color=:grey,xlabel="t",ylabel="C(t)",ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 qq1=plot!(ymle,0,1000,lw=3,color=:turquoise1,xlabel="t",ylabel="C(t)",ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 qq1=plot!(tt,CUF,lw=3,color=:gold,ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
@@ -1041,7 +1059,7 @@ savefig(qq1, "Bivariatecomparison_boundary.pdf")
 
 
 
-
+#Plot the family of predictions made using the grid, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihood 
 qq1=plot(tt,CtraceF[:,:],color=:grey,xlabel="t",ylabel="C(t)",ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 qq1=plot!(ymle,0,1000,lw=3,color=:turquoise1,xlabel="t",ylabel="C(t)",ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
 qq1=plot!(tt,CUF,lw=3,color=:gold,ylims=(0,120),xticks=[0,500,1000],yticks=[0,50,100],legend=false)
