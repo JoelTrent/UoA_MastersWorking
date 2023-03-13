@@ -7,60 +7,9 @@ gr()
 
 Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
+include(joinpath("..", "plottingFunctions.jl"))
 
 # Workflow functions ##########################################################################
-# plotting functions #################
-function plot1DProfile(parRange, parProfile, llstar, parMLE; 
-    xlims, ylims, xlabel, ylabel, legend=false)
-
-    profilePlot=plot(parRange, parProfile, ylims=ylims, xlims=xlims, legend=legend, lw=3)
-    profilePlot=hline!([llstar], lw=3)
-    profilePlot=vline!([parMLE], lw=3, xlabel=xlabel, ylabel=ylabel)
-
-    return profilePlot
-end
-
-function plot2DBoundary(parBoundarySamples, parMLEs, N; 
-    xlims, ylims, xticks, yticks, xlabel, ylabel, legend=false)
-
-    boundaryPlot=scatter([parMLEs[1]], [parMLEs[2]], xlims=xlims, ylims=ylims, 
-            markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=5, 
-            xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, legend=legend)
-
-    for i in 1:2*N
-        boundaryPlot=scatter!([parBoundarySamples[1][i]], [parBoundarySamples[2][i]], 
-                                markersize=3, markershape=:circle, markercolor=:blue,
-                                msw=0, ms=5)
-    end
-    return boundaryPlot
-end
-
-function plotPrediction(tt, predictions, confEstimate; confColor, xlabel,
-    ylabel, ylims, xticks, yticks, legend=false)
-
-    predictionPlot = plot(tt, predictions[:,:], color=:grey, xlabel=xlabel, ylabel=ylabel, 
-                            ylims=ylims, xticks=xticks, yticks=yticks, legend=legend)
-    predictionPlot = plot!(tt, confEstimate[1], lw=3, color=confColor)
-    predictionPlot = plot!(tt, confEstimate[2], lw=3, color=confColor)
-    predictionPlot = plot!(ymle, tt[1], tt[end], lw=3, color=:turquoise1)
-
-    return predictionPlot
-end
-
-function plotPredictionComparison(tt, predictionsFull, confFull, confEstimate; xlabel,
-    ylabel, ylims, xticks, yticks, legend=false)
-
-    predictionPlot = plot(tt, predictionsFull[:,:], color=:grey, xlabel=xlabel, ylabel=ylabel, 
-                            ylims=ylims, xticks=xticks, yticks=yticks, legend=legend)
-    predictionPlot = plot!(tt, confFull[1], lw=3, color=:gold)
-    predictionPlot = plot!(tt, confFull[2], lw=3, color=:gold)
-    predictionPlot = plot!(tt, confEstimate[1], lw=3, linestyle=:dash, color=:red)
-    predictionPlot = plot!(tt, confEstimate[2], lw=3, linestyle=:dash, color=:red)
-    predictionPlot = plot!(ymle, tt[1], tt[end], lw=3, color=:turquoise1)
-
-    return predictionPlot
-end
-####################################
 
 # Section 2: Define ODE model
 function DE!(dC, C, p, t)
@@ -257,35 +206,8 @@ display(q1)
 g(x)=f(x)[1]-llstar
 ϵ=(λmax-λmin)/10^6
 
-# find λ min
-x0=λmle
-x1=λmin
-x2=(x1+x0)/2;
-
-while abs(x1-x0) > ϵ
-    global x2=(x1+x0)/2;
-    if g(x0)*g(x2) < 0 
-        global x1=x2
-    else
-        global x0=x2
-    end
-end
-λλmin = x2
-
-# find λ max
-x0=λmle
-x1=λmax
-x2=(x1+x0)/2
-
-while abs(x1-x0) > ϵ
-    global x2=(x1+x0)/2;
-    if g(x0)*g(x2) < 0 
-        global x1=x2
-    else
-        global x0=x2
-    end
-end
-λλmax = x2
+λλmin = find_zero(g, (λmin, λmle), atol=ϵ, Roots.Brent())
+λλmax = find_zero(g, (λmle, λmax), atol=ϵ, Roots.Brent())
 
 #############################################################################################
 # Create a uniform grid of values between λ values that intersect the the 95% confidence interval threshold for log likelihood
@@ -297,8 +219,7 @@ C0sampled=zeros(N)
 # determine MLE values for K and C0 at each value of λsampled
 λsampled=LinRange(λλmin,λλmax,N)
 for i in 1:N
-    Ksampled[i]=univariateλ(λsampled[i])[2][1]
-    C0sampled[i]=univariateλ(λsampled[i])[2][2]
+    Ksampled[i], C0sampled[i] = univariateλ(λsampled[i])[2]
 end
 
 # compute model for given parameter values
@@ -351,35 +272,8 @@ display(q2)
 g(x)=f(x)[1]-llstar
 ϵ=(Kmax-Kmin)/10^6
 
-# find K min
-x0=Kmle
-x1=Kmin
-x2=(x1+x0)/2
-
-while abs(x1-x0) > ϵ
-    global x2=(x1+x0)/2;
-    if g(x0)*g(x2) < 0 
-        global x1=x2
-    else
-        global x0=x2
-    end
-end
-KKmin = x2
-
-# find K max
-x0=Kmle
-x1=Kmax
-x2=(x1+x0)/2;
-
-while abs(x1-x0) > ϵ
-    global x2=(x1+x0)/2;
-    if g(x0)*g(x2) < 0 
-        global x1=x2
-    else
-        global x0=x2
-    end
-end
-KKmax = x2
+KKmin = find_zero(g, (Kmin, Kmle), atol=ϵ, Roots.Brent())
+KKmax = find_zero(g, (Kmle, Kmax), atol=ϵ, Roots.Brent())
 
 #############################################################################################
 # Create a uniform grid of values between K values that intersect the the 95% confidence interval threshold for log likelihood
@@ -390,8 +284,7 @@ C0sampled=zeros(N)
 # determine MLE values for λ and C0 at each value of Ksampled
 Ksampled=LinRange(KKmin,KKmax,N)
 for i in 1:N
-    λsampled[i]=univariateK(Ksampled[i])[2][1]
-    C0sampled[i]=univariateK(Ksampled[i])[2][2]
+    λsampled[i], C0sampled[i] = univariateK(Ksampled[i])[2]
 end
 
 # compute model for given parameter values
@@ -442,42 +335,14 @@ display(q3)
    
 q4=plot(q1,q2,q3,layout=(1,3),legend=false)
 display(q4)
-savefig(q4, joinpath(fileDirectory, "univariate.pdf")) 
 
 #############################################################################################
 # Bisection method to find values of C0 that intersect the 95% confidence interval threshold for log likelihood     
 g(x)=f(x)[1]-llstar
 ϵ=(C0max-C0min)/10^6
 
-x0=C0mle
-x1=C0min
-x2=(x1+x0)/2
-
-# find C0 min
-while abs(x1-x0) > ϵ
-    global x2=(x1+x0)/2;
-    if g(x0)*g(x2) < 0 
-        global x1=x2
-    else
-        global x0=x2
-    end
-end
-CC0min = x2
-
-# find C0max
-x0=C0mle
-x1=C0max
-x2=(x1+x0)/2;
-
-while abs(x1-x0) > ϵ
-    global x2=(x1+x0)/2;
-    if g(x0)*g(x2) < 0 
-        global x1=x2
-    else
-        global x0=x2
-    end
-end
-CC0max = x2
+CC0min = find_zero(g, (C0min, C0mle), atol=ϵ, Roots.Brent())
+CC0max = find_zero(g, (C0mle, C0max), atol=ϵ, Roots.Brent())
    
 #############################################################################################
 # Create a uniform grid of values between C0 values that intersect the the 95% confidence interval threshold for log likelihood
@@ -488,8 +353,7 @@ C0sampled=zeros(N)
 # determine MLE values for λ and K at each value of C0sampled
 C0sampled=LinRange(CC0min,CC0max,N)
 for i in 1:N
-    λsampled[i]=univariateC0(C0sampled[i])[2][1]
-    Ksampled[i]=univariateC0(C0sampled[i])[2][2]
+    λsampled[i], Ksampled[i] = univariateC0(C0sampled[i])[2]
 end
 
 # compute model for given parameter values
@@ -530,6 +394,7 @@ savefig(qq1, joinpath(fileDirectory, "PredictionComparisonUni.pdf"))
 # Compute and propogate uncertainty forward from the bivariate likelihood for parameter λ and K
 df=2
 llstar=-quantile(Chisq(df),0.95)/2
+
 # Define function to compute the bivariate profile
 function bivariateλK(λ,K)
     function funλK(a); return loglhood(data,[λ,K,a[1]],σ) end
@@ -554,27 +419,23 @@ Ksamples_boundary=zeros(2*N)
 C0samples_boundary=zeros(2*N)
 
 # Fix λ and estimate K that puts it on the log likelihood boundary, optimising out C0 using the MLE estimate for C0
-count=0
 # Define small parameter on the scale of parameter K
 ϵ=(Kmax-Kmin)/10^8
+h(y,p)=g(p,y)
+count=0
 while count < N
     x=rand(Uniform(λmin,λmax))
     y0=rand(Uniform(Kmin,Kmax))
     y1=rand(Uniform(Kmin,Kmax))
 
-    #If the points (x,y0) and (x,y1) are either side of the appropriate threshold, use the bisection algorithm to find the location of the threshold on the 
-    #vertical line separating the two points
+    # If the points (x,y0) and (x,y1) are either side of the appropriate threshold, use the 
+    # bisection algorithm to find the location of the threshold on the vertical line separating 
+    # the two points
     if g(x,y0)*g(x,y1) < 0 
         global count+=1
         println(count)
-        while abs(y1-y0) > ϵ && y1 < Kmax && y1 > Kmin
-            y2=(y1+y0)/2;
-            if g(x,y0)*g(x,y2) < 0 
-                y1=y2
-            else
-                y0=y2
-            end
-        end
+
+        y1 = find_zero(h, (y0, y1), atol=ϵ, Roots.Brent(); p=x)
 
         λsamples_boundary[count]=x;
         Ksamples_boundary[count]=y1;
@@ -584,6 +445,7 @@ end
 
 # Fix K and estimate λ that puts it on the log likelihood boundary, optimising out C0 using the MLE estimate for C0
 ϵ=(λmax-λmin)/10^6
+h(x,p)=g(x,p)
 count=0
 while count < N
     y=rand(Uniform(Kmin,Kmax))
@@ -596,14 +458,7 @@ while count < N
         global count+=1
         println(count)
 
-        while abs(x1-x0) > ϵ && x1 < λmax && x1 > λmin
-            x2=(x1+x0)/2;
-            if g(x0,y)*g(x2,y) < 0 
-                x1=x2
-            else
-                x0=x2
-            end
-        end
+        x1 = find_zero(h, (x0, x1), atol=ϵ, Roots.Brent(); p=y)
 
         λsamples_boundary[N+count]=x1;
         Ksamples_boundary[N+count]=y;
@@ -613,7 +468,7 @@ end
 
 # Plot the MLE and the 2N points identified on the boundary
 a1 = plot2DBoundary((λsamples_boundary, Ksamples_boundary), (λmle, Kmle), N, 
-                    xticks=[0,0.15,0.03], yticks=[80, 100, 120],
+                    xticks=[0,0.015,0.03], yticks=[80, 100, 120],
                     xlims=(0,0.03), ylims=(80,120), xlabel="λ", ylabel="K", legend=false)
 
 display(a1)
@@ -734,6 +589,7 @@ Ksamples_boundary=zeros(2*N)
 
 # Fix λ and estimate C0 that puts it on the log likelihood boundary, optimising out K using the MLE estimate for K
 ϵ=(C0max-C0min)/10^8
+h(y,p)=g(p,y)
 count=0
 while count < N 
     x=rand(Uniform(λmin,λmax))
@@ -743,14 +599,8 @@ while count < N
     if g(x,y0)*g(x,y1) < 0 
         global count+=1
         println(count)
-        while abs(y1-y0) > ϵ && y1 < C0max && y1 > C0min
-            y2=(y1+y0)/2;
-            if g(x,y0)*g(x,y2) < 0 
-                y1=y2
-            else
-                y0=y2
-            end
-        end
+        
+        y1 = find_zero(h, (y0, y1), atol=ϵ, Roots.Brent(); p=x)
         
         λsamples_boundary[count]=x;
         C0samples_boundary[count]=y1;
@@ -760,6 +610,7 @@ end
         
 # Fix C0 and estimate λ that puts it on the log likelihood boundary, optimising out K using the MLE estimate for K
 ϵ=(λmax-λmin)/10^6
+h(x,p)=g(x,p)
 count=0
 while count < N 
     y=rand(Uniform(C0min,C0max))
@@ -770,14 +621,7 @@ while count < N
         global count+=1
         println(count)
                 
-        while abs(x1-x0) > ϵ && x1 < λmax && x1 > λmin
-            x2=(x1+x0)/2;
-            if g(x0,y)*g(x2,y) < 0 
-                x1=x2
-            else
-                x0=x2
-            end           
-        end                
+        x1 = find_zero(h, (x0, x1), atol=ϵ, Roots.Brent(); p=y)             
                 
         λsamples_boundary[N+count]=x1;
         C0samples_boundary[N+count]=y;
@@ -900,7 +744,8 @@ C0samples_boundary=zeros(2*N)
 λsamples_boundary=zeros(2*N)
 
 # Fix K and estimate C0 that puts it on the log likelihood boundary, optimising out λ using the MLE estimate for λ
-ϵ=(C0max-C0min)/10^8        
+ϵ=(C0max-C0min)/10^8
+h(y,p)=g(p,y)   
 count=0
 while count < N
     x=rand(Uniform(Kmin,Kmax))
@@ -910,14 +755,8 @@ while count < N
     if g(x,y0)*g(x,y1) < 0 
         global count+=1
         println(count)
-        while abs(y1-y0) > ϵ && y1 < C0max && y1 > C0min
-            y2=(y1+y0)/2;
-            if g(x,y0)*g(x,y2) < 0 
-                y1=y2
-            else
-                y0=y2
-            end
-        end
+
+        y1 = find_zero(h, (y0, y1), atol=ϵ, Roots.Brent(); p=x)
             
         Ksamples_boundary[count]=x;
         C0samples_boundary[count]=y1;
@@ -927,6 +766,7 @@ end
 
 # Fix C0 and estimate K that puts it on the log likelihood boundary, optimising out λ using the MLE estimate for λ
 ϵ=1(Kmax-Kmin)/10^8
+h(x,p)=g(x,p)
 count=0
 while count < N 
     y=rand(Uniform(C0min,C0max))
@@ -937,14 +777,7 @@ while count < N
         global count+=1
         println(count)
 
-        while abs(x1-x0) > ϵ && x1 < Kmax && x1 > Kmin
-            x2=(x1+x0)/2;
-            if g(x0,y)*g(x2,y) < 0 
-                x1=x2
-            else
-                x0=x2
-            end
-        end
+        x1 = find_zero(h, (x0, x1), atol=ϵ, Roots.Brent(); p=y)
 
         Ksamples_boundary[N+count]=x1;
         C0samples_boundary[N+count]=y;
@@ -1033,7 +866,7 @@ end
 Ctrace_withingrid3=zeros(length(tt),count)
 
 for i in 1:count
-Ctrace_withingrid3[:,i]=Ctrace3_grid[:,i]
+    Ctrace_withingrid3[:,i]=Ctrace3_grid[:,i]
 end 
 
 CU3_grid = maximum(Ctrace_withingrid3, dims=2)
@@ -1059,15 +892,15 @@ CL_grid = max.(CL1_grid, CL2_grid, CL3_grid)
 CU_boundary = max.(CU1_boundary, CU2_boundary, CU3_boundary)
 CL_boundary = min.(CL1_boundary, CL2_boundary, CL3_boundary)
 
-# Plot the family of predictions made using the boundary tracing method, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihood 
+# Plot the family of predictions made using the boundary tracing method, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihoods 
 qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU_boundary, CL_boundary), 
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
-                                display(qq1)
+display(qq1)
 savefig(qq1, joinpath(fileDirectory, "Bivariatecomparison_boundary.pdf"))
 
-# Plot the family of predictions made using the grid, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihood 
+# Plot the family of predictions made using the grid, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihood s
 qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU_grid, CL_grid), 
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
