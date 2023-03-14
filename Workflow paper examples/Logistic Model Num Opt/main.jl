@@ -3,6 +3,7 @@ using Plots, DifferentialEquations
 using .Threads 
 using Interpolations, Random, Distributions
 using Roots, NLopt
+using ForwardDiff
 gr()
 
 Random.seed!(12348)
@@ -336,6 +337,8 @@ display(q3)
 q4=plot(q1,q2,q3,layout=(1,3),legend=false)
 display(q4)
 
+savefig(q4, joinpath(fileDirectory, "univariate.pdf"))
+
 #############################################################################################
 # Bisection method to find values of C0 that intersect the 95% confidence interval threshold for log likelihood     
 g(x)=f(x)[1]-llstar
@@ -473,6 +476,12 @@ a1 = plot2DBoundary((λsamples_boundary, Ksamples_boundary), (λmle, Kmle), N,
 
 display(a1)
 
+# ls = ellipse_loglike.(λrange, fill(Kmle, M), fill(C0mle,M))
+
+# plot1DProfile(λrange, ls, llstar, λmle, xlims=(λmin,0.04), ylims=(-3,0.),
+#                     xlabel="λ", ylabel="ll")
+
+
 #############################################################################################
 # Compute model for parameter values on the boundary
 Ctrace1_boundary = zeros(length(tt), 2*N)
@@ -566,7 +575,7 @@ savefig(pp3, joinpath(fileDirectory, "bivariateLK_grid.pdf"))
 
 #############################################################################################
 # Section 17: Repeat Section 16 for the (λ,C(0)) bivariate   
-# Compute and propogate uncertainty forward from the bivariate likelihood for parameter λ and K
+# Compute and propogate uncertainty forward from the bivariate likelihood for parameter λ and C0
 function bivariateλC0(λ,C0)
     function funλC0(a); return loglhood(data,[λ,a[1],C0],σ) end
     

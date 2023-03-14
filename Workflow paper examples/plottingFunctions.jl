@@ -9,6 +9,40 @@ function plot1DProfile(parRange, parProfile, llstar, parMLE;
     return profilePlot
 end
 
+function plot1DProfileComparison(parRange1, parProfile1, parRange2, parProfile2, llstar, parMLE; 
+    xlims, ylims, xlabel, ylabel, legend=false)
+
+    profilePlot=plot(parRange1, parProfile1, ylims=ylims, xlims=xlims, legend=legend, lw=3)
+    profilePlot=plot!(parRange2, parProfile2, ylims=ylims, xlims=xlims, legend=legend, lw=3,
+                        linestyle=:dash)
+    profilePlot=hline!([llstar], lw=3)
+    profilePlot=vline!([parMLE], lw=3, xlabel=xlabel, ylabel=ylabel)
+
+    return profilePlot
+end
+
+function plot2DBoundaryComparison(parBoundarySamples1, parBoundarySamples2, parMLEs, N; 
+    xlims, ylims, xticks, yticks, xlabel, ylabel, legend=false)
+
+    boundaryPlot=scatter([parMLEs[1]], [parMLEs[2]], xlims=xlims, ylims=ylims, 
+            markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=5, 
+            xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, legend=legend)
+
+    for i in 1:2*N
+        boundaryPlot=scatter!([parBoundarySamples1[1][i]], [parBoundarySamples1[2][i]], 
+                                markersize=3, markershape=:circle, markercolor=:blue,
+                                msw=0, ms=5)
+    end
+
+    for i in 1:2*N
+        boundaryPlot=scatter!([parBoundarySamples2[1][i]], [parBoundarySamples2[2][i]], 
+                                markersize=3, markershape=:utriangle, markercolor=:lightblue,
+                                msw=0, ms=5)
+    end
+
+    return boundaryPlot
+end
+
 function plot2DBoundary(parBoundarySamples, parMLEs, N; 
     xlims, ylims, xticks, yticks, xlabel, ylabel, legend=false)
 
