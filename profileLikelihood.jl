@@ -70,11 +70,21 @@ end
 #     return confidenceDict
 # end
 
-function variablemapping1d!(θ, Ψ, λ, index)
+function variablemapping1dranges(num_vars, index)
+    θranges = (1:(index-1), (index+1):num_vars)
+    λranges = (1:(index-1), index:(num_vars-1))
+    return θranges, λranges
+end
 
-    θ[1:(index-1)]   .= λ[1:(index-1)]
-    θ[index]          = Ψ
-    θ[(index+1):end] .= λ[index:end]
+# function variablemapping1d!(θ, λ, index)
+#     θ[1:(index-1)]   .= λ[1:(index-1)]
+#     θ[(index+1):end] .= λ[index:end]
+#     return θ
+# end
+
+function variablemapping1d!(θ, λ, θranges, λranges)
+    θ[θranges[1]] .= λ[λranges[1]]
+    θ[θranges[2]] .= λ[λranges[2]]
     return θ
 end
 
@@ -85,8 +95,11 @@ function boundsmapping1d!(newbounds::Vector{<:Float64}, bounds::Vector{<:Float64
 end
 
 function univariateΨ(Ψ, p)
-    θs=zeros(p[:num_vars])    
-    function fun(λ); return p[:likelihoodFunc](p[:data], variablemapping1d!(θs, Ψ, λ, p[:ind]) ) end
+    θs=zeros(p[:num_vars])
+    θs[p[:ind]] = Ψ
+    θranges, λranges = variablemapping1dranges(p[:num_vars], p[:ind])
+
+    function fun(λ); return p[:likelihoodFunc](p[:data], variablemapping1d!(θs, λ, θranges, λranges) ) end
 
     (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
     llb=fopt-p[:targetll]
@@ -98,8 +111,11 @@ function univariateΨ_ellipse_analytical(Ψ, p)
 end
 
 function univariateΨ_ellipse(Ψ, p)
-    θs=zeros(p[:num_vars])    
-    function fun(λ); return ellipse_loglike(variablemapping1d!(θs, Ψ, λ, p[:ind]), p[:θmle], p[:H]) end
+    θs=zeros(p[:num_vars])
+    θs[p[:ind]] = Ψ
+    θranges, λranges = variablemapping1dranges(p[:num_vars], p[:ind])
+
+    function fun(λ); return ellipse_loglike(variablemapping1d!(θs, λ, θranges, λranges), p[:θmle], p[:H]) end
 
     (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
     llb=fopt-p[:targetll]
