@@ -9,6 +9,7 @@ gr()
 Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
 include(joinpath("..", "plottingFunctions.jl"))
+include(joinpath("..", "ellipseLikelihood.jl"))
 
 # Workflow functions ##########################################################################
 
@@ -21,22 +22,22 @@ end
 # Section 3: Solve ODE model
 function odesolver(t, λ, K, C0)
     p=(λ,K)
-    tspan=(0.0, maximum(t))
+    tspan=extrema(t)
     prob=ODEProblem(DE!, [C0], tspan, p)
     sol=solve(prob, saveat=t)
     return sol[1,:]
 end
 
 # Section 4: Define function to solve ODE model 
-function model(t, a, σ)
+function ODEmodel(t, a, σ)
     y=odesolver(t, a[1],a[2],a[3])
     return y
 end
 
 # Section 6: Define loglikelihood function
 function loglhood(data, a, σ)
-    y=model(t, a, σ)
-    e=0
+    y=ODEmodel(t, a, σ)
+    e=0.0
     dist=Normal(0, σ);
     e=loglikelihood(dist, data-y) 
     return sum(e)
@@ -75,7 +76,7 @@ tt=0:5:1000
 a=[λ, K, C0]
 
 # true data
-data0 = model(t, a, σ)
+data0 = ODEmodel(t, a, σ)
 
 # noisy data
 data = data0 + σ*randn(length(t))
@@ -95,7 +96,8 @@ ub = [λmax, Kmax, C0max]
 # noisy data
 (xopt, fopt) = optimise(funmle, θG, lb, ub)
 fmle=fopt
-λmle, Kmle, C0mle = xopt
+λmle, Kmle, C0mle = xopt .* 1.0
+θmle = [λmle, Kmle, C0mle]
 ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 
 p1 = plot(ymle, 0, 1000, color=:turquoise1, xlabel="t", ylabel="C(t)",
@@ -108,9 +110,7 @@ display(p1)
 savefig(p1, joinpath(fileDirectory,"mle.pdf"))
 
 # 3D approximation of the likelihood around the MLE solution
-H = -ForwardDiff.hessian(funmle, xopt)
-ellipse_loglike(x,y,z) = -0.5 * (([x;y;z] - xopt)' * H * ([x,y,z] - xopt))
-ellipse_like(x,y,z) = exp(ellipse_loglike(x,y,z))
+H, Γ = getMLEHessianAndCovariance(funmle, θmle)
 
 # Section 10: Depending on MLE we can refine our bounds if required
 # λmin=0.0
@@ -163,7 +163,7 @@ for i in 1:N
         λsampled[j]=λs[i]
         Ksampled[j]=Ks[i]
         C0sampled[j]=C0s[i]
-        CtraceF[:,j]=model(tt,[λs[i],Ks[i],C0s[i]],σ);
+        CtraceF[:,j]=ODEmodel(tt,[λs[i],Ks[i],C0s[i]],σ);
     end
 end
 
@@ -184,10 +184,12 @@ llstar = -quantile(Chisq(df), 0.95)/2
 
 # Function to define univariate profile for λ    
 function univariateλ(λ)
-    a=zeros(2)    
-    function funλ(a); return ellipse_loglike(λ,a[1],a[2]) end
+    
+    a=zeros(2)
+    function funλ(a::Vector{<:Float64}); ellipse_loglike([λ,a[1],a[2]], θmle, H) end
 
     θG=[K,C0]
+    # lb=[Kmin,C0min]
     lb=[Kmin,C0min]
     ub=[Kmax,C0max]
     (xopt,fopt)=optimise(funλ,θG,lb,ub)
@@ -209,6 +211,17 @@ q1 = plot1DProfile(λrangeQuad, ffQuad, llstar, λmle, xlims=(λmin,0.04), ylims
                     xlabel="λ", ylabel="ll")
 display(q1)
 
+ffQuad_analyt = zeros(M)
+for i in 1:M
+    global ffQuad_analyt[i] = analytic_ellipse_loglike([λrangeQuad[i]], [1], θmle, Γ)
+end
+
+q1 = plot1DProfile(λrangeQuad, ffQuad_analyt, llstar, λmle, xlims=(λmin,0.04), ylims=(-3,0),
+                    xlabel="λ", ylabel="ll")
+
+q1 = plot1DProfileComparison(λrangeQuad, ffQuad_analyt, λrangeQuad, ffQuad, llstar, λmle, xlims=(λmin,0.04), 
+                    ylims=(-3,0.), xlabel="λ", ylabel="ll")
+display(q1)
 
 ##############################################################################################
 # Section 13: Prediction interval from the univariate profile likelihoods
@@ -245,7 +258,6 @@ display(q1)
 q1 = plot1DProfileComparison(λrange, ff, λrangeQuad, ffQuad, llstar, λmle, xlims=(λmin,0.04), 
                         ylims=(-3,0.), xlabel="λ", ylabel="ll")
 
- 
 #############################################################################################
 # Bisection method to find values of λ in the profile that intersect the 95% confidence interval threshold for log likelihood
 g(x)=f(x)[1]-llstar
@@ -270,7 +282,7 @@ end
 # compute model for given parameter values
 CUnivariatetrace1 = zeros(length(tt),N)
 for i in 1:N
-    CUnivariatetrace1[:,i]=model(tt,[λsampled[i],Ksampled[i],C0sampled[i]],σ);
+    CUnivariatetrace1[:,i]=ODEmodel(tt,[λsampled[i],Ksampled[i],C0sampled[i]],σ);
 end
 
 CU1 = maximum(CUnivariatetrace1, dims=2)
@@ -287,7 +299,7 @@ savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionLambda.pdf") )
 # Compute and propogate uncertainty forward from the univariate quadratic approximation of log-likelihood for parameter K
 function univariateK(K)
     a=zeros(2)    
-    function funK(a); return ellipse_loglike(a[1],K,a[2]) end
+    function funK(a::Vector{<:Float64}); ellipse_loglike([a[1],K,a[2]], θmle, H) end
 
     θG=[λ,C0]
     lb=[λmin,C0min]
@@ -307,6 +319,19 @@ end
 
 q2 = plot1DProfile(KrangeQuad, ffQuad, llstar, Kmle, xlims=(80,120), ylims=(-3,0.),
                     xlabel="K", ylabel="ll")
+
+
+ffQuad_analyt = zeros(M)
+for i in 1:M
+    global ffQuad_analyt[i] = analytic_ellipse_loglike([KrangeQuad[i]], [2], θmle, Γ)
+end
+
+q2 = plot1DProfile(KrangeQuad, ffQuad_analyt, llstar, Kmle, xlims=(80,120), ylims=(-3,0.),
+                    xlabel="K", ylabel="ll")
+
+q2 = plot1DProfileComparison(KrangeQuad, ffQuad_analyt, KrangeQuad, ffQuad, llstar, Kmle, xlims=(80,120), 
+                            ylims=(-3,0.), xlabel="K", ylabel="ll")
+
 display(q2)
 
 ##############################################################################################
@@ -366,7 +391,7 @@ CUnivariatetrace2 = zeros(length(tt),N)
 CU2=zeros(length(tt))
 CL2=zeros(length(tt))
 for i in 1:N
-    CUnivariatetrace2[:,i]=model(tt,[λsampled[i],Ksampled[i],C0sampled[i]],σ);
+    CUnivariatetrace2[:,i]=ODEmodel(tt,[λsampled[i],Ksampled[i],C0sampled[i]],σ);
 end
    
 for i in 1:length(tt)
@@ -384,7 +409,7 @@ savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionK.pdf"))
 # Compute and propogate uncertainty forward from the univariate quadratic approximation of log-likelihood for parameter C0
 function univariateC0(C0)
     a=zeros(2)    
-    function funC0(a); return ellipse_loglike(a[1],a[2],C0) end
+    function funC0(a::Vector{<:Float64}); ellipse_loglike([a[1],a[2],C0], θmle, H) end
     
     θG=[λ,K]
     lb=[λmin,Kmin]
@@ -404,6 +429,17 @@ end
 
 q3= plot1DProfile(C0rangeQuad, ffQuad, llstar, C0mle, xlims=(C0min,30), ylims=(-3,0.),
                     xlabel="C(0)", ylabel="ll")
+display(q3)
+
+ffQuad_analyt = zeros(M)
+for i in 1:M
+    global ffQuad_analyt[i] = analytic_ellipse_loglike([C0rangeQuad[i]], [3], θmle, Γ)
+end
+q3= plot1DProfile(C0rangeQuad, ffQuad_analyt, llstar, C0mle, xlims=(C0min,30), ylims=(-3,0.),
+                    xlabel="C(0)", ylabel="ll")
+
+q3 = plot1DProfileComparison(C0rangeQuad, ffQuad_analyt, C0rangeQuad, ffQuad, llstar, C0mle, 
+                    xlims=(C0min,30), ylims=(-3,0.), xlabel="C(0)", ylabel="ll")
 display(q3)
 
 ##############################################################################################
@@ -433,7 +469,7 @@ q3= plot1DProfile(C0range, ff, llstar, C0mle, xlims=(C0min,30), ylims=(-3,0.),
                     xlabel="C(0)", ylabel="ll")
 display(q3)
 
-q3 = plot1DProfileComparison(C0range, ff, C0rangeQuad, ffQuad, llstar, λmle, 
+q3 = plot1DProfileComparison(C0range, ff, C0rangeQuad, ffQuad, llstar, C0mle, 
                         xlims=(C0min,30), ylims=(-3,0.), xlabel="C(0)", ylabel="ll")
    
 q4=plot(q1,q2,q3,layout=(1,3),legend=false)
@@ -466,7 +502,7 @@ CUnivariatetrace3 = zeros(length(tt),N)
 CU3=zeros(length(tt))
 CL3=zeros(length(tt))
 for i in 1:N
-    CUnivariatetrace3[:,i]=model(tt,[λsampled[i],Ksampled[i],C0sampled[i]],σ);
+    CUnivariatetrace3[:,i]=ODEmodel(tt,[λsampled[i],Ksampled[i],C0sampled[i]],σ);
 end
 
 for i in 1:length(tt)
@@ -486,7 +522,7 @@ savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionC0.pdf"))
 CU = max.(CU1, CU2, CU3)
 CL = max.(CL1, CL2, CL3)
 
-qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU, CL), 
+qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU, CL), ymle.(tt),
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 

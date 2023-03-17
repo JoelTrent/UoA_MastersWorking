@@ -198,7 +198,7 @@ while count < N
 end 
 
 # Plot the MLE and the 2N points identified on the boundary
-a1 = plot2DBoundaryNoTicks((αsamples, βsamples), (αmle, βmle), N,
+a1 = plot2DBoundary((αsamples, βsamples), (αmle, βmle), N,
                     xlims=(0.5,1.5), ylims=(0.5,1.5), xlabel="α", ylabel="β", legend=false)
 
 display(a1)
@@ -293,7 +293,7 @@ while count < N
 end 
         
 # Plot the MLE and the 2N points identified on the boundary
-a2 = plot2DBoundaryNoTicks((αsamples, x0samples), (αmle, x0mle), N,
+a2 = plot2DBoundary((αsamples, x0samples), (αmle, x0mle), N,
                     xlims=(αmin,αmax), ylims=(x0min,x0max), xlabel="α", ylabel="x(0)", legend=false)
 
 display(a2)
@@ -388,7 +388,7 @@ while count < N
 end 
         
 
-a3 = plot2DBoundaryNoTicks((αsamples, y0samples), (αmle, y0mle), N, 
+a3 = plot2DBoundary((αsamples, y0samples), (αmle, y0mle), N, 
                     xlims=(αmin,αmax), ylims=(y0min,y0max), xlabel="α", ylabel="y(0)", legend=false)
 
 display(a3)
@@ -484,7 +484,7 @@ while count < N
 end 
 
 # Plot the MLE and the 2N points identified on the boundary
-a4 = plot2DBoundaryNoTicks((βsamples, x0samples), (βmle, x0mle), N,
+a4 = plot2DBoundary((βsamples, x0samples), (βmle, x0mle), N,
                     xlims=(βmin,βmax), ylims=(x0min,x0max), xlabel="β", ylabel="x(0)", legend=false)
 display(a4)
     
@@ -577,7 +577,7 @@ while count < N
 end 
 
 # Plot the MLE and the 2N points identified on the boundary   
-a5 = plot2DBoundaryNoTicks((βsamples, y0samples), (βmle, y0mle), N,
+a5 = plot2DBoundary((βsamples, y0samples), (βmle, y0mle), N,
                             xlims=(βmin,βmax), ylims=(y0min,y0max), xlabel="β", ylabel="y(0)",legend=false)
 
 display(a5)
@@ -671,7 +671,7 @@ while count < N
 end 
         
 # Plot the MLE and the 2N points identified on the boundary
-a6 = plot2DBoundaryNoTicks((x0samples, y0samples), (x0mle, y0mle), N,
+a6 = plot2DBoundary((x0samples, y0samples), (x0mle, y0mle), N,
                     xlims=(x0min,x0max), ylims=(y0min,y0max), xlabel="x(0)", ylabel="y(0)", legend=false)
 
 display(a6)
@@ -775,11 +775,11 @@ yUF = maximum(ytraceF, dims=2)
 yLF = minimum(ytraceF, dims=2)
 
 # Plot the family of predictions made using the boundary tracing method, the MLE and the prediction intervals defined by the full log-liklihood and the union of the 6 bivariate profile likelihoods 
-qq1 = plotPredictionComparisonNoTicks(tt, xtraceF, (xLF, xUF), (XU, XL), xxmle,
+qq1 = plotPredictionComparison(tt, xtraceF, (xLF, xUF), (XU, XL), xxmle;
                                 xlabel="t", ylabel="x(t)", xlims=(0,10), ylims=(0,2.5),
                                 legend=false)
 
-qq2 = plotPredictionComparisonNoTicks(tt, ytraceF, (yLF, yUF), (YU, YL), yymle,
+qq2 = plotPredictionComparison(tt, ytraceF, (yLF, yUF), (YU, YL), yymle;
                                 xlabel="t", ylabel="x(t)", xlims=(0,10), ylims=(0,2.5),
                                 legend=false)
 

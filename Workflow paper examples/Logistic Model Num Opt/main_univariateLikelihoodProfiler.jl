@@ -389,7 +389,7 @@ savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionC0.pdf"))
 CU = max.(CU1, CU2, CU3)
 CL = max.(CL1, CL2, CL3)
 
-qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU, CL), 
+qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU, CL), ymle.(tt),
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 

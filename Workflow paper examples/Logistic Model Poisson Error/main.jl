@@ -382,7 +382,7 @@ savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionPoissonC0.pdf"))
 CU = max.(CU1, CU2, CU3)
 CL = max.(CL1, CL2, CL3)
 
-qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU, CL), 
+qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU, CL), ymle.(tt),
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
@@ -677,7 +677,7 @@ CU_boundary = max.(CU1_boundary, CU2_boundary, CU3_boundary)
 CL_boundary = min.(CL1_boundary, CL2_boundary, CL3_boundary)
 
 # Plot the family of predictions made using the boundary tracing method, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihoods 
-qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU_boundary, CL_boundary), 
+qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU_boundary, CL_boundary), ymle.(tt),
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
