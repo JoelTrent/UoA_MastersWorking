@@ -1,4 +1,5 @@
-using ForwardDiff, Memoize
+using ForwardDiff
+# using Memoize
 
 # memoizing doesn't appear to have a performance advantage in this situation for small number of parameters (is a performance hit in fact) - may be advantageous for a larger number of parameters
 # @memoize function invCovariance(Γ::Matrix{T}, θIndexes::Vector{Int}) where T<:Float64

@@ -9,7 +9,7 @@ gr()
 Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
 include(joinpath("..", "plottingFunctions.jl"))
-include(joinpath("..", "ellipseLikelihood.jl"))
+include(joinpath("..", "..", "ellipseLikelihood.jl"))
 
 # Workflow functions ##########################################################################
 
