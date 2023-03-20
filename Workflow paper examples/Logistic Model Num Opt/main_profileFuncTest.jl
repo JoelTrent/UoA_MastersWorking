@@ -44,26 +44,6 @@ function loglhood(data, a)
     return sum(e)
 end
 
-# Section 7: Numerical optimisation 
-# function optimise(fun, θ₀, lb, ub;
-#     dv = false,
-#     method = dv ? :LD_LBFGS : :LN_BOBYQA,
-#     )
-
-#     if dv || String(method)[2] == 'D'
-#         tomax = fun
-#     else
-#         tomax = (θ,∂θ) -> fun(θ)
-#     end
-
-#     opt = Opt(method,length(θ₀))
-#     opt.max_objective = tomax
-#     opt.lower_bounds = lb       # Lower bound
-#     opt.upper_bounds = ub       # Upper bound
-#     opt.local_optimizer = Opt(:LN_NELDERMEAD, length(θ₀))
-#     res = optimize(opt, θ₀)
-#     return res[[2,1]]
-# end
 
 # Section 8: Function to be optimised for MLE
 # note this function pulls in the globals, data and σ and would break if used outside of 
@@ -85,7 +65,7 @@ data = (data0 + σ*randn(length(t)), σ)
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
 Kmin, Kmax = (50, 150)
-C0min, C0max = (0, 50)
+C0min, C0max = (0.1, 50)
 
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
@@ -106,16 +86,34 @@ ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 # Section 12: Prediction interval from the univariate quadratic approximation of log-likelihood for parameter λ
 # Compute and propogate uncertainty forward from the univariate likelihood for parameter λ
 
+# 3D approximation of the likelihood around the MLE solution
+H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
+
 likelihoodFunc = loglhood
 θnames = [:λ, :K, :C0]
 confLevel = 0.95
 
+# 1D profiles
 confInts, p = univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
 
+# 1D profile using elliptical approximation
+confInts_ellipse_analyt, p_ellipse_analyt = univariateprofiles_ellipse_analytical(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
+confInts_ellipse, p_ellipse = univariateprofiles_ellipse(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
 
-# 3D approximation of the likelihood around the MLE solution
-H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
 
-confints_ellipse_analyt, p_ellipse_analyt = univariateprofiles_ellipse_analytical(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
+# Combination profiles
+confIntsRel, pRel = univariateprofile_providedrelationship(AMinusB(:K, :C0, 0.0, 150.0, :KMinusC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
+println(confIntsRel)
 
-confints_ellipse, p_ellipse = univariateprofiles_ellipse(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
+confIntsRel_ellipse, pRel_ellipse = univariateprofile_ellipse_providedrelationship(AMinusB(:K, :C0, 0.0, 150.0, :KMinusC0), θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
+println(confIntsRel_ellipse)
+
+
+# confIntsRel, pRel = univariateprofile_providedrelationship(APlusB(:K, :C0, 50.0, 200.0, :KPlusC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
+# println(confIntsRel)
+# confIntsRel, pRel = univariateprofile_providedrelationship(ADivB(:K, :C0, 1.0, 200.0, :KDivC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
+# println(confIntsRel)
+# confIntsRel, pRel = univariateprofile_providedrelationship(ATimesB(:K, :C0, 10.0, 7500.0, :KTimesC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
+# println(confIntsRel)
+
+confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, 50; confLevel=0.95)
