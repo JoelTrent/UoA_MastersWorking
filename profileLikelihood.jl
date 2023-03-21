@@ -46,6 +46,59 @@ struct ConfidenceStruct <: AbstractConfidenceStruct
     confidence_level::Float64
 end
 
+function normaliseduhat(v_bar); v_bar/norm(vbar, 2) end
+
+function generatePoint(lb::Vector{<:Float64}, ub::Vector{<:Float64}, ind1::Int, ind2::Int)
+    return rand(Uniform(lb[ind1], ub[ind1])), rand(Uniform(lb[ind2], ub[ind2]))
+end
+
+# function findNpointpairs(p, N, lb, ub, ind1, ind2; maxIters)
+function findNpointpairs_vectorsearch(p, N, lb, ub, ind1, ind2)
+
+    insidePoints  = zeros(2,N)
+    outsidePoints = zeros(2,N)
+
+    Ninside = 0; Noutside=0
+    iters=0
+    while Noutside<N && Ninside<N
+
+        x, y = generatePoint(lb, ub, ind1, ind2)
+        if bivariateΨ((x,y), p)[1] > 0
+            Ninside+=1
+            insidePoints[:,Ninside] .= [x,y]
+        else
+            Noutside+=1
+            outsidePoints[:,Noutside] .= [x,y]
+        end
+        iters+=1
+        println(iters)
+    end
+
+    # while Ninside < N && iters < maxIters
+    while Ninside < N
+        x, y = generatePoint(lb, ub, ind1, ind2)
+        if bivariateΨ((x,y), p)[1] > 0
+            Ninside+=1
+            insidePoints[:,Ninside] .= [x,y]
+        end
+        iters+=1
+        println(iters)
+    end
+
+    # while Noutside < N && iters < maxIters
+    while Noutside < N
+        x, y = generatePoint(lb, ub, ind1, ind2)
+        if bivariateΨ((x,y), p)[1] < 0
+            Noutside+=1
+            outsidePoints[:,Noutside] .= [x,y]
+        end
+        iters+=1
+        println(iters)
+    end
+
+    return insidePoints, outsidePoints
+end
+
 
 # function univariateprofiles_constrained(likelihoodFunc, data, fmle, θnames, θmle, lb, ub; confLevel=0.95)
 
@@ -136,7 +189,10 @@ function boundsmapping2d!(newbounds::Vector{<:Float64}, bounds::Vector{<:Float64
     return nothing
 end
 
-function univariateΨ(Ψ, p)
+# THIS VERSION COULD BE USED if the likelihood function is not using a reparameterisation (i.e. overwriting values of
+# θs when it is called) - perhaps make other the default, and let the user specify that a reparameterisation is not being
+# used and/or that the reparameterisation does not edit thetas (θs). Should be slightly more performant.
+function univariateΨ_unsafe(Ψ, p)
     θs=zeros(p[:num_vars])
     θs[p[:ind]] = Ψ
     
@@ -147,12 +203,78 @@ function univariateΨ(Ψ, p)
     return llb, xopt
 end
 
-function bivariateΨ(Ψ, p)
+function univariateΨ(Ψ, p)
+    θs=zeros(p[:num_vars])
+
+    function fun(λ)
+        θs[p[:ind]] = Ψ
+        return p[:likelihoodFunc](p[:data], variablemapping1d!(θs, λ, p[:θranges], p[:λranges]) ) 
+    end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ_unsafe(Ψ, p)
     θs=zeros(p[:num_vars])
     θs[p[:ind1]] = p[:Ψ_x]
     θs[p[:ind2]] = Ψ
     
     function fun(λ); return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ(Ψ::Real, p)
+    θs=zeros(p[:num_vars])
+    
+    function fun(λ)
+        θs[p[:ind1]] = p[:Ψ_x]
+        θs[p[:ind2]] = Ψ
+        return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) 
+    end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ(Ψ::Tuple{Real,Real}, p)
+    θs=zeros(p[:num_vars])
+    
+    function fun(λ)
+        θs[p[:ind1]] = Ψ[1]
+        θs[p[:ind2]] = Ψ[2]
+        return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) 
+    end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ_vectorsearch_unsafe(Ψ, p)
+    θs=zeros(p[:num_vars])
+    θs[p[:ind1]], θs[p[:ind2]] = p[:pointa] + Ψ*p[:uhat]
+    
+    function fun(λ); return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ_vectorsearch(Ψ, p)
+    θs=zeros(p[:num_vars])
+    Ψxy = p[:pointa] + Ψ*p[:uhat]
+    
+    function fun(λ)
+        θs[p[:ind1]], θs[p[:ind2]] = Ψxy
+        return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) 
+    end
 
     (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
     llb=fopt-p[:targetll]
@@ -191,11 +313,24 @@ function univariateΨ_ellipse_relationship(Ψ, p)
     return llb, xopt
 end
 
-function univariateΨ_ellipse(Ψ, p)
+function univariateΨ_ellipse_unsafe(Ψ, p)
     θs=zeros(p[:num_vars])
     θs[p[:ind]] = Ψ
 
     function fun(λ); return ellipse_loglike(variablemapping1d!(θs, λ, p[:θranges], p[:λranges]), p[:θmle], p[:H]) end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function univariateΨ_ellipse(Ψ, p)
+    θs=zeros(p[:num_vars])
+    
+    function fun(λ)
+        θs[p[:ind]] = Ψ
+        return ellipse_loglike(variablemapping1d!(θs, λ, p[:θranges], p[:λranges]), p[:θmle], p[:H]) 
+    end
 
     (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
     llb=fopt-p[:targetll]
@@ -440,7 +575,7 @@ function univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; 
     return confidenceDict, p
 end
 
-function bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, num_points::Int; confLevel::Float64=0.95)
+function bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, num_points::Int; confLevel::Float64=0.95, method=(:Brent,:fix1axis))
 
     df = 2
     llstar = -quantile(Chisq(df), confLevel)/2
@@ -467,6 +602,13 @@ function bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, n
 
     combinationsOfInterest = combinations(1:num_vars, 2)
 
+    if method[1] == :Brent && method[2]==:fix1axis
+        g(x,p) = bivariateΨ(x,p)[1]
+    else
+        g(x,p) = bivariateΨ_vectorsearch(x,p)[1]
+    end
+
+
     for (ind1, ind2) in combinationsOfInterest
 
         println(ind1)
@@ -479,36 +621,65 @@ function bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, n
 
         boundarySamples = zeros(num_vars, 2*num_points)
 
-        g(x,p) = bivariateΨ(x,p)[1]
-
-        count=0
-        for (i, j, N) in [[ind1, ind2, num_points], [ind2, ind1, 2*num_points]]
-
-            p[:ind1]=i
-            p[:ind2]=j
-            ϵ=(ub[i]-lb[i])/10^6
-
-            while count < N
-
-                p[:Ψ_x] = rand(Uniform(lb[i], ub[i]))
-                Ψ_y0 = rand(Uniform(lb[j], ub[j]))
-                Ψ_y1 = rand(Uniform(lb[j], ub[j]))
+        
+        # find 2*num_points using some procedure 
+        
+        if method[1] == :Brent
+            
+            if method[2] == :fix1axis
                 
-                if ( g(Ψ_y0, p) * g(Ψ_y1, p) ) < 0 
+                count=0
+                for (i, j, N) in [[ind1, ind2, div(num_points,2)], [ind2, ind1, num_points]]
 
-                    count+=1
-                    println(count)
+                    p[:ind1]=i
+                    p[:ind2]=j
+                    ϵ=(ub[i]-lb[i])/10^6
 
-                    Ψ_y1 = find_zero(g, (Ψ_y0, Ψ_y1), atol=ϵ, Roots.Brent(); p=p)
+                    while count < N
 
-                    boundarySamples[i, count] = p[:Ψ_x]
-                    boundarySamples[j, count] = Ψ_y1
+                        p[:Ψ_x] = rand(Uniform(lb[i], ub[i]))
+                        Ψ_y0 = rand(Uniform(lb[j], ub[j]))
+                        Ψ_y1 = rand(Uniform(lb[j], ub[j]))
+                        
+                        if ( g(Ψ_y0, p) * g(Ψ_y1, p) ) < 0 
 
-                    variablemapping2d!(@view(boundarySamples[:, count]), bivariateΨ(Ψ_y1, p)[2], p[:θranges], p[:λranges])
+                            count+=1
+                            println(count)
+
+                            Ψ_y1 = find_zero(g, (Ψ_y0, Ψ_y1), atol=ϵ, Roots.Brent(); p=p)
+
+                            boundarySamples[i, count] = p[:Ψ_x]
+                            boundarySamples[j, count] = Ψ_y1
+
+                            variablemapping2d!(@view(boundarySamples[:, count]), bivariateΨ(Ψ_y1, p)[2], p[:θranges], p[:λranges])
+                        end
+                    end
+                end
+
+            elseif method[2] == :vectorsearch
+
+                insidePoints, outsidePoints = findNpointpairs_vectorsearch(p, num_points, lb, ub, ind1, ind2)
+
+                p[:pointa] = [0.0,0.0]
+                p[:uhat]   = [0.0,0.0]
+
+                for i in 1:num_points
+                    p[:pointa] .= insidePoints[:,i]
+                    v_bar = outsidePoints[:,i] - insidePoints[:,i]
+
+                    v_bar_norm = norm(v_bar, 2)
+                    p[:uhat] = v_bar / v_bar_norm
+
+                    ϵ=v_bar_norm/10^6
+
+                    Ψ_y1 = find_zero(g, (0.0, v_bar_norm), atol=ϵ, Roots.Brent(); p=p)
+                    
+                    boundarySamples[[ind1, ind2], i] .= p[:pointa] + Ψ_y1*p[:uhat]
+                    variablemapping2d!(@view(boundarySamples[:, i]), bivariateΨ_vectorsearch(Ψ_y1, p)[2], p[:θranges], p[:λranges])
                 end
             end
         end
-
+        
         confidenceDict[(θnames[ind1], θnames[ind2])] = BivariateConfidenceStruct((θmle[ind1],θmle[ind2]), [ind1, ind2], boundarySamples, lb[[ind1, ind2]], ub[[ind1, ind2]], confLevel)
     end
 

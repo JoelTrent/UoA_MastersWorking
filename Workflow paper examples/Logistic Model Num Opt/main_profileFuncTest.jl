@@ -64,8 +64,8 @@ data = (data0 + σ*randn(length(t)), σ)
 
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
-Kmin, Kmax = (50, 150)
-C0min, C0max = (0.1, 50)
+Kmin, Kmax = (50., 150.)
+C0min, C0max = (0.0, 50.)
 
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
@@ -116,4 +116,44 @@ println(confIntsRel_ellipse)
 # confIntsRel, pRel = univariateprofile_providedrelationship(ATimesB(:K, :C0, 10.0, 7500.0, :KTimesC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
 # println(confIntsRel)
 
-confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, 50; confLevel=0.95)
+confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, 50; confLevel=0.95, method=(:Brent, :fix1axis))
+
+confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, 50; confLevel=0.95, method=(:Brent, :vectorsearch))
+
+# function likelihoodFuncLog(data, θ); return loglhood(data, exp.(θ)) end
+
+# λmin, λmax = (0.001, 0.05)
+# Kmin, Kmax = (50., 150.)
+# C0min, C0max = (0.01, 50.)
+
+# θG = [λ, K, C0]
+# lb = [λmin, Kmin, C0min]
+# ub = [λmax, Kmax, C0max]
+
+# confIntsLog, pLog = univariateprofiles(likelihoodFuncLog, fmle, data, θnames, log.(θmle), log.(lb), log.(ub); confLevel=0.95)
+
+# function funmleLog(a); likelihoodFuncLog(data,a) end
+# H, Γ = getMLE_hessian_and_covariance(funmleLog, log.(θmle))
+# confInts_ellipseLog, p_ellipseLog = univariateprofiles_ellipse(θnames, log.(θmle), log.(lb), log.(ub), H, Γ; confLevel=0.95)
+
+
+
+
+# # complementary rearrangement to obtain K from, θ[2] (K-C0) and θ[3] (C0)
+# function likelihoodFunctionKMinusC0!(data, θ); 
+#     # θnew = zeros(length(θ))
+#     # θnew[1] = θ[1]
+#     # θnew[2] = θ[2] + θ[3]
+#     # θnew[3] = θ[3]
+#     θ[2] = θ[2]+θ[3]
+
+#     loglhood(data, θ) 
+# end
+
+# lb[2] = lb[2]-ub[3]
+# ub[2] = ub[2]-lb[3]
+# θmle[2] = θmle[2]-θmle[3]
+# θnames[2] = :KMinusC0
+
+# confIntsKMinusC0, pKMinusC0 = univariateprofiles(likelihoodFunctionKMinusC0!, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
+
