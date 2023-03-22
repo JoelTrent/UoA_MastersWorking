@@ -9,6 +9,8 @@ import Ipopt
 # 
 # I suspect that the dependentParameter heuristic may fail if there are multiple local minima - a binary integer 
 # programme may be required instead (however, integer requirement on variables can be relaxed)
+# 
+# ONLY VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES
 function transformbounds(transformfun::Function, lb, ub,
     independentParameterIndexes::Vector{<:Int}=Int[], dependentParameterIndexes::Vector{<:Int}=Int[])
 
@@ -66,6 +68,10 @@ function transformbounds(transformfun::Function, lb, ub,
     return newlb, newub
 end
 
+
+# IS VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES SO LONG
+# AS START POSITION OF x VARIABLES PUSHES IT TOWARDS THE GLOBAL MINIMA, RATHER THAN A LOCAL 
+# MINIMA
 function transformbounds_NLP(transformfun::Function, lb, ub)
 
     function bounds_transform(x...)
@@ -82,7 +88,8 @@ function transformbounds_NLP(transformfun::Function, lb, ub)
     register(m, :my_obj, num_vars, bounds_transform; autodiff = true)
     
     # variables will be binary integer automatically due to how the obj function is setup
-    @variable(m, x[1:num_vars], lower_bound=0.0, upper_bound=1.0, start=1.0)
+    # IF the transformation function applied to each θ[i] is monotonic between lb[i] and ub[i]
+    @variable(m, x[1:num_vars], lower_bound=0.0, upper_bound=1.0, start=0.5)
     
     newlb = zeros(num_vars)
     newub = zeros(num_vars)
