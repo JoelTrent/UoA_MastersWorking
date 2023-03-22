@@ -11,6 +11,7 @@ fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "P
 include(joinpath("..", "plottingFunctions.jl"))
 include(joinpath("..", "..", "ellipseLikelihood.jl"))
 include(joinpath("..", "..", "profileLikelihood.jl"))
+include(joinpath("..", "..", "transformBounds.jl"))
 
 # Workflow functions ##########################################################################
 
@@ -160,3 +161,33 @@ confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θ
 
 # confIntsKMinusC0, pKMinusC0 = univariateprofiles(likelihoodFunctionKMinusC0!, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
 
+function forward_parameter_transformLog(θ)
+    return log.(θ)
+end
+
+
+newlb, newub = transformbounds(forward_parameter_transform, lb, ub, collect(1:3), Int[])
+exp.(newlb)
+exp.(newub)
+
+λmin, λmax = (0.001, 0.05)
+Kmin, Kmax = (50., 150.)
+C0min, C0max = (0.01, 50.)
+
+θG = [λ, K, C0]
+lb = [λmin, Kmin, C0min]
+ub = [λmax, Kmax, C0max]
+
+function forward_parameter_transformKminusC0(θ)
+    Θ=zeros(length(θ))
+
+    Θ .= θ
+
+    Θ[2] = θ[2]-θ[3]
+
+    return Θ
+end
+
+
+newlb, newub = transformbounds(forward_parameter_transformKminusC0, lb, ub, Int[1,3], Int[2])
+newθmle = forward_parameter_transformKminusC0(θmle)
