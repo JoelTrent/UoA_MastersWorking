@@ -15,7 +15,7 @@ include(joinpath("..", "..", "profileLikelihood.jl"))
 # Workflow functions ##########################################################################
 
 # Section 2: Define ODE model
-function DE!(dC, C, p, t)
+function DE!(dC, C, p)
     λ,K=p
     dC[1]= λ * C[1] * (1.0 - C[1]/K)
 end
@@ -37,10 +37,10 @@ end
 
 # Section 6: Define loglikelihood function
 function loglhood(data, a)
-    y=ODEmodel(t, a, data[2])
+    y=ODEmodel(data.t, a, data.σ)
     e=0
-    dist=Normal(0, data[2]);
-    e=loglikelihood(dist, data[1]-y) 
+    dist=Normal(0, data.σ);
+    e=loglikelihood(dist, data.yobs-y) 
     return sum(e)
 end
 
@@ -57,10 +57,13 @@ tt=0:5:1000
 a=[λ, K, C0]
 
 # true data
-data0 = ODEmodel(t, a, σ)
+ytrue = ODEmodel(t, a, σ)
 
 # noisy data
-data = (data0 + σ*randn(length(t)), σ)
+yobs = ytrue + σ*randn(length(t))
+
+# Named tuple of all data required within the likelihood function
+data = (yobs=yobs, σ=σ, t=t)
 
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
