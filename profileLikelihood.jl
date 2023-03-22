@@ -37,7 +37,6 @@ struct BivariateConfidenceStruct <: AbstractConfidenceStruct
     confidence_level::Float64
 end
 
-
 struct ConfidenceStruct <: AbstractConfidenceStruct
     mle::Float64
     confidence_interval::Vector{<:Float64}
@@ -48,7 +47,7 @@ end
 
 function normaliseduhat(v_bar); v_bar/norm(vbar, 2) end
 
-function generatePoint(lb::Vector{<:Float64}, ub::Vector{<:Float64}, ind1::Int, ind2::Int)
+function generatepoint(lb::Vector{<:Float64}, ub::Vector{<:Float64}, ind1::Int, ind2::Int)
     return rand(Uniform(lb[ind1], ub[ind1])), rand(Uniform(lb[ind2], ub[ind2]))
 end
 
@@ -62,7 +61,7 @@ function findNpointpairs_vectorsearch(p, N, lb, ub, ind1, ind2)
     iters=0
     while Noutside<N && Ninside<N
 
-        x, y = generatePoint(lb, ub, ind1, ind2)
+        x, y = generatepoint(lb, ub, ind1, ind2)
         if bivariateΨ((x,y), p)[1] > 0
             Ninside+=1
             insidePoints[:,Ninside] .= [x,y]
@@ -76,7 +75,7 @@ function findNpointpairs_vectorsearch(p, N, lb, ub, ind1, ind2)
 
     # while Ninside < N && iters < maxIters
     while Ninside < N
-        x, y = generatePoint(lb, ub, ind1, ind2)
+        x, y = generatepoint(lb, ub, ind1, ind2)
         if bivariateΨ((x,y), p)[1] > 0
             Ninside+=1
             insidePoints[:,Ninside] .= [x,y]
@@ -87,7 +86,7 @@ function findNpointpairs_vectorsearch(p, N, lb, ub, ind1, ind2)
 
     # while Noutside < N && iters < maxIters
     while Noutside < N
-        x, y = generatePoint(lb, ub, ind1, ind2)
+        x, y = generatepoint(lb, ub, ind1, ind2)
         if bivariateΨ((x,y), p)[1] < 0
             Noutside+=1
             outsidePoints[:,Noutside] .= [x,y]
@@ -163,29 +162,29 @@ end
 # end
 
 function variablemapping1d!(θ, λ, θranges, λranges)
-    θ[θranges[1]] .= λ[λranges[1]]
-    θ[θranges[2]] .= λ[λranges[2]]
+    θ[θranges[1]] .= @view(λ[λranges[1]])
+    θ[θranges[2]] .= @view(λ[λranges[2]])
     return θ
 end
 
 function variablemapping2d!(θ, λ, θranges, λranges)
-    θ[θranges[1]] .= λ[λranges[1]]
-    θ[θranges[2]] .= λ[λranges[2]]
-    θ[θranges[3]] .= λ[λranges[3]]
+    θ[θranges[1]] .= @view(λ[λranges[1]])
+    θ[θranges[2]] .= @view(λ[λranges[2]])
+    θ[θranges[3]] .= @view(λ[λranges[3]])
     return θ
 end
 
 function boundsmapping1d!(newbounds::Vector{<:Float64}, bounds::Vector{<:Float64}, index::Int)
-    newbounds[1:(index-1)] .= bounds[1:(index-1)]
-    newbounds[index:end]   .= bounds[(index+1):end]
+    newbounds[1:(index-1)] .= @view(bounds[1:(index-1)])
+    newbounds[index:end]   .= @view(bounds[(index+1):end])
     return nothing
 end
 
 # we know index1 < index2 by construction. If index1 and index2 are user provided, enforce this relationship 
 function boundsmapping2d!(newbounds::Vector{<:Float64}, bounds::Vector{<:Float64}, index1::Int, index2::Int)
-    newbounds[1:(index1-1)]      .= bounds[1:(index1-1)]
-    newbounds[index1:(index2-2)] .= bounds[(index1+1):(index2-1)]
-    newbounds[(index2-1):end]    .= bounds[(index2+1):end]
+    newbounds[1:(index1-1)]      .= @view(bounds[1:(index1-1)])
+    newbounds[index1:(index2-2)] .= @view(bounds[(index1+1):(index2-1)])
+    newbounds[(index2-1):end]    .= @view(bounds[(index2+1):end])
     return nothing
 end
 
