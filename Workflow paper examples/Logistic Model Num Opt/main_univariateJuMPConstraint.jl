@@ -67,7 +67,7 @@ end
 # Section 8: Function to be optimised for MLE
 # note this function pulls in the globals, data and σ and would break if used outside of 
 # this file's scope
-function funmle(a); return loglhood((data,σ), a) end 
+function funmle(a); return loglhood(data, a) end 
 
 # Data setup #################################################################################
 # true parameters
@@ -79,7 +79,7 @@ a=[λ, K, C0]
 data0 = ODEmodel(t, a, σ)
 
 # noisy data
-data = data0 + σ*randn(length(t))
+data = (data0 + σ*randn(length(t)), σ)
 
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
@@ -122,97 +122,97 @@ llstar = -quantile(Chisq(df), 0.95)/2
 # nonlinear optimisation version with constraint - minimum working example
 using JuMP
 import Ipopt
-# model = Model(Ipopt.Optimizer)
-# set_silent(model)
-# θG = [λ, K, C0]
-# lb = [λmin, Kmin, C0min]
-# ub = [λmax, Kmax, C0max]
+model = Model(Ipopt.Optimizer)
+set_silent(model)
+θG = [λ, K, C0]
+lb = [λmin, Kmin, C0min]
+ub = [λmax, Kmax, C0max]
 
-# function b(θ...); loglhood(data, θ, σ)-fmle end
+function b(θ...); loglhood(data, θ)-fmle end
 
-# function myConstraint(θ...); θ[1] end
-# myConstraintRHS = 0.02
+function myConstraint(θ...); θ[1] end
+myConstraintRHS = 0.02
 
-# register(model, :my_obj, 3, b; autodiff = true)
-# register(model, :myConstraint, 3, myConstraint; autodiff = true)
+register(model, :my_obj, 3, b; autodiff = true)
+register(model, :myConstraint, 3, myConstraint; autodiff = true)
 
-# @variable(model, θ[i=1:3], lower_bound=lb[i], upper_bound=ub[i], start=θmle[i])
-# @NLobjective(model, Max, my_obj(θ...))
-# @NLconstraint(model, myConstraint(θ...)==myConstraintRHS)
+@variable(model, θ[i=1:3], lower_bound=lb[i], upper_bound=ub[i], start=θmle[i])
+@NLobjective(model, Max, my_obj(θ...))
+@NLconstraint(model, myConstraint(θ...)==myConstraintRHS)
 
-# JuMP.optimize!(model)
+JuMP.optimize!(model)
 
-# objective_value(model)
-# JuMP.value.(θ)
+objective_value(model)
+JuMP.value.(θ)
 
 
-struct ConfidenceStruct
-    mle::Float64
-    confidence_interval::Vector{<:Float64}
-    bounds::Vector{<:Float64}
-end
+# struct ConfidenceStruct
+#     mle::Float64
+#     confidence_interval::Vector{<:Float64}
+#     bounds::Vector{<:Float64}
+# end
 
-likelihoodFunc = loglhood
-data = (data, σ)
-θnames = [:a, :b, :c]
-confLevel=0.95
+# likelihoodFunc = loglhood
+# data = (data, σ)
+# θnames = [:a, :b, :c]
+# confLevel=0.95
 
-loglhood(data, θG)
+# loglhood(data, θG)
 
-# function univariateprofiles_constrained(likelihoodFunc, data, fmle, θnames, θmle, lb, ub; confLevel=0.95)
+# # function univariateprofiles_constrained(likelihoodFunc, data, fmle, θnames, θmle, lb, ub; confLevel=0.95)
 
-df = 1
-llstar = -quantile(Chisq(df), confLevel)/2
-num_vars = length(θnames)
+# df = 1
+# llstar = -quantile(Chisq(df), confLevel)/2
+# num_vars = length(θnames)
 
-m = Model(Ipopt.Optimizer)
-set_silent(m)
+# m = Model(Ipopt.Optimizer)
+# set_silent(m)
 
-function my_obj(θ...); likelihoodFunc(data, θ)-fmle-llstar end
-register(m, :my_obj, num_vars, my_obj; autodiff = true)
-@variable(m, θ[i=1:num_vars], lower_bound=lb[i], upper_bound=ub[i], start=θmle[i])
-@NLobjective(m, Max, my_obj(θ...))
+# function my_obj(θ...); likelihoodFunc(data, θ)-fmle-llstar end
+# register(m, :my_obj, num_vars, my_obj; autodiff = true)
+# @variable(m, θ[i=1:num_vars], lower_bound=lb[i], upper_bound=ub[i], start=θmle[i])
+# @NLobjective(m, Max, my_obj(θ...))
 
-confidenceDict = Dict{Symbol, ConfidenceStruct}()
+# confidenceDict = Dict{Symbol, ConfidenceStruct}()
 
-# for (j, θname) in enumerate(θnames)
-#     println(θname)
-j = 1
-θname=:a
+# # for (j, θname) in enumerate(θnames)
+# #     println(θname)
+# j = 1
+# θname=:a
 
-if j>1
-    delete(m, con)
-    unregister(m, :myConstraint)
-end
+# if j>1
+#     delete(m, con)
+#     unregister(m, :myConstraint)
+# end
 
-function myConstraint(θ...); θ[j] end
-register(m, :myConstraint, num_vars, myConstraint; autodiff = true)
-@constraint(m, con, myConstraint(θ...)==0.0)
+# function myConstraint(θ...); θ[j] end
+# register(m, :myConstraint, num_vars, myConstraint; autodiff = true)
+# @constraint(m, con, myConstraint(θ...)==0.0)
 
-set_normalized_rhs(m.obj_dict[:con], 1.0)
+# set_normalized_rhs(m.obj_dict[:con], 1.0)
 
-univariateΨ
+# univariateΨ
 
-function univariateΨ(Ψ)
-    set_normalized_rhs(con, Ψ)
-    JuMP.optimize!(m)
-    return objective_value(m)            
-end
+# function univariateΨ(Ψ)
+#     set_normalized_rhs(con, Ψ)
+#     JuMP.optimize!(m)
+#     return objective_value(m)            
+# end
 
-univariateΨ(lb[1])
+# univariateΨ(lb[1])
 
-set_normalized_rhs(con, 0.01-ϵ)
-JuMP.optimize!(m)
+# set_normalized_rhs(con, 0.01-ϵ)
+# JuMP.optimize!(m)
 
-ϵ=(ub[j]-lb[j])/10^6
+# ϵ=(ub[j]-lb[j])/10^6
 
-interval=zeros(2)
+# interval=zeros(2)
 
-interval[1] = find_zero(univariateΨ, (lb[j], θmle[j]), atol=ϵ, Roots.Brent())
-println("Made it to here")
-interval[2] = find_zero(univariateΨ, (θmle[j], ub[j]), atol=ϵ, Roots.Brent())
+# interval[1] = find_zero(univariateΨ, (lb[j], θmle[j]), atol=ϵ, Roots.Brent())
+# println("Made it to here")
+# interval[2] = find_zero(univariateΨ, (θmle[j], ub[j]), atol=ϵ, Roots.Brent())
 
-confidenceDict[θname] = ConfidenceStruct(θmle[j], interval, [lb[j], ub[j]])
+# confidenceDict[θname] = ConfidenceStruct(θmle[j], interval, [lb[j], ub[j]])
 # end
 
 #     return confidenceDict
