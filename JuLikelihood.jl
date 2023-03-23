@@ -1,6 +1,7 @@
 using NLopt, Roots
 using ForwardDiff
 using Random
+using StatsBase
 using Combinatorics
 using DataStructures
 

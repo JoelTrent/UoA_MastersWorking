@@ -158,6 +158,24 @@ function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::
                                 profile_type=profile_type, use_unsafe_optimiser=use_unsafe_optimiser)
 end
 
+# profile m random parameters (sampling without replacement), where 0 < m ≤ model.core.num_pars
+function univariate_confidenceintervals(model::LikelihoodModel, profile_m_random_parameters::Int; 
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false)
+
+    profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
+
+    if profile_m_random_parameters == 0
+        @warn `profile_m_random_parameters` must be a strictly positive integer. 
+        return nothing
+    end
+
+    θs_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
+
+    indices_to_profile = convertθnames_toindices(model, θs_to_profile)
+    return univariate_confidenceintervals(model, indices_to_profile, confidence_level=confidence_level,
+                                profile_type=profile_type, use_unsafe_optimiser=use_unsafe_optimiser)
+end
+
 # profile all 
 function univariate_confidenceintervals(model::LikelihoodModel; 
         confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false)
