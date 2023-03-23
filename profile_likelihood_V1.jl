@@ -1,50 +1,6 @@
 # Dictionaries used in these functions are intended to be replaced with (mutable) structs,
 # which will have better performance when reading and writing
 
-using Combinatorics
-
-include("combinationRelationships.jl")
-
-# Section 7: Unconstrained numerical optimisation 
-function optimise(fun, θ₀, lb, ub;
-    dv = false,
-    method = dv ? :LD_LBFGS : :LN_BOBYQA,
-    )
-
-    if dv || String(method)[2] == 'D'
-        tomax = fun
-    else
-        tomax = (θ,∂θ) -> fun(θ)
-    end
-
-    opt = Opt(method,length(θ₀))
-    opt.max_objective = tomax
-    opt.lower_bounds = lb       # Lower bound
-    opt.upper_bounds = ub       # Upper bound
-    opt.local_optimizer = Opt(:LN_NELDERMEAD, length(θ₀))
-    res = optimize(opt, θ₀)
-    return res[[2,1]]
-end
-
-abstract type AbstractConfidenceStruct end
-
-struct BivariateConfidenceStruct <: AbstractConfidenceStruct
-    mle::Tuple{T,T} where T <: Float64
-    var_indexes::Vector{<:Int64}
-    confidence_boundary_all_pars::Matrix{Float64}
-    lb::Vector{<:Float64}
-    ub::Vector{<:Float64}
-    confidence_level::Float64
-end
-
-struct ConfidenceStruct <: AbstractConfidenceStruct
-    mle::Float64
-    confidence_interval::Vector{<:Float64}
-    lb::Float64
-    ub::Float64
-    confidence_level::Float64
-end
-
 function normaliseduhat(v_bar); v_bar/norm(vbar, 2) end
 
 function generatepoint(lb::Vector{<:Float64}, ub::Vector{<:Float64}, ind1::Int, ind2::Int)
@@ -113,7 +69,7 @@ end
 #     @variable(model, θ[i=1:3], lower_bound=lb[i], upper_bound=ub[i], start=θmle[i])
 #     @NLobjective(model, Max, my_obj(θ...))
 
-#     confidenceDict = Dict{Symbol, ConfidenceStruct}()
+#     confidenceDict = Dict{Symbol, UnivariateConfidenceStruct}()
 
 #     for (i, θname) in enumerate(θnames)
 
@@ -137,7 +93,7 @@ end
 #         interval[1] = find_zero(univariateΨ, (lb[i], θmle[i]), atol=ϵ, Roots.Brent())
 #         interval[2] = find_zero(univariateΨ, (θmle[i], ub[i]), atol=ϵ, Roots.Brent())
 
-#         confidenceDict[θname] = ConfidenceStruct(θmle[i], interval, [lb[i], ub[i]])
+#         confidenceDict[θname] = UnivariateConfidenceStruct(θmle[i], interval, [lb[i], ub[i]])
 #     end
 
 #     return confidenceDict
@@ -195,7 +151,7 @@ function univariateΨ_unsafe(Ψ, p)
     θs=zeros(p[:num_vars])
     θs[p[:ind]] = Ψ
     
-    function fun(λ); return p[:likelihoodFunc](p[:data], variablemapping1d!(θs, λ, p[:θranges], p[:λranges]) ) end
+    function fun(λ); return p[:likelihoodFunc](variablemapping1d!(θs, λ, p[:θranges], p[:λranges]), p[:data]) end
 
     (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
     llb=fopt-p[:targetll]
@@ -207,104 +163,7 @@ function univariateΨ(Ψ, p)
 
     function fun(λ)
         θs[p[:ind]] = Ψ
-        return p[:likelihoodFunc](p[:data], variablemapping1d!(θs, λ, p[:θranges], p[:λranges]) ) 
-    end
-
-    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
-    llb=fopt-p[:targetll]
-    return llb, xopt
-end
-
-function bivariateΨ_unsafe(Ψ, p)
-    θs=zeros(p[:num_vars])
-    θs[p[:ind1]] = p[:Ψ_x]
-    θs[p[:ind2]] = Ψ
-    
-    function fun(λ); return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) end
-
-    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
-    llb=fopt-p[:targetll]
-    return llb, xopt
-end
-
-function bivariateΨ(Ψ::Real, p)
-    θs=zeros(p[:num_vars])
-    
-    function fun(λ)
-        θs[p[:ind1]] = p[:Ψ_x]
-        θs[p[:ind2]] = Ψ
-        return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) 
-    end
-
-    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
-    llb=fopt-p[:targetll]
-    return llb, xopt
-end
-
-function bivariateΨ(Ψ::Tuple{Real,Real}, p)
-    θs=zeros(p[:num_vars])
-    
-    function fun(λ)
-        θs[p[:ind1]] = Ψ[1]
-        θs[p[:ind2]] = Ψ[2]
-        return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) 
-    end
-
-    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
-    llb=fopt-p[:targetll]
-    return llb, xopt
-end
-
-function bivariateΨ_vectorsearch_unsafe(Ψ, p)
-    θs=zeros(p[:num_vars])
-    θs[p[:ind1]], θs[p[:ind2]] = p[:pointa] + Ψ*p[:uhat]
-    
-    function fun(λ); return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) end
-
-    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
-    llb=fopt-p[:targetll]
-    return llb, xopt
-end
-
-function bivariateΨ_vectorsearch(Ψ, p)
-    θs=zeros(p[:num_vars])
-    Ψxy = p[:pointa] + Ψ*p[:uhat]
-    
-    function fun(λ)
-        θs[p[:ind1]], θs[p[:ind2]] = Ψxy
-        return p[:likelihoodFunc](p[:data], variablemapping2d!(θs, λ, p[:θranges], p[:λranges]) ) 
-    end
-
-    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
-    llb=fopt-p[:targetll]
-    return llb, xopt
-end
-
-function univariateΨrelationship(Ψ, p)
-    θs=zeros(p[:num_vars])
-    # θs[p[:ind]] = Ψ
-    
-    function fun(λ)
-        resolve_relationship!(θs, Ψ, λ, p[:ind], p[:λind], p[:relationship])
-        return p[:likelihoodFunc](p[:data], variablemapping1d!(θs, λ, p[:θranges], p[:λranges]) ) 
-    end
-
-    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
-    llb=fopt-p[:targetll]
-    return llb, xopt
-end
-
-function univariateΨ_ellipse_analytical(Ψ, p)
-    return analytic_ellipse_loglike([Ψ], p[:ind], p[:θmle], p[:Γ]) - p[:targetll]
-end
-
-function univariateΨ_ellipse_relationship(Ψ, p)
-    θs=zeros(p[:num_vars])
-    # θs[p[:ind]] = Ψ
-
-    function fun(λ)
-        resolve_relationship!(θs, Ψ, λ, p[:ind], p[:λind], p[:relationship])
-        return ellipse_loglike(variablemapping1d!(θs, λ, p[:θranges], p[:λranges]), p[:θmle], p[:H]) 
+        return p[:likelihoodFunc](variablemapping1d!(θs, λ, p[:θranges], p[:λranges]), p[:data]) 
     end
 
     (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
@@ -336,6 +195,108 @@ function univariateΨ_ellipse(Ψ, p)
     return llb, xopt
 end
 
+function univariateΨ_ellipse_analytical(Ψ, p)
+    return analytic_ellipse_loglike([Ψ], p[:ind], p[:θmle], p[:Γ]) - p[:targetll]
+end
+
+
+function bivariateΨ_unsafe(Ψ, p)
+    θs=zeros(p[:num_vars])
+    θs[p[:ind1]] = p[:Ψ_x]
+    θs[p[:ind2]] = Ψ
+    
+    function fun(λ); return p[:likelihoodFunc](variablemapping2d!(θs, λ, p[:θranges], p[:λranges]), p[:data]) end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ(Ψ::Real, p)
+    θs=zeros(p[:num_vars])
+    
+    function fun(λ)
+        θs[p[:ind1]] = p[:Ψ_x]
+        θs[p[:ind2]] = Ψ
+        return p[:likelihoodFunc](variablemapping2d!(θs, λ, p[:θranges], p[:λranges]), p[:data]) 
+    end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ(Ψ::Tuple{Real,Real}, p)
+    θs=zeros(p[:num_vars])
+    
+    function fun(λ)
+        θs[p[:ind1]] = Ψ[1]
+        θs[p[:ind2]] = Ψ[2]
+        return p[:likelihoodFunc](variablemapping2d!(θs, λ, p[:θranges], p[:λranges]), p[:data]) 
+    end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ_vectorsearch_unsafe(Ψ, p)
+    θs=zeros(p[:num_vars])
+    θs[p[:ind1]], θs[p[:ind2]] = p[:pointa] + Ψ*p[:uhat]
+    
+    function fun(λ); return p[:likelihoodFunc](variablemapping2d!(θs, λ, p[:θranges], p[:λranges]), p[:data]) end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function bivariateΨ_vectorsearch(Ψ, p)
+    θs=zeros(p[:num_vars])
+    Ψxy = p[:pointa] + Ψ*p[:uhat]
+    
+    function fun(λ)
+        θs[p[:ind1]], θs[p[:ind2]] = Ψxy
+        return p[:likelihoodFunc](variablemapping2d!(θs, λ, p[:θranges], p[:λranges]), p[:data]) 
+    end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+function univariateΨrelationship(Ψ, p)
+    θs=zeros(p[:num_vars])
+    # θs[p[:ind]] = Ψ
+    
+    function fun(λ)
+        resolve_relationship!(θs, Ψ, λ, p[:ind], p[:λind], p[:relationship])
+        return p[:likelihoodFunc](variablemapping1d!(θs, λ, p[:θranges], p[:λranges]), p[:data]) 
+    end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+
+
+function univariateΨ_ellipse_relationship(Ψ, p)
+    θs=zeros(p[:num_vars])
+    # θs[p[:ind]] = Ψ
+
+    function fun(λ)
+        resolve_relationship!(θs, Ψ, λ, p[:ind], p[:λind], p[:relationship])
+        return ellipse_loglike(variablemapping1d!(θs, λ, p[:θranges], p[:λranges]), p[:θmle], p[:H]) 
+    end
+
+    (xopt,fopt)=optimise(fun, p[:initGuess], p[:newLb], p[:newUb])
+    llb=fopt-p[:targetll]
+    return llb, xopt
+end
+
+
+
 function univariateprofiles_ellipse_analytical(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
 
     df = 1
@@ -347,7 +308,7 @@ function univariateprofiles_ellipse_analytical(θnames, θmle, lb, ub, H, Γ; co
     # If it doesn't exist in either range, then the parameter is locally unidentifiable in that range for 
     # that confidence level.
 
-    confidenceDict = Dict{Symbol, ConfidenceStruct}()
+    confidenceDict = Dict{Symbol, UnivariateConfidenceStruct}()
     p = Dict(:ind=>[1], 
             :θmle=>θmle,
             :H=>H,
@@ -368,7 +329,7 @@ function univariateprofiles_ellipse_analytical(θnames, θmle, lb, ub, H, Γ; co
         interval[1] = g(lb[i], p) <= 0.0 ? find_zero(g, (lb[i], θmle[i]), atol=ϵ, Roots.Brent(), p=p) : NaN
         interval[2] = g(ub[i], p) <= 0.0 ? find_zero(g, (θmle[i], ub[i]), atol=ϵ, Roots.Brent(), p=p) : NaN
 
-        confidenceDict[θname] = ConfidenceStruct(θmle[i], interval, lb[i], ub[i], confLevel)
+        confidenceDict[θname] = UnivariateConfidenceStruct(θmle[i], interval, lb[i], ub[i], confLevel)
     end
 
     return confidenceDict, p
@@ -385,7 +346,7 @@ function univariateprofile_ellipse_providedrelationship(relationship::AbstractRe
     # If it doesn't exist in either range, then the parameter is locally unidentifiable in that range for 
     # that confidence level.
 
-    confidenceDict = Dict{Symbol, ConfidenceStruct}()
+    confidenceDict = Dict{Symbol, UnivariateConfidenceStruct}()
     p = Dict(:ind=>1,   
             :θmle=>θmle,
             :H=>H,
@@ -420,7 +381,7 @@ function univariateprofile_ellipse_providedrelationship(relationship::AbstractRe
     interval[1] = g(relationship.lb, p) <= 0.0 ? find_zero(g, (relationship.lb, Ψmle), atol=ϵ, Roots.Brent(), p=p) : NaN
     interval[2] = g(relationship.ub, p) <= 0.0 ? find_zero(g, (Ψmle, relationship.ub), atol=ϵ, Roots.Brent(), p=p) : NaN
 
-    confidenceDict[relationship.name] = ConfidenceStruct(Ψmle, interval, relationship.lb, relationship.ub, confLevel)
+    confidenceDict[relationship.name] = UnivariateConfidenceStruct(Ψmle, interval, relationship.lb, relationship.ub, confLevel)
     
 
     return confidenceDict, p
@@ -437,7 +398,7 @@ function univariateprofiles_ellipse(θnames, θmle, lb, ub, H, Γ; confLevel=0.9
     # If it doesn't exist in either range, then the parameter is locally unidentifiable in that range for 
     # that confidence level.
 
-    confidenceDict = Dict{Symbol, ConfidenceStruct}()
+    confidenceDict = Dict{Symbol, UnivariateConfidenceStruct}()
     p = Dict(:ind=>1,   
             :θmle=>θmle,
             :H=>H,
@@ -467,7 +428,7 @@ function univariateprofiles_ellipse(θnames, θmle, lb, ub, H, Γ; confLevel=0.9
         interval[1] = g(lb[i], p) <= 0.0 ? find_zero(g, (lb[i], θmle[i]), atol=ϵ, Roots.Brent(), p=p) : NaN
         interval[2] = g(ub[i], p) <= 0.0 ? find_zero(g, (θmle[i], ub[i]), atol=ϵ, Roots.Brent(), p=p) : NaN
 
-        confidenceDict[θname] = ConfidenceStruct(θmle[i], interval, lb[i], ub[i], confLevel)
+        confidenceDict[θname] = UnivariateConfidenceStruct(θmle[i], interval, lb[i], ub[i], confLevel)
     end
 
     return confidenceDict, p
@@ -485,7 +446,7 @@ function univariateprofile_providedrelationship(relationship::AbstractRelationsh
     # If it doesn't exist in either range, then the parameter is locally unidentifiable in that range for 
     # that confidence level.
 
-    confidenceDict = Dict{Symbol, ConfidenceStruct}()
+    confidenceDict = Dict{Symbol, UnivariateConfidenceStruct}()
     p = Dict(:ind=>1, 
             :λind=>1,
             :data=>data, 
@@ -520,7 +481,7 @@ function univariateprofile_providedrelationship(relationship::AbstractRelationsh
     interval[1] = g(relationship.lb, p) <= 0.0 ? find_zero(g, (relationship.lb, Ψmle), atol=ϵ, Roots.Brent(), p=p) : NaN
     interval[2] = g(relationship.ub, p) <= 0.0 ? find_zero(g, (Ψmle, relationship.ub), atol=ϵ, Roots.Brent(), p=p) : NaN
 
-    confidenceDict[relationship.name] = ConfidenceStruct(Ψmle, interval, relationship.lb, relationship.ub, confLevel)
+    confidenceDict[relationship.name] = UnivariateConfidenceStruct(Ψmle, interval, relationship.lb, relationship.ub, confLevel)
 
     # a = [g(x,p) for x in LinRange(relationship.lb, relationship.ub, 10)]
     # return confidenceDict, p, a
@@ -539,7 +500,7 @@ function univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; 
     # If it doesn't exist in either range, then the parameter is locally unidentifiable in that range for 
     # that confidence level.
 
-    confidenceDict = Dict{Symbol, ConfidenceStruct}()
+    confidenceDict = Dict{Symbol, UnivariateConfidenceStruct}()
     p = Dict(:ind=>1, 
             :data=>data, 
             :newLb=>zeros(num_vars-1), 
@@ -568,7 +529,7 @@ function univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; 
         interval[1] = g(lb[i], p) <= 0.0 ? find_zero(g, (lb[i], θmle[i]), atol=ϵ, Roots.Brent(), p=p) : NaN
         interval[2] = g(ub[i], p) <= 0.0 ? find_zero(g, (θmle[i], ub[i]), atol=ϵ, Roots.Brent(), p=p) : NaN
 
-        confidenceDict[θname] = ConfidenceStruct(θmle[i], interval, lb[i], ub[i], confLevel)
+        confidenceDict[θname] = UnivariateConfidenceStruct(θmle[i], interval, lb[i], ub[i], confLevel)
     end
 
     return confidenceDict, p
@@ -679,7 +640,7 @@ function bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, n
             end
         end
         
-        confidenceDict[(θnames[ind1], θnames[ind2])] = BivariateConfidenceStruct((θmle[ind1],θmle[ind2]), [ind1, ind2], boundarySamples, lb[[ind1, ind2]], ub[[ind1, ind2]], confLevel)
+        confidenceDict[(θnames[ind1], θnames[ind2])] = BivariateConfidenceStruct((θmle[ind1],θmle[ind2]), boundarySamples, lb[[ind1, ind2]], ub[[ind1, ind2]], confLevel)
     end
 
     return confidenceDict, p

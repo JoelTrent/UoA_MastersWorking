@@ -1,4 +1,4 @@
-include("transformBounds.jl")
+include("JuLikelihood.jl")
 
 λmin, λmax = (0.00, 0.05)
 Kmin, Kmax = (50., 150.)
@@ -14,8 +14,8 @@ function forward_parameter_transformKminusC0(θ::Vector{<:T}) where T<:Real
     return Θ
 end
 
-transformbounds_NLP(forward_parameter_transformKminusC0, lb, ub)
-transformbounds(forward_parameter_transformKminusC0, lb, ub, Int[1,3], Int[2])
+@time transformbounds_NLopt(forward_parameter_transformKminusC0, lb, ub)
+@time transformbounds(forward_parameter_transformKminusC0, lb, ub, Int[1,3], Int[2])
 
 
 λmin, λmax = (-1.0, 1.05)
@@ -31,10 +31,10 @@ end
 
 # FAILS because function is not monotonic on the supplied bounds
 newlb, newub = transformbounds(forward_parameter_transformλsquared, lb, ub, Int[2,3], Int[1])
--sqrt(newub[1]-1) + 1
-sqrt(newlb[1]-1) + 1
+-sqrt(newub[1])
+sqrt(newlb[1])
 
 # SUCCEEDS because it's able to find the combination of lb[i] and ub[i] that produces the correct minima
-newlb, newub = transformbounds_NLP(forward_parameter_transformλsquared, lb, ub)
--sqrt(newub[1]-1) + 1
-sqrt(newlb[1]-1) + 1
+newlb, newub = transformbounds_NLopt(forward_parameter_transformλsquared, lb, ub)
+-sqrt(newub[1])
+sqrt(newlb[1])

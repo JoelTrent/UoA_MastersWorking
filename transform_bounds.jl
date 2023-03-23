@@ -1,6 +1,3 @@
-using JuMP
-import Ipopt
-
 # parameters are vectors of ints - i.e. call using vectors of ints directly or look up position of parameter
 # from a symbol vector using a lookup table.
 # Note. we assume that ordering remains the same.
@@ -11,7 +8,7 @@ import Ipopt
 # programme may be required instead (however, integer requirement on variables can be relaxed)
 # 
 # ONLY VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES
-function transformbounds(transformfun::Function, lb, ub,
+function transformbounds(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64},
     independentParameterIndexes::Vector{<:Int}=Int[], dependentParameterIndexes::Vector{<:Int}=Int[])
 
     if isempty(dependentParameterIndexes)
@@ -68,42 +65,74 @@ function transformbounds(transformfun::Function, lb, ub,
     return newlb, newub
 end
 
-
 # IS VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES SO LONG
 # AS START POSITION OF x VARIABLES PUSHES IT TOWARDS THE GLOBAL MINIMA, RATHER THAN A LOCAL 
 # MINIMA
-function transformbounds_NLP(transformfun::Function, lb, ub)
+# using JuMP
+# import Ipopt
+# function transformbounds_NLP_JuMP(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64})
 
-    function bounds_transform(x...)
-        bins = collect(x)
-        bounds = ((bins .* lb) .+ ((1 .- bins) .* ub)) 
-        return transformfun(bounds)[NLP_transformIndex]
+#     function bounds_transform(x...)
+#         bins = collect(x)
+#         bounds = (((1 .- bins) .* lb) .+ (bins .* ub)) 
+#         return transformfun(bounds)[NLP_transformIndex]
+#     end
+    
+#     num_vars = length(ub)
+    
+#     m = Model(Ipopt.Optimizer)
+#     set_silent(m)
+    
+#     register(m, :my_obj, num_vars, bounds_transform; autodiff = true)
+    
+#     # variables will be binary integer automatically due to how the obj function is setup
+#     # IF the transformation function applied to each θ[i] is monotonic between lb[i] and ub[i]
+#     @variable(m, x[1:num_vars], lower_bound=0.0, upper_bound=1.0, start=0.5)
+    
+#     newlb = zeros(num_vars)
+#     newub = zeros(num_vars)
+#     NLP_transformIndex=0
+#     for i in 1:num_vars
+#         NLP_transformIndex += 1
+        
+#         @NLobjective(m, Min, my_obj(x...) )
+#         JuMP.optimize!(m)
+#         newlb[i] = objective_value(m)
+    
+#         @NLobjective(m, Max, my_obj(x...) )
+#         JuMP.optimize!(m)
+#         newub[i] = objective_value(m)
+#     end
+    
+#     return newlb, newub
+# end
+
+function transformbounds_NLopt(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64})
+
+    function bounds_transform(x)
+        return minOrMax * transformfun((((1 .- x) .* lb) .+ (x .* ub)) )[NLP_transformIndex]
     end
-    
-    num_vars = length(ub)
-    
-    m = Model(Ipopt.Optimizer)
-    set_silent(m)
-    
-    register(m, :my_obj, num_vars, bounds_transform; autodiff = true)
     
     # variables will be binary integer automatically due to how the obj function is setup
     # IF the transformation function applied to each θ[i] is monotonic between lb[i] and ub[i]
-    @variable(m, x[1:num_vars], lower_bound=0.0, upper_bound=1.0, start=0.5)
+    num_vars = length(ub)
     
     newlb = zeros(num_vars)
     newub = zeros(num_vars)
+    initialGuess = fill(0.5, num_vars)
+    NLPlb = zeros(num_vars)
+    NLPub = ones(num_vars)
+
+    minOrMax = -1.0
     NLP_transformIndex=0
     for i in 1:num_vars
         NLP_transformIndex += 1
         
-        @NLobjective(m, Min, my_obj(x...) )
-        JuMP.optimize!(m)
-        newlb[i] = objective_value(m)
-    
-        @NLobjective(m, Max, my_obj(x...) )
-        JuMP.optimize!(m)
-        newub[i] = objective_value(m)
+        minOrMax = -1.0
+        newlb[i] = optimise(bounds_transform, initialGuess, NLPlb, NLPub)[2]
+        
+        minOrMax = 1.0
+        newub[i] = optimise(bounds_transform, initialGuess, NLPlb, NLPub)[2]
     end
     
     return newlb, newub

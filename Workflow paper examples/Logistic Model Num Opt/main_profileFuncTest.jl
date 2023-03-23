@@ -2,21 +2,17 @@
 using Plots, DifferentialEquations
 using .Threads 
 using Interpolations, Random, Distributions
-using Roots, NLopt
-using ForwardDiff
 gr()
 
 Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
 include(joinpath("..", "plottingFunctions.jl"))
-include(joinpath("..", "..", "ellipseLikelihood.jl"))
-include(joinpath("..", "..", "profileLikelihood.jl"))
-include(joinpath("..", "..", "transformBounds.jl"))
+include(joinpath("..", "..", "JuLikelihood.jl"))
 
 # Workflow functions ##########################################################################
 
 # Section 2: Define ODE model
-function DE!(dC, C, p)
+function DE!(dC, C, p, t)
     λ,K=p
     dC[1]= λ * C[1] * (1.0 - C[1]/K)
 end
@@ -37,7 +33,7 @@ function ODEmodel(t, a, σ)
 end
 
 # Section 6: Define loglikelihood function
-function loglhood(data, a)
+function loglhood(a, data)
     y=ODEmodel(data.t, a, data.σ)
     e=0
     dist=Normal(0, data.σ);
@@ -49,7 +45,7 @@ end
 # Section 8: Function to be optimised for MLE
 # note this function pulls in the globals, data and σ and would break if used outside of 
 # this file's scope
-function funmle(a); return loglhood(data, a) end 
+function funmle(a); return loglhood(a, data) end 
 
 # Data setup #################################################################################
 # true parameters
@@ -97,6 +93,28 @@ likelihoodFunc = loglhood
 θnames = [:λ, :K, :C0]
 confLevel = 0.95
 
+
+# initialisation. model is a mutable struct that is currently intended to hold all model information
+model = initialiseLikelihoodModel(likelihoodFunc, data, θnames, θG, lb, ub)
+
+# not strictly required - functions that rely on these being computed will check if 
+# they're missing and call this function on model if so.
+getMLE_ellipse_approximation!(model)
+
+univariate_confidenceintervals(model, profile_type=:EllipseApproxAnalytical)
+univariate_confidenceintervals(model, profile_type=:EllipseApprox)
+univariate_confidenceintervals(model, profile_type=:LogLikelihood)
+
+univariate_confidenceintervals(model, [1], profile_type=:EllipseApproxAnalytical)
+univariate_confidenceintervals(model, [:K], profile_type=:EllipseApprox)
+univariate_confidenceintervals(model, [1,2,3])
+
+
+
+
+
+
+
 # 1D profiles
 confInts, p = univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
 
@@ -120,9 +138,9 @@ println(confIntsRel_ellipse)
 # confIntsRel, pRel = univariateprofile_providedrelationship(ATimesB(:K, :C0, 10.0, 7500.0, :KTimesC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
 # println(confIntsRel)
 
-confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, 50; confLevel=0.95, method=(:Brent, :fix1axis))
+# confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, 50; confLevel=0.95, method=(:Brent, :fix1axis))
 
-confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, 50; confLevel=0.95, method=(:Brent, :vectorsearch))
+# confIntsBivariate, pBivariate = bivariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub, 50; confLevel=0.95, method=(:Brent, :vectorsearch))
 
 # function likelihoodFuncLog(data, θ); return loglhood(data, exp.(θ)) end
 
