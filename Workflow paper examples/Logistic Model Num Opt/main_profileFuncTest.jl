@@ -108,6 +108,8 @@ univariate_confidenceintervals(model, profile_type=:LogLikelihood)
 univariate_confidenceintervals(model, [1], profile_type=:EllipseApproxAnalytical)
 univariate_confidenceintervals(model, [:K], profile_type=:EllipseApprox)
 univariate_confidenceintervals(model, [1,2,3])
+univariate_confidenceintervals(model, 2, profile_type=:EllipseApprox)
+
 
 
 

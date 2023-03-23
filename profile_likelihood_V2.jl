@@ -16,17 +16,6 @@ function boundsmapping1d!(newbounds::Vector{<:Float64}, bounds::Vector{<:Float64
     return nothing
 end
 
-function convertθnames_toindices(model::LikelihoodModel, θnames_to_convert::Vector{<:Symbol})
-
-    indices = zeros(Int, length(θnames_to_convert))
-
-    for (i, name) in enumerate(θnames_to_convert)
-        indices[i] = model.core.θname_to_index[name]
-    end
-
-    return indices
-end
-
 function univariateΨ_ellipse_analytical(Ψ, p)
     return analytic_ellipse_loglike([Ψ], [p.ind], p.consistent.data) - p.consistent.targetll
 end
@@ -72,34 +61,34 @@ function get_univariate_opt_func(profile_type::Symbol, use_unsafe_optimiser::Boo
     return (missing)
 end
 
-function get_target_loglikelihood(model::LikelihoodModel, df::Int, profile_type::Symbol)
+function univariate_confidenceinterval(univariate_optimiser::Function, model::LikelihoodModel, consistent::NamedTuple, θi::Int)
 
-    llstar = -quantile(Chisq(df), confLevel)/2
+    interval = zeros(2)
 
-    if profile_type == :LogLikelihood
-        return model.core.maximisedmle+llstar
-    end
+    newLb=zeros(model.core.num_pars-1) 
+    newUb=zeros(model.core.num_pars-1)
+    initGuess=zeros(model.core.num_pars-1)
 
-    return llstar
+    boundsmapping1d!(newLb, model.core.θlb, θi)
+    boundsmapping1d!(newUb, model.core.θub, θi)
+    boundsmapping1d!(initGuess, model.core.θmle, θi)
+
+    θranges, λranges = variablemapping1dranges(model.core.num_pars, θi)
+
+    p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+        θranges=θranges, λranges=λranges, consistent=consistent)
+
+    ϵ=(model.core.θub[θi]-model.core.θlb[θi])/10^6
+
+    g(x,p) = univariate_optimiser(x,p)[1]
+
+    # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
+    interval[1] = g(model.core.θlb[θi], p) <= 0.0 ? find_zero(g, (model.core.θlb[θi], model.core.θmle[θi]), atol=ϵ, Roots.Brent(), p=p) : NaN
+    interval[2] = g(model.core.θub[θi], p) <= 0.0 ? find_zero(g, (model.core.θmle[θi], model.core.θub[θi]), atol=ϵ, Roots.Brent(), p=p) : NaN
+
+    return UnivariateConfidenceStruct(model.core.θmle[θi], interval, model.core.θlb[θi], model.core.θub[θi])
 end
 
-function get_consistent_tuple(model::LikelihoodModel, profile_type::Symbol, df::Int)
-
-    targetll = get_target_loglikelihood(model, df, profile_type)
-
-    if profile_type == :LogLikelihood 
-        return (targetll=targetll, num_pars=model.core.num_pars,
-                 loglikefunction=model.core.loglikefunction, data=model.core.data,)
-    elseif profile_type == :EllipseApprox
-        return (targetll=targetll, num_pars=model.core.num_pars, 
-                loglikefunction=ellipse_loglike, 
-                data=(θmle=model.core.θmle, Hmle=model.ellipse_MLE_approx.Hmle))
-    else
-        return (targetll=targetll, data=(θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle))
-    end
-
-    return (missing)
-end
 
 # profile provided θ indices
 function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::Vector{<:Int64}; 
@@ -115,35 +104,12 @@ function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::
     confidenceDict = Dict{Symbol, UnivariateConfidenceStruct}()
 
     univariate_optimiser = get_univariate_opt_func(profile_type, use_unsafe_optimiser)
-    consistent = get_consistent_tuple(model, profile_type, 1)
+    consistent = get_consistent_tuple(model, confidence_level, profile_type, 1)
 
     # at a later date, want to check if a this interval has already been evaluated for a given parameter
     # and/or if a wider/thinner confidence level has been evaluated yet (can use that knowledge to decrease the search bounds in 1D)
     for θi in θs_to_profile
-        interval = zeros(2)
-
-        newLb=zeros(model.core.num_pars-1) 
-        newUb=zeros(model.core.num_pars-1)
-        initGuess=zeros(model.core.num_pars-1)
-
-        boundsmapping1d!(newLb, model.core.θlb, θi)
-        boundsmapping1d!(newUb, model.core.θub, θi)
-        boundsmapping1d!(initGuess, model.core.θmle, θi)
-
-        θranges, λranges = variablemapping1dranges(model.core.num_pars, θi)
-
-        p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
-            θranges=θranges, λranges=λranges, consistent=consistent)
-
-        ϵ=(model.core.θub[θi]-model.core.θlb[θi])/10^6
-
-        g(x,p) = univariate_optimiser(x,p)[1]
-
-        # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
-        interval[1] = g(model.core.θlb[θi], p) <= 0.0 ? find_zero(g, (model.core.θlb[θi], model.core.θmle[θi]), atol=ϵ, Roots.Brent(), p=p) : NaN
-        interval[2] = g(model.core.θub[θi], p) <= 0.0 ? find_zero(g, (model.core.θmle[θi], model.core.θub[θi]), atol=ϵ, Roots.Brent(), p=p) : NaN
-
-        confidenceDict[model.core.θnames[θi]] = UnivariateConfidenceStruct(model.core.θmle[θi], interval, model.core.θlb[θi], model.core.θub[θi])
+        confidenceDict[model.core.θnames[θi]] = univariate_confidenceinterval(univariate_optimiser, model, consistent, θi)
     end
 
     return confidenceDict
@@ -165,13 +131,12 @@ function univariate_confidenceintervals(model::LikelihoodModel, profile_m_random
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
 
     if profile_m_random_parameters == 0
-        @warn `profile_m_random_parameters` must be a strictly positive integer. 
+        @error "`profile_m_random_parameters` must be a strictly positive integer."
         return nothing
     end
 
-    θs_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
+    indices_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
 
-    indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     return univariate_confidenceintervals(model, indices_to_profile, confidence_level=confidence_level,
                                 profile_type=profile_type, use_unsafe_optimiser=use_unsafe_optimiser)
 end
@@ -182,5 +147,3 @@ function univariate_confidenceintervals(model::LikelihoodModel;
     return univariate_confidenceintervals(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
                             profile_type=profile_type, use_unsafe_optimiser=use_unsafe_optimiser)
 end
-
-
