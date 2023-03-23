@@ -20,7 +20,6 @@ function univariateΨ_ellipse_analytical(Ψ, p)
     return analytic_ellipse_loglike([Ψ], [p.ind], p.consistent.data) - p.consistent.targetll
 end
 
-
 function univariateΨ_unsafe(Ψ, p)
     θs=zeros(p.consistent.num_pars)
     θs[p.ind] = Ψ
@@ -44,7 +43,6 @@ function univariateΨ(Ψ, p)
     llb=fopt-p.consistent.targetll
     return llb, xopt
 end
-
 
 function get_univariate_opt_func(profile_type::Symbol, use_unsafe_optimiser::Bool)
 
@@ -88,7 +86,6 @@ function univariate_confidenceinterval(univariate_optimiser::Function, model::Li
 
     return UnivariateConfidenceStruct(model.core.θmle[θi], interval, model.core.θlb[θi], model.core.θub[θi])
 end
-
 
 # profile provided θ indices
 function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::Vector{<:Int64}; 
