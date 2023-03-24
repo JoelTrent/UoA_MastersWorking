@@ -11,21 +11,27 @@
 function transformbounds(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64},
     independentParameterIndexes::Vector{<:Int}=Int[], dependentParameterIndexes::Vector{<:Int}=Int[])
 
+    newlb, newub = zeros(length(lb)), zeros(length(lb))
+
     if isempty(dependentParameterIndexes)
-        newlb = transformfun(lb)
-        newub = transformfun(ub)
+        potentialbounds = zeros(2, length(lb))
+        potentialbounds[1,:] .= transformfun(lb)
+        potentialbounds[2,:] .= transformfun(ub)
+
+        println(minimum(potentialbounds, dims=1))
+
+        newlb[:] .= minimum(potentialbounds, dims=1)[:]
+        newub[:] .= maximum(potentialbounds, dims=1)[:]
         return newlb, newub
     end
 
-    newlb = lb .* 1.0
-    newub = ub .* 1.0
-
     if !isempty(independentParameterIndexes)
-        potentiallb = transformfun(lb)
-        potentialub = transformfun(ub)
+        potentialbounds = zeros(2, length(lb))
+        potentialbounds[1,:] .= transformfun(lb)
+        potentialbounds[2,:] .= transformfun(ub)
         
-        newlb[independentParameterIndexes] .= @view(potentiallb[independentParameterIndexes])
-        newub[independentParameterIndexes] .= @view(potentialub[independentParameterIndexes])
+        newlb[independentParameterIndexes] .= minimum(@view(potentialbounds[:, independentParameterIndexes]), dims=1)[:]
+        newub[independentParameterIndexes] .= maximum(@view(potentialbounds[:, independentParameterIndexes]), dims=1)[:]
     end
 
     for i in dependentParameterIndexes # MAKE THIS PART VECTORISED? E.g by making it recursive?

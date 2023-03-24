@@ -184,7 +184,7 @@ function forward_parameter_transformLog(θ)
 end
 
 
-newlb, newub = transformbounds(forward_parameter_transform, lb, ub, collect(1:3), Int[])
+newlb, newub = transformbounds(forward_parameter_transformLog, lb, ub, collect(1:3), Int[])
 exp.(newlb)
 exp.(newub)
 
