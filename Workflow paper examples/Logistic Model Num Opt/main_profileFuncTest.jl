@@ -20,25 +20,22 @@ end
 # Section 3: Solve ODE model
 function odesolver(t, λ, K, C0)
     p=(λ,K)
-    tspan=(0.0, maximum(t))
+    tspan=(0.0, t[end])
     prob=ODEProblem(DE!, [C0], tspan, p)
     sol=solve(prob, saveat=t)
     return sol[1,:]
 end
 
 # Section 4: Define function to solve ODE model 
-function ODEmodel(t, a, σ)
+function ODEmodel(t, a)
     y=odesolver(t, a[1],a[2],a[3])
     return y
 end
 
 # Section 6: Define loglikelihood function
 function loglhood(a, data)
-    y=ODEmodel(data.t, a, data.σ)
-    e=0
-    dist=Normal(0, data.σ);
-    e=loglikelihood(dist, data.yobs-y) 
-    return sum(e)
+    y=ODEmodel(data.t, a)
+    return sum(loglikelihood(data.dist, data.yobs-y))
 end
 
 
@@ -54,13 +51,13 @@ tt=0:5:1000
 a=[λ, K, C0]
 
 # true data
-ytrue = ODEmodel(t, a, σ)
+ytrue = ODEmodel(t, a)
 
 # noisy data
 yobs = ytrue + σ*randn(length(t))
 
 # Named tuple of all data required within the likelihood function
-data = (yobs=yobs, σ=σ, t=t)
+data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
 
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
@@ -111,9 +108,10 @@ univariate_confidenceintervals(model, [1,2,3])
 univariate_confidenceintervals(model, 2, profile_type=:EllipseApprox)
 
 
-
-
-
+@time bivariate_confidenceprofiles(model, 100, profile_type=:EllipseApproxAnalytical)
+@time bivariate_confidenceprofiles(model, 10, profile_type=:EllipseApprox)
+@time bivariate_confidenceprofiles(model, 10, profile_type=:LogLikelihood, method=(:Bracketing,:Fix1Axis))
+@time bivariate_confidenceprofiles(model, 10, profile_type=:LogLikelihood, method=(:Bracketing,:VectorSearch))
 
 
 
