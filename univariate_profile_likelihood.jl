@@ -1,6 +1,6 @@
-function variablemapping1dranges(num_vars::T, index::T) where T <: Int
-    θranges = (1:(index-1), (index+1):num_vars)
-    λranges = (1:(index-1), index:(num_vars-1))
+function variablemapping1dranges(num_pars::T, index::T) where T <: Int
+    θranges = (1:(index-1), (index+1):num_pars)
+    λranges = (1:(index-1), index:(num_pars-1))
     return θranges, λranges
 end
 
