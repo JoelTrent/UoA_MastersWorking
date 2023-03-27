@@ -99,6 +99,8 @@ function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::
     univariate_optimiser = get_univariate_opt_func(profile_type)
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 1)
 
+    # unique!(θs_to_profile)
+
     # at a later date, want to check if a this interval has already been evaluated for a given parameter
     # and/or if a wider/thinner confidence level has been evaluated yet (can use that knowledge to decrease the search bounds in 1D)
     for θi in θs_to_profile
