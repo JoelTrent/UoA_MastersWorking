@@ -50,7 +50,7 @@ function get_univariate_opt_func(profile_type::Symbol, use_unsafe_optimiser::Boo
         if use_unsafe_optimiser 
             return univariateΨ_unsafe
         else
-             return univariateΨ_unsafe
+            return univariateΨ
         end
     elseif profile_type == :EllipseApproxAnalytical
         return univariateΨ_ellipse_analytical

@@ -26,7 +26,7 @@ function generatepoint(model::LikelihoodModel, ind1::Int, ind2::Int)
 end
 
 # function findNpointpairs(p, N, lb, ub, ind1, ind2; maxIters)
-function findNpointpairs_vectorsearch(g::Function, model::LikelihoodModel, p::NamedTuple, num_points::Int, ind1::Int, ind2::Int)
+function findNpointpairs_simultaneous(g::Function, model::LikelihoodModel, p::NamedTuple, num_points::Int, ind1::Int, ind2::Int)
 
     insidePoints  = zeros(2,num_points)
     outsidePoints = zeros(2,num_points)
@@ -72,6 +72,88 @@ function findNpointpairs_vectorsearch(g::Function, model::LikelihoodModel, p::Na
         # println(iters)
     end
 
+    return insidePoints, outsidePoints
+end
+
+function findpointonbounds(model::LikelihoodModel, internalpoint::Tuple{Float64, Float64}, direction_πradians::Float64, ind1::Int, ind2::Int)
+
+    # by construction 0 < direction_πradians < 2, i.e. direction_radians ∈ [1e-10, 2 - 1e-10]
+
+    quadrant = convert(Int, div(direction_πradians, 0.5, RoundUp))
+
+    if quadrant == 1
+        xlim, ylim = model.core.θub[ind1], model.core.θub[ind2]
+    elseif quadrant == 2
+        xlim, ylim = model.core.θlb[ind1], model.core.θub[ind2]
+    elseif quadrant == 3
+        xlim, ylim = model.core.θlb[ind1], model.core.θlb[ind2]
+    else
+        xlim, ylim = model.core.θub[ind1], model.core.θlb[ind2]
+    end
+
+    cosDir = cospi(direction_πradians)
+    sinDir = sinpi(direction_πradians)
+    
+    r_vals = abs.([(xlim-internalpoint[1]) / cosDir , (ylim-internalpoint[2]) / sinDir])
+
+    r = minimum(r_vals)
+    r_pos = argmin(r_vals)
+
+    boundpoint = [0.0, 0.0]
+
+    if r_pos == 1
+        boundpoint[1] = xlim
+        boundpoint[2] = internalpoint[2] + r * sinDir
+    else
+        boundpoint[1] = internalpoint[1] + r * cosDir
+        boundpoint[2] = ylim
+    end
+
+    return boundpoint
+end
+
+function find_m_spaced_radialdirections(num_directions::Int)
+    radial_dirs = zeros(num_directions)
+
+    radial_dirs .= rand() * 2.0 / convert(Float64, num_directions) .+ collect(LinRange(1e-12, 2.0, num_directions+1))[1:end-1]
+
+    return radial_dirs
+end
+
+function findNpointpairs_radial(g::Function, model::LikelihoodModel, p::NamedTuple, num_points::Int, num_directions::Int, ind1::Int, ind2::Int)
+
+    insidePoints  = zeros(2,num_points)
+    outsidePoints = zeros(2,num_points)
+
+    count = 0
+
+    while count < num_points
+        x, y = 0.0,0.0
+        # find an internal point
+        while true
+            x, y = generatepoint(model, ind1, ind2)
+            p=merge(p, (pointa=[x,y],))
+            (g(0.0, p) < 0) || break
+        end
+        
+        radial_dirs = find_m_spaced_radialdirections(num_directions)
+
+        for i in 1:num_directions
+            boundpoint = findpointonbounds(model, (x, y), radial_dirs[i], ind1, ind2)
+
+            # if bound point is a point outside the boundary, accept the point combination
+            p=merge(p, (pointa=boundpoint,))
+            if (g(0.0, p) < 0)
+                count +=1
+                insidePoints[:, count] .= x, y 
+                outsidePoints[:, count] .= boundpoint
+            end
+
+            if count == num_points
+                break
+            end
+        end
+    end
     return insidePoints, outsidePoints
 end
 
@@ -152,27 +234,25 @@ end
 function get_bivariate_opt_func(profile_type::Symbol, use_unsafe_optimiser::Bool, method)
 
 
-    if method[1]==:Bracketing
-        if method[2]==:Fix1Axis
-            if profile_type == :EllipseApproxAnalytical
-                return bivariateΨ_ellipse_analytical
-            elseif profile_type == :LogLikelihood || profile_type == :EllipseApprox
-                if use_unsafe_optimiser 
-                    return bivariateΨ_unsafe
-                else
-                    return bivariateΨ
-                end
+    if method isa BracketingMethodFix1Axis
+        if profile_type == :EllipseApproxAnalytical
+            return bivariateΨ_ellipse_analytical
+        elseif profile_type == :LogLikelihood || profile_type == :EllipseApprox
+            if use_unsafe_optimiser 
+                return bivariateΨ_unsafe
+            else
+                return bivariateΨ
             end
+        end
 
-        elseif method[2]==:VectorSearch
-            if profile_type == :EllipseApproxAnalytical
-                return bivariateΨ_ellipse_analytical_vectorsearch
-            elseif profile_type == :LogLikelihood || profile_type == :EllipseApprox
-                if use_unsafe_optimiser 
-                    return bivariateΨ_vectorsearch_unsafe
-                else
-                    return bivariateΨ_vectorsearch
-                end
+    elseif method isa BracketingMethodRadial || method isa BracketingMethodSimultaneous
+        if profile_type == :EllipseApproxAnalytical
+            return bivariateΨ_ellipse_analytical_vectorsearch
+        elseif profile_type == :LogLikelihood || profile_type == :EllipseApprox
+            if use_unsafe_optimiser 
+                return bivariateΨ_vectorsearch_unsafe
+            else
+                return bivariateΨ_vectorsearch
             end
         end
     end
@@ -218,7 +298,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, mod
             p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
                 θranges=θranges, λranges=λranges, consistent=consistent)
 
-            println(count)
+            # println(count)
 
             Ψ_y1 = find_zero(g, (Ψ_y0, Ψ_y1), atol=ϵ, Roots.Brent(); p=p)
 
@@ -227,7 +307,6 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, mod
                 if indexesSorted
                     boundarySamples[:, count] .= p[:Ψ_x], Ψ_y1
                 else
-
                     boundarySamples[:, count] .= Ψ_y1, p[:Ψ_x]
                 end
             else
@@ -241,7 +320,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, mod
     return boundarySamples
 end
 
-function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function, model::LikelihoodModel, num_points::Int, consistent::NamedTuple, ind1::Int, ind2::Int)
+function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function, model::LikelihoodModel, num_points::Int, consistent::NamedTuple, ind1::Int, ind2::Int; num_radial_directions::Int=0)
 
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
@@ -255,7 +334,11 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
     p0=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
                 θranges=θranges, λranges=λranges, consistent=consistent)
 
-    insidePoints, outsidePoints = findNpointpairs_vectorsearch(g, model, p0, num_points, ind1, ind2)
+    if num_radial_directions == 0
+        insidePoints, outsidePoints = findNpointpairs_simultaneous(g, model, p0, num_points, ind1, ind2)
+    else
+        insidePoints, outsidePoints = findNpointpairs_radial(g, model, p0, num_points, num_radial_directions, ind1, ind2)
+    end
 
     for i in 1:num_points
         pointa .= insidePoints[:,i]
@@ -282,17 +365,12 @@ end
 # num_points is the number of points to compute for a given method, that are on the boundary and/or inside the boundary.
 function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations::Vector{Vector{Int64}}, num_points::Int; 
     confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false,
-     method=(:Bracketing, :Fix1Axis))
-
-
+    method::AbstractBivariateMethod=BracketingMethodFix1Axis())
 
     valid_profile_type = profile_type in [:EllipseApprox, :EllipseApproxAnalytical, :LogLikelihood]
     @assert valid_profile_type "Specified `profile_type` is invalid. Allowed values are :EllipseApprox, :EllipseApproxAnalytical, :LogLikelihood."
 
-    valid_method = method[1] in [:Bracketing] && method[2] in [:Fix1Axis, :VectorSearch]
-
-    @assert valid_method "Specified `method` is invalid. Allowed values are (:Bracketing, Fix1Axis), (:Bracketing, :VectorSearch)."
-
+    @assert method isa AbstractBivariateMethod "Specified `method` is not a AbstractBivariateMethod. Allowed methods are BracketingMethodFix1Axis, BracketingMethodSimultaneous and BracketingMethodRadial."
 
     if profile_type in [:EllipseApprox, :EllipseApproxAnalytical]
         check_ellipse_approx_exists!(model)
@@ -314,20 +392,20 @@ function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations::Ve
         if ind2 < ind1
             ind1, ind2 = ind2, ind1
         end
-
-        if method[1] == :Bracketing
             
-            if method[2] == :Fix1Axis
-                boundarySamples =  bivariate_confidenceprofile_fix1axis(
-                            bivariate_optimiser, model, 
-                            num_points, consistent, ind1, ind2)
-                
-
-            elseif method[2] == :VectorSearch
-                boundarySamples = bivariate_confidenceprofile_vectorsearch(
-                            bivariate_optimiser, model, 
-                            num_points, consistent, ind1, ind2)
-            end
+        if method isa BracketingMethodFix1Axis
+            boundarySamples =  bivariate_confidenceprofile_fix1axis(
+                        bivariate_optimiser, model, 
+                        num_points, consistent, ind1, ind2)
+            
+        elseif method isa BracketingMethodSimultaneous
+            boundarySamples = bivariate_confidenceprofile_vectorsearch(
+                        bivariate_optimiser, model, 
+                        num_points, consistent, ind1, ind2)
+        elseif method isa BracketingMethodRadial
+            boundarySamples = bivariate_confidenceprofile_vectorsearch(
+                        bivariate_optimiser, model, 
+                        num_points, consistent, ind1, ind2, num_radial_directions=method.num_radial_directions)
         end
         
         confidenceDict[(model.core.θnames[ind1], model.core.θnames[ind2])] = BivariateConfidenceStruct((model.core.θmle[ind1], model.core.θmle[ind2]), boundarySamples, model.core.θlb[[ind1, ind2]], model.core.θub[[ind1, ind2]])
@@ -336,16 +414,46 @@ function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations::Ve
     return confidenceDict
 end
 
+# profile just provided θcombinations_symbols
+function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations_symbols::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}}, num_points::Int;
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false,
+    method::AbstractBivariateMethod=BracketingMethodFix1Axis())
 
+    θcombinations = convertθnames_toindices(model, θcombinations_symbols)
+
+    return bivariate_confidenceprofiles(model, θcombinations, num_points, 
+            confidence_level=confidence_level, profile_type=profile_type, 
+            use_unsafe_optimiser=use_unsafe_optimiser, method=method)
+end
+
+# profile m random combinations of parameters (sampling without replacement), where 0 < m ≤ binomial(model.core.num_pars,2)
+function bivariate_confidenceprofiles(model::LikelihoodModel, profile_m_random_combinations::Int, num_points::Int;
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false,
+    method::AbstractBivariateMethod=BracketingMethodFix1Axis())
+
+    profile_m_random_combinations = max(0, min(profile_m_random_combinations, binomial(model.core.num_pars,2)))
+
+    if profile_m_random_combinations == 0
+        @error "`profile_m_random_combinations` must be a strictly positive integer."
+        return nothing
+    end
+
+    θcombinations = sample(collect(combinations(1:model.core.num_pars, 2)), profile_m_random_combinations, replace=false)
+
+    return bivariate_confidenceprofiles(model, θcombinations, num_points, 
+            confidence_level=confidence_level, profile_type=profile_type, 
+            use_unsafe_optimiser=use_unsafe_optimiser, method=method)
+end
+
+# profile all combinations
 function bivariate_confidenceprofiles(model::LikelihoodModel, num_points::Int; 
     confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false,
-     method=(:Bracketing,:Fix1Axis))
-
+    method::AbstractBivariateMethod=BracketingMethodFix1Axis())
 
     θcombinations = collect(combinations(1:model.core.num_pars, 2))
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
             use_unsafe_optimiser=use_unsafe_optimiser, method=method)
-
 end
+

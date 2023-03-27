@@ -2,6 +2,8 @@ abstract type AbstractLikelihoodModel end
 abstract type AbstractCoreLikelihoodModel end
 abstract type AbstractEllipseMLEApprox end
 
+abstract type AbstractBivariateMethod end
+
 struct CoreLikelihoodModel <: AbstractCoreLikelihoodModel
     loglikefunction::Function
     data::Union{Tuple, NamedTuple}
@@ -57,3 +59,10 @@ struct BivariateConfidenceStruct <: AbstractConfidenceStruct
     ub::Vector{<:Float64}
     # confidence_level::Float64
 end
+
+struct BracketingMethodRadial <: AbstractBivariateMethod
+    num_radial_directions::Int
+end
+struct BracketingMethodSimultaneous <: AbstractBivariateMethod end
+
+struct BracketingMethodFix1Axis <: AbstractBivariateMethod end

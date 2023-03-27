@@ -2,6 +2,7 @@
 using Plots, DifferentialEquations
 using .Threads 
 using Interpolations, Random, Distributions
+using BenchmarkTools
 gr()
 
 Random.seed!(12348)
@@ -100,7 +101,8 @@ getMLE_ellipse_approximation!(model)
 
 univariate_confidenceintervals(model, profile_type=:EllipseApproxAnalytical)
 univariate_confidenceintervals(model, profile_type=:EllipseApprox)
-univariate_confidenceintervals(model, profile_type=:LogLikelihood)
+@btime univariate_confidenceintervals(model, profile_type=:LogLikelihood, use_unsafe_optimiser=false)
+@btime univariate_confidenceintervals(model, profile_type=:LogLikelihood, use_unsafe_optimiser=true)
 
 univariate_confidenceintervals(model, [1], profile_type=:EllipseApproxAnalytical)
 univariate_confidenceintervals(model, [:K], profile_type=:EllipseApprox)
@@ -110,10 +112,24 @@ univariate_confidenceintervals(model, 2, profile_type=:EllipseApprox)
 
 @time bivariate_confidenceprofiles(model, 100, profile_type=:EllipseApproxAnalytical)
 @time bivariate_confidenceprofiles(model, 10, profile_type=:EllipseApprox)
-@time bivariate_confidenceprofiles(model, 10, profile_type=:LogLikelihood, method=(:Bracketing,:Fix1Axis))
-@time bivariate_confidenceprofiles(model, 10, profile_type=:LogLikelihood, method=(:Bracketing,:VectorSearch))
+Random.seed!(12348)
+@btime bivariate_confidenceprofiles(model, 30, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+Random.seed!(12348)
+@btime bivariate_confidenceprofiles(model, 30, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis(), use_unsafe_optimiser=true)
+@time bivariate_confidenceprofiles(model, 10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
 
 
+bivariate_confidenceprofiles(model, [[:K, :C0], [:λ, :K]],  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
+bivariate_confidenceprofiles(model, [(:K, :C0)],  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
+@profview bivariate_confidenceprofiles(model, 2,  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
+@profview bivariate_confidenceprofiles(model, 2,  10, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+
+Random.seed!(12348)
+@btime bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+Random.seed!(12348)
+@btime bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
+Random.seed!(12348)
+@btime bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodRadial(4))
 
 # 1D profiles
 confInts, p = univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)

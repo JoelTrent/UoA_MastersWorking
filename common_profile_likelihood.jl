@@ -9,6 +9,17 @@ function convertθnames_toindices(model::LikelihoodModel, θnames_to_convert::Ve
     return indices
 end
 
+function convertθnames_toindices(model::LikelihoodModel, θnames_to_convert::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}})
+
+    indices = [zeros(Int, 2) for _ in 1:length(θnames_to_convert)]
+
+    for (i, names) in enumerate(θnames_to_convert)
+        indices[i] .= getindex.(Ref(model.core.θname_to_index), names)
+    end
+
+    return indices
+end
+
 function get_target_loglikelihood(model::LikelihoodModel, confidence_level::Float64, profile_type::Symbol, df::Int)
 
     llstar = -quantile(Chisq(df), confidence_level)/2
