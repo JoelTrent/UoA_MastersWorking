@@ -20,16 +20,16 @@ function univariateΨ_ellipse_analytical(Ψ, p)
     return analytic_ellipse_loglike([Ψ], [p.ind], p.consistent.data) - p.consistent.targetll
 end
 
-function univariateΨ_unsafe(Ψ, p)
-    θs=zeros(p.consistent.num_pars)
-    θs[p.ind] = Ψ
+# function univariateΨ_unsafe(Ψ, p)
+#     θs=zeros(p.consistent.num_pars)
+#     θs[p.ind] = Ψ
     
-    function fun(λ); p.consistent.loglikefunction(variablemapping1d!(θs, λ, p.θranges, p.λranges), p.consistent.data) end
+#     function fun(λ); p.consistent.loglikefunction(variablemapping1d!(θs, λ, p.θranges, p.λranges), p.consistent.data) end
 
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
-    llb=fopt-p.consistent.targetll
-    return llb, xopt
-end
+#     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+#     llb=fopt-p.consistent.targetll
+#     return llb, xopt
+# end
 
 function univariateΨ(Ψ, p)
     θs=zeros(p.consistent.num_pars)
@@ -44,14 +44,10 @@ function univariateΨ(Ψ, p)
     return llb, xopt
 end
 
-function get_univariate_opt_func(profile_type::Symbol, use_unsafe_optimiser::Bool)
+function get_univariate_opt_func(profile_type::Symbol)
 
     if profile_type == :LogLikelihood || profile_type == :EllipseApprox
-        if use_unsafe_optimiser 
-            return univariateΨ_unsafe
-        else
-            return univariateΨ
-        end
+        return univariateΨ
     elseif profile_type == :EllipseApproxAnalytical
         return univariateΨ_ellipse_analytical
     end
@@ -89,7 +85,7 @@ end
 
 # profile provided θ indices
 function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::Vector{<:Int64}; 
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false)
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood)
     
     valid_profile_type = profile_type in [:EllipseApprox, :EllipseApproxAnalytical, :LogLikelihood]
     @assert valid_profile_type "Specified `profile_type` is invalid. Allowed values are :EllipseApprox, :EllipseApproxAnalytical, :LogLikelihood."
@@ -100,7 +96,7 @@ function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::
 
     confidenceDict = Dict{Symbol, UnivariateConfidenceStruct}()
 
-    univariate_optimiser = get_univariate_opt_func(profile_type, use_unsafe_optimiser)
+    univariate_optimiser = get_univariate_opt_func(profile_type)
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 1)
 
     # at a later date, want to check if a this interval has already been evaluated for a given parameter
@@ -114,16 +110,16 @@ end
 
 # profile just provided θnames
 function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::Vector{<:Symbol}; 
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false)
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood)
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     return univariate_confidenceintervals(model, indices_to_profile, confidence_level=confidence_level,
-                                profile_type=profile_type, use_unsafe_optimiser=use_unsafe_optimiser)
+                                profile_type=profile_type)
 end
 
 # profile m random parameters (sampling without replacement), where 0 < m ≤ model.core.num_pars
 function univariate_confidenceintervals(model::LikelihoodModel, profile_m_random_parameters::Int; 
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false)
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood)
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
 
@@ -135,12 +131,12 @@ function univariate_confidenceintervals(model::LikelihoodModel, profile_m_random
     indices_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
 
     return univariate_confidenceintervals(model, indices_to_profile, confidence_level=confidence_level,
-                                profile_type=profile_type, use_unsafe_optimiser=use_unsafe_optimiser)
+                                profile_type=profile_type)
 end
 
 # profile all 
 function univariate_confidenceintervals(model::LikelihoodModel; 
-        confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false)
+        confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood)
     return univariate_confidenceintervals(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
-                            profile_type=profile_type, use_unsafe_optimiser=use_unsafe_optimiser)
+                            profile_type=profile_type)
 end

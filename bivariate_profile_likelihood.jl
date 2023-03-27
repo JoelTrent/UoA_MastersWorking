@@ -157,17 +157,17 @@ function findNpointpairs_radial(g::Function, model::LikelihoodModel, p::NamedTup
     return insidePoints, outsidePoints
 end
 
-function bivariateΨ_unsafe(Ψ, p)
-    θs=zeros(p.consistent.num_pars)
-    θs[p.ind1] = p.Ψ_x
-    θs[p.ind2] = Ψ
+# function bivariateΨ_unsafe(Ψ, p)
+#     θs=zeros(p.consistent.num_pars)
+#     θs[p.ind1] = p.Ψ_x
+#     θs[p.ind2] = Ψ
     
-    function fun(λ); return p.consistent.loglikefunction(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data) end
+#     function fun(λ); return p.consistent.loglikefunction(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data) end
 
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
-    llb=fopt-p.consistent.targetll
-    return llb, xopt
-end
+#     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+#     llb=fopt-p.consistent.targetll
+#     return llb, xopt
+# end
 
 function bivariateΨ(Ψ::Real, p)
     θs=zeros(p.consistent.num_pars)
@@ -183,16 +183,16 @@ function bivariateΨ(Ψ::Real, p)
     return llb, xopt
 end
 
-function bivariateΨ_vectorsearch_unsafe(Ψ, p)
-    θs=zeros(p.consistent.num_pars)
-    θs[p.ind1], θs[p.ind2] = p.pointa + Ψ*p.uhat
+# function bivariateΨ_vectorsearch_unsafe(Ψ, p)
+#     θs=zeros(p.consistent.num_pars)
+#     θs[p.ind1], θs[p.ind2] = p.pointa + Ψ*p.uhat
     
-    function fun(λ); return p.consistent.loglikefunction(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data) end
+#     function fun(λ); return p.consistent.loglikefunction(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data) end
 
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
-    llb=fopt-p.consistent.targetll
-    return llb, xopt
-end
+#     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+#     llb=fopt-p.consistent.targetll
+#     return llb, xopt
+# end
 
 function bivariateΨ_vectorsearch(Ψ, p)
     θs=zeros(p.consistent.num_pars)
@@ -231,29 +231,19 @@ function init_bivariate_parameters(model::LikelihoodModel, ind1::Int, ind2::Int)
     return newLb, newUb, initGuess, θranges, λranges
 end
 
-function get_bivariate_opt_func(profile_type::Symbol, use_unsafe_optimiser::Bool, method)
-
-
+function get_bivariate_opt_func(profile_type::Symbol, method::AbstractBivariateMethod)
     if method isa BracketingMethodFix1Axis
         if profile_type == :EllipseApproxAnalytical
             return bivariateΨ_ellipse_analytical
         elseif profile_type == :LogLikelihood || profile_type == :EllipseApprox
-            if use_unsafe_optimiser 
-                return bivariateΨ_unsafe
-            else
-                return bivariateΨ
-            end
+            return bivariateΨ
         end
 
     elseif method isa BracketingMethodRadial || method isa BracketingMethodSimultaneous
         if profile_type == :EllipseApproxAnalytical
             return bivariateΨ_ellipse_analytical_vectorsearch
         elseif profile_type == :LogLikelihood || profile_type == :EllipseApprox
-            if use_unsafe_optimiser 
-                return bivariateΨ_vectorsearch_unsafe
-            else
-                return bivariateΨ_vectorsearch
-            end
+            return bivariateΨ_vectorsearch
         end
     end
 
@@ -364,7 +354,7 @@ end
 
 # num_points is the number of points to compute for a given method, that are on the boundary and/or inside the boundary.
 function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations::Vector{Vector{Int64}}, num_points::Int; 
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false,
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood,
     method::AbstractBivariateMethod=BracketingMethodFix1Axis())
 
     valid_profile_type = profile_type in [:EllipseApprox, :EllipseApproxAnalytical, :LogLikelihood]
@@ -376,7 +366,7 @@ function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations::Ve
         check_ellipse_approx_exists!(model)
     end
 
-    bivariate_optimiser = get_bivariate_opt_func(profile_type, use_unsafe_optimiser, method)
+    bivariate_optimiser = get_bivariate_opt_func(profile_type, method)
 
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
 
@@ -416,19 +406,19 @@ end
 
 # profile just provided θcombinations_symbols
 function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations_symbols::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}}, num_points::Int;
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false,
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood,
     method::AbstractBivariateMethod=BracketingMethodFix1Axis())
 
     θcombinations = convertθnames_toindices(model, θcombinations_symbols)
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            use_unsafe_optimiser=use_unsafe_optimiser, method=method)
+            method=method)
 end
 
 # profile m random combinations of parameters (sampling without replacement), where 0 < m ≤ binomial(model.core.num_pars,2)
 function bivariate_confidenceprofiles(model::LikelihoodModel, profile_m_random_combinations::Int, num_points::Int;
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false,
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood,
     method::AbstractBivariateMethod=BracketingMethodFix1Axis())
 
     profile_m_random_combinations = max(0, min(profile_m_random_combinations, binomial(model.core.num_pars,2)))
@@ -442,18 +432,18 @@ function bivariate_confidenceprofiles(model::LikelihoodModel, profile_m_random_c
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            use_unsafe_optimiser=use_unsafe_optimiser, method=method)
+            method=method)
 end
 
 # profile all combinations
 function bivariate_confidenceprofiles(model::LikelihoodModel, num_points::Int; 
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood, use_unsafe_optimiser::Bool=false,
+    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood,
     method::AbstractBivariateMethod=BracketingMethodFix1Axis())
 
     θcombinations = collect(combinations(1:model.core.num_pars, 2))
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            use_unsafe_optimiser=use_unsafe_optimiser, method=method)
+            method=method)
 end
 
