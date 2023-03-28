@@ -396,6 +396,10 @@ function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations::Ve
             boundarySamples = bivariate_confidenceprofile_vectorsearch(
                         bivariate_optimiser, model, 
                         num_points, consistent, ind1, ind2, num_radial_directions=method.num_radial_directions)
+        elseif method isa ContinuationMethod
+            boundarySamples = bivariate_confidenceprofile_continuation(
+                        bivariate_optimiser, model, 
+                        num_points, consistent, ind1, ind2)
         end
         
         confidenceDict[(model.core.θnames[ind1], model.core.θnames[ind2])] = BivariateConfidenceStruct((model.core.θmle[ind1], model.core.θmle[ind2]), boundarySamples, model.core.θlb[[ind1, ind2]], model.core.θub[[ind1, ind2]])
