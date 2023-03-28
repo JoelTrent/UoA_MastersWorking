@@ -86,6 +86,10 @@ ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 
 # 3D approximation of the likelihood around the MLE solution
 H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
+θmle
+Γ
+inv(Γ[[2,3], [2,3]])
+
 
 likelihoodFunc = loglhood
 θnames = [:λ, :K, :C0]
@@ -101,8 +105,7 @@ getMLE_ellipse_approximation!(model)
 
 univariate_confidenceintervals(model, profile_type=:EllipseApproxAnalytical)
 univariate_confidenceintervals(model, profile_type=:EllipseApprox)
-@btime univariate_confidenceintervals(model, profile_type=:LogLikelihood, use_unsafe_optimiser=false)
-@btime univariate_confidenceintervals(model, profile_type=:LogLikelihood, use_unsafe_optimiser=true)
+univariate_confidenceintervals(model, profile_type=:LogLikelihood)
 
 univariate_confidenceintervals(model, [1], profile_type=:EllipseApproxAnalytical)
 univariate_confidenceintervals(model, [:K], profile_type=:EllipseApprox)
@@ -113,38 +116,37 @@ univariate_confidenceintervals(model, 2, profile_type=:EllipseApprox)
 @time bivariate_confidenceprofiles(model, 100, profile_type=:EllipseApproxAnalytical)
 @time bivariate_confidenceprofiles(model, 10, profile_type=:EllipseApprox)
 Random.seed!(12348)
-@btime bivariate_confidenceprofiles(model, 30, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+@time bivariate_confidenceprofiles(model, 30, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
 Random.seed!(12348)
-@btime bivariate_confidenceprofiles(model, 30, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis(), use_unsafe_optimiser=true)
 @time bivariate_confidenceprofiles(model, 10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
 
 
 bivariate_confidenceprofiles(model, [[:K, :C0], [:λ, :K]],  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
 bivariate_confidenceprofiles(model, [(:K, :C0)],  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
-@profview bivariate_confidenceprofiles(model, 2,  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
-@profview bivariate_confidenceprofiles(model, 2,  10, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+# @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
+# @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
 
 Random.seed!(12348)
-@btime bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+@time bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
 Random.seed!(12348)
-@btime bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
+@time bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
 Random.seed!(12348)
-@btime bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodRadial(4))
+@time bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodRadial(8))
 
-# 1D profiles
-confInts, p = univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
+# # 1D profiles
+# confInts, p = univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
 
-# 1D profile using elliptical approximation
-confInts_ellipse_analyt, p_ellipse_analyt = univariateprofiles_ellipse_analytical(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
-confInts_ellipse, p_ellipse = univariateprofiles_ellipse(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
+# # 1D profile using elliptical approximation
+# confInts_ellipse_analyt, p_ellipse_analyt = univariateprofiles_ellipse_analytical(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
+# confInts_ellipse, p_ellipse = univariateprofiles_ellipse(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
 
 
 # Combination profiles
-confIntsRel, pRel = univariateprofile_providedrelationship(AMinusB(:K, :C0, 0.0, 150.0, :KMinusC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
-println(confIntsRel)
+# confIntsRel, pRel = univariateprofile_providedrelationship(AMinusB(:K, :C0, 0.0, 150.0, :KMinusC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
+# println(confIntsRel)
 
-confIntsRel_ellipse, pRel_ellipse = univariateprofile_ellipse_providedrelationship(AMinusB(:K, :C0, 0.0, 150.0, :KMinusC0), θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
-println(confIntsRel_ellipse)
+# confIntsRel_ellipse, pRel_ellipse = univariateprofile_ellipse_providedrelationship(AMinusB(:K, :C0, 0.0, 150.0, :KMinusC0), θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
+# println(confIntsRel_ellipse)
 
 
 # confIntsRel, pRel = univariateprofile_providedrelationship(APlusB(:K, :C0, 50.0, 200.0, :KPlusC0), likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
