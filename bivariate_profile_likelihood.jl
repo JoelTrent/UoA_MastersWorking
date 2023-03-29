@@ -355,6 +355,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
 
         v_bar_norm = norm(v_bar, 2)
         uhat .= v_bar / v_bar_norm
+        ϵ=v_bar_norm/10^6
 
         if biv_opt_is_ellipse_analytical
             p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
@@ -364,8 +365,6 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                     θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
         end
 
-        ϵ=v_bar_norm/10^6
-
         Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=ϵ, Roots.Brent(); p=p)
         
         if biv_opt_is_ellipse_analytical
@@ -374,7 +373,6 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             boundarySamples[[ind1, ind2], i] .= pointa + Ψ_y1*uhat
             variablemapping2d!(@view(boundarySamples[:, i]), p.λ_opt, θranges, λranges)
         end
-
     end
 
     return boundarySamples

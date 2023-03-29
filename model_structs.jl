@@ -43,11 +43,29 @@ end
 
 abstract type AbstractConfidenceStruct end
 
-struct UnivariateConfidenceStruct <: AbstractConfidenceStruct
+struct UnivariateConfidenceStructAnalytical <: AbstractConfidenceStruct
     mle::Float64
     confidence_interval::Vector{<:Float64}
     lb::Float64
     ub::Float64
+    # confidence_level::Float64
+end
+
+struct UnivariateConfidenceStruct <: AbstractConfidenceStruct
+    mle::Float64
+    confidence_interval::Vector{<:Float64}
+    confidence_interval_all_pars::Matrix{<:Float64}
+    lb::Float64
+    ub::Float64
+    # confidence_level::Float64
+end
+
+struct BivariateConfidenceStructAnalytical <: AbstractConfidenceStruct
+    mle::Tuple{T,T} where T <: Float64
+    # var_indexes::Vector{<:Int64}
+    confidence_boundary_all_pars::Matrix{Float64}
+    lb::Vector{<:Float64}
+    ub::Vector{<:Float64}
     # confidence_level::Float64
 end
 
