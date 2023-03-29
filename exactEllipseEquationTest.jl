@@ -1,9 +1,9 @@
-
-
 # Section 1: set up packages and parameter values
 using Plots, DifferentialEquations
+using Distributions
 
 include("JuLikelihood.jl")
+Random.seed!(12348)
 
 # Workflow functions ##########################################################################
 
@@ -55,10 +55,31 @@ yobs = ytrue + σ*randn(length(t))
 # Named tuple of all data required within the likelihood function
 data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
 
+# Bounds on model parameters #################################################################
+λmin, λmax = (0.00, 0.05)
+Kmin, Kmax = (50., 150.)
+C0min, C0max = (0.0, 50.)
+
+θG = [λ, K, C0]
+lb = [λmin, Kmin, C0min]
+ub = [λmax, Kmax, C0max]
+
+##############################################################################################
+# Section 9: Find MLE by numerical optimisation, visually compare data and MLE solution
+# Use Nelder-Mead algorithm to estimate maximum likelihood solution for parameters given 
+# noisy data
+(xopt, fopt) = optimise(funmle, θG, lb, ub)
+fmle=fopt
+λmle, Kmle, C0mle = xopt .* 1.0
+θmle = [λmle, Kmle, C0mle]
+ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
+
+
 H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
 θmle
 Γ
-Hw = inv(Γ[[2,3], [2,3]])
+indexes=[2,3]
+Hw = inv(Γ[indexes, indexes]) .* 0.5 ./ (quantile(Chisq(2), 0.95)/2) # normalise Hw so that the RHS of the ellipse equation == 1
 
 
 
@@ -83,19 +104,16 @@ set_silent(m)
 JuMP.optimize!(m)
 solution_summary(m)
 
-a=value(a)
-b=value(b)
-α=value(α)
+a1=value(a)
+b1=value(b)
+α1=value(α)
 
-(cospi(α)^2)/a^2 + (sinpi(α)^2)/b^2
-cospi(α)*sinpi(α)*(1/a^2 - 1/b^2)
-(cospi(α)^2)/b^2 + (sinpi(α)^2)/a^2
+(cos(α1)^2)/a1^2 + (sin(α1)^2)/b1^2
+cos(α1)*sin(α1)*(1/a1^2 - 1/b1^2)
+(cos(α1)^2)/b1^2 + (sin(α1)^2)/a1^2
 
 # analytical formula for exact rotation of ellipse
 ellipse_rotation = atan(2*Hw[1,2]/(Hw[1,1]-Hw[2,2]))/2
-
-using JuMP
-import Ipopt
     
 m = Model(Ipopt.Optimizer)
 set_silent(m)
@@ -112,6 +130,82 @@ set_silent(m)
 JuMP.optimize!(m)
 solution_summary(m)
 
-a=value(a)
-b=value(b)
+a2=value(a)
+b2=value(b)
 
+# ANALYTICAL VALUES
+H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
+indexes=[2,3]
+Hw = inv(Γ[indexes, indexes]) .* 0.5 ./ (quantile(Chisq(2), 0.01)/2) # normalise Hw so that the RHS of the ellipse equation == 1
+
+ellipse_rotation = atan(2*Hw[1,2]/(Hw[1,1]-Hw[2,2]))/2
+y_radius = sqrt( (cos(ellipse_rotation)^4 - sin(ellipse_rotation)^4) / (Hw[2,2]*(cos(ellipse_rotation)^2) - Hw[1,1]*(sin(ellipse_rotation)^2))  )
+x_radius = sqrt( (cos(ellipse_rotation)^2) / (Hw[1,1] - (sin(ellipse_rotation)^2)/y_radius^2))
+
+a_analyt = max(x_radius, y_radius)
+b_analyt = min(x_radius, y_radius)
+
+m = 1 - (b_analyt/a_analyt)^2
+
+using Elliptic
+using Roots
+
+# full perimeter
+E(m) * 4 * a_analyt
+E(0.5*pi, m) * 4 * a_analyt
+
+# functions from https://www.johndcook.com/blog/2022/11/02/ellipse-rng/
+function E_inverse(z, m)
+    em = E(m)
+    t = (z/em)*(pi/2)
+    f(y) = E(y, m) - z
+    r = find_zero(f, t, Order0())
+    return r
+end
+
+function t_from_length(length, a, b)
+    m = 1 - (b/a)^2
+    T = 0.5*pi - E_inverse(E(m) - length/a, m)
+    return T
+end
+
+function t_from_length_robust(length, a, b, x_radius, y_radius)
+    if x_radius < y_radius
+        return t_from_length(length, a, b) + 0.5*pi
+    else
+        return t_from_length(length, a, b) 
+    end
+end
+
+function param_ellipse_x(angle::T, x_radius::T, y_radius::T, α::T, xmle::T) where T<:Float64
+    return x_radius*cos(angle)*cos(α) - y_radius*sin(angle)*sin(α) + xmle
+end
+
+function param_ellipse_y(angle::T, x_radius::T, y_radius::T, α::T, ymle::T) where T<:Float64
+    return x_radius*cos(angle)*sin(α) + y_radius*sin(angle)*cos(α) + ymle
+end
+
+N = 100
+perimeter_len = E(m) * 4 * a_analyt
+lengths = collect(LinRange(0, perimeter_len, N+1))[1:end-1]
+
+# angle from major axis
+@time angles = t_from_length_robust.(lengths, a_analyt, b_analyt, x_radius, y_radius)
+
+x = param_ellipse_x.(angles, x_radius, y_radius, ellipse_rotation, θmle[indexes[1]])
+y = param_ellipse_y.(angles, x_radius, y_radius, ellipse_rotation, θmle[indexes[2]])
+
+using Plots
+gr()
+
+boundaryPlot=scatter(x, y,
+            markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=2,
+            aspect_ratio = :equal,
+            # xlimits=(85,115),
+            # ylimits=(-5, 25)
+            )
+display(boundaryPlot)
+
+# check all x,y points are on the boundary
+
+[analytic_ellipse_loglike([x[i],y[i]], indexes, (θmle=θmle, Γmle = Γ)) for i in 1:N] 
