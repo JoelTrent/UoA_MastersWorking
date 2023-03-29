@@ -209,3 +209,64 @@ display(boundaryPlot)
 # check all x,y points are on the boundary
 
 [analytic_ellipse_loglike([x[i],y[i]], indexes, (θmle=θmle, Γmle = Γ)) for i in 1:N] 
+
+
+function calculate_ellipse_parameters(Γ, ind1, ind2, confidence_level)
+    Hw = inv(Γ[[ind1, ind2], [ind1, ind2]]) .* 0.5 ./ (quantile(Chisq(2), confidence_level)*0.5) # normalise Hw so that the RHS of the ellipse equation == 1
+
+    ellipse_rotation = atan(2*Hw[1,2]/(Hw[1,1]-Hw[2,2]))/2
+    y_radius = sqrt( (cos(ellipse_rotation)^4 - sin(ellipse_rotation)^4) / (Hw[2,2]*(cos(ellipse_rotation)^2) - Hw[1,1]*(sin(ellipse_rotation)^2))  )
+    x_radius = sqrt( (cos(ellipse_rotation)^2) / (Hw[1,1] - (sin(ellipse_rotation)^2)/y_radius^2))
+
+    a_analyt = max(x_radius, y_radius)
+    b_analyt = min(x_radius, y_radius)
+
+    return a_analyt, b_analyt, x_radius, y_radius, ellipse_rotation 
+end
+
+# start_point_shift ∈ [0,1] (random by default)
+function generateNpoints_on_ellipse(Γ, θmle, ind1, ind2, num_points; confidence_level=0.01,             
+    start_point_shift::Float64=rand())
+    points = zeros(2,num_points)
+
+    a_analyt, b_analyt, x_radius, y_radius, ellipse_rotation = calculate_ellipse_parameters(Γ, ind1, ind2, confidence_level)
+    
+    m = 1 - (b_analyt/a_analyt)^2
+    perimeter_len = E(m) * 4 * a_analyt
+
+    if !(0.0 ≤ start_point_shift && start_point_shift ≤ 1.0)
+        start_point_shift = abs(rem(start_point_shift,1))
+    end
+
+    shift = start_point_shift/num_points
+
+    lengths = collect(LinRange((shift)*perimeter_len, 
+                                (1+shift)*perimeter_len, num_points+1)
+                        )[1:end-1]
+    angles = t_from_length_robust.(lengths, a_analyt, b_analyt, x_radius, y_radius)
+    
+    for i in 1:num_points
+        points[:,i] .= param_ellipse_x(angles[i], x_radius, y_radius, ellipse_rotation, θmle[ind1]), 
+                param_ellipse_y(angles[i], x_radius, y_radius, ellipse_rotation, θmle[ind2])
+    end
+
+    return points
+end
+
+points1 = generateNpoints_on_ellipse(Γ, θmle, 2, 3, 20, confidence_level=0.01)
+
+points2 = generateNpoints_on_ellipse(Γ, θmle, 2, 3, 20, confidence_level=0.01, start_point_shift=0.0)
+
+boundaryPlot=scatter(points1[1,:], points1[2,:],
+            markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=2,
+            aspect_ratio = :equal,
+            # xlimits=(85,115),
+            # ylimits=(-5, 25)
+            )
+scatter!(points2[1,:], points2[2,:],
+            markersize=3, markershape=:circle, markercolor=:blue, msw=0, ms=2,
+            aspect_ratio = :equal,
+            # xlimits=(85,115),
+            # ylimits=(-5, 25)
+            )
+display(boundaryPlot)
