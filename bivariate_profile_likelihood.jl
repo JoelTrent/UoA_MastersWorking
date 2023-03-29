@@ -26,7 +26,7 @@ function generatepoint(model::LikelihoodModel, ind1::Int, ind2::Int)
 end
 
 # function findNpointpairs(p, N, lb, ub, ind1, ind2; maxIters)
-function findNpointpairs_simultaneous(g::Function, model::LikelihoodModel, p::NamedTuple, num_points::Int, ind1::Int, ind2::Int)
+function findNpointpairs_simultaneous(bivariate_optimiser::Function, model::LikelihoodModel, p::NamedTuple, num_points::Int, ind1::Int, ind2::Int)
 
     insidePoints  = zeros(2,num_points)
     outsidePoints = zeros(2,num_points)
@@ -37,7 +37,7 @@ function findNpointpairs_simultaneous(g::Function, model::LikelihoodModel, p::Na
 
         x, y = generatepoint(model, ind1, ind2)
         p=merge(p, (pointa=[x,y],))
-        if g(0.0, p) > 0
+        if bivariate_optimiser(0.0, p) > 0
             Ninside+=1
             insidePoints[:,Ninside] .= [x,y]
         else
@@ -52,7 +52,7 @@ function findNpointpairs_simultaneous(g::Function, model::LikelihoodModel, p::Na
     while Ninside < num_points
         x, y = generatepoint(model, ind1, ind2)
         p=merge(p, (pointa=[x,y],))
-        if g(0.0, p) > 0
+        if bivariate_optimiser(0.0, p) > 0
             Ninside+=1
             insidePoints[:,Ninside] .= [x,y]
         end
@@ -64,7 +64,7 @@ function findNpointpairs_simultaneous(g::Function, model::LikelihoodModel, p::Na
     while Noutside < num_points
         x, y = generatepoint(model, ind1, ind2)
         p=merge(p, (pointa=[x,y],))
-        if g(0.0, p) < 0
+        if bivariate_optimiser(0.0, p) < 0
             Noutside+=1
             outsidePoints[:,Noutside] .= [x,y]
         end
@@ -120,7 +120,7 @@ function find_m_spaced_radialdirections(num_directions::Int)
     return radial_dirs
 end
 
-function findNpointpairs_radial(g::Function, model::LikelihoodModel, p::NamedTuple, num_points::Int, num_directions::Int, ind1::Int, ind2::Int)
+function findNpointpairs_radial(bivariate_optimiser::Function, model::LikelihoodModel, p::NamedTuple, num_points::Int, num_directions::Int, ind1::Int, ind2::Int)
 
     insidePoints  = zeros(2,num_points)
     outsidePoints = zeros(2,num_points)
@@ -133,7 +133,7 @@ function findNpointpairs_radial(g::Function, model::LikelihoodModel, p::NamedTup
         while true
             x, y = generatepoint(model, ind1, ind2)
             p=merge(p, (pointa=[x,y],))
-            (g(0.0, p) < 0) || break
+            (bivariate_optimiser(0.0, p) < 0) || break
         end
         
         radial_dirs = find_m_spaced_radialdirections(num_directions)
@@ -143,7 +143,7 @@ function findNpointpairs_radial(g::Function, model::LikelihoodModel, p::NamedTup
 
             # if bound point is a point outside the boundary, accept the point combination
             p=merge(p, (pointa=boundpoint,))
-            if (g(0.0, p) < 0)
+            if (bivariate_optimiser(0.0, p) < 0)
                 count +=1
                 insidePoints[:, count] .= x, y 
                 outsidePoints[:, count] .= boundpoint
@@ -180,7 +180,8 @@ function bivariateΨ(Ψ::Real, p)
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
     llb=fopt-p.consistent.targetll
-    return llb, xopt
+    p.λ_opt .= xopt
+    return llb
 end
 
 # function bivariateΨ_vectorsearch_unsafe(Ψ, p)
@@ -205,7 +206,8 @@ function bivariateΨ_vectorsearch(Ψ, p)
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
     llb=fopt-p.consistent.targetll
-    return llb, xopt
+    p.λ_opt .= xopt
+    return llb
 end
 
 function bivariateΨ_ellipse_analytical(Ψ, p)
@@ -253,7 +255,6 @@ end
 function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, model::LikelihoodModel, num_points::Int, consistent::NamedTuple, ind1::Int, ind2::Int)
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
-    g(x,p) = bivariate_optimiser(x,p)[1]
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical
 
@@ -279,10 +280,15 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, mod
                 Ψ_y0 = rand(Uniform(lb[j], ub[j]))
                 Ψ_y1 = rand(Uniform(lb[j], ub[j]))
 
-                p0=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
-                    θranges=θranges, λranges=λranges, consistent=consistent)
+                if biv_opt_is_ellipse_analytical
+                    p0=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
+                        θranges=θranges, λranges=λranges, consistent=consistent)
+                else
+                    p0=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
+                        θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+                end
 
-                (( g(Ψ_y0, p0) * g(Ψ_y1, p0) ) ≥ 0) || break
+                (( bivariate_optimiser(Ψ_y0, p0) * bivariate_optimiser(Ψ_y1, p0) ) ≥ 0) || break
             end
 
             p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
@@ -290,20 +296,27 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, mod
 
             # println(count)
 
-            Ψ_y1 = find_zero(g, (Ψ_y0, Ψ_y1), atol=ϵ, Roots.Brent(); p=p)
+            if biv_opt_is_ellipse_analytical
+                p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
+                    θranges=θranges, λranges=λranges, consistent=consistent)
+            else
+                p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
+                    θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+            end
 
+            Ψ_y1 = find_zero(bivariate_optimiser, (Ψ_y0, Ψ_y1), atol=ϵ, Roots.Brent(); p=p)
 
             if biv_opt_is_ellipse_analytical
                 if indexesSorted
-                    boundarySamples[:, count] .= p[:Ψ_x], Ψ_y1
+                    boundarySamples[:, count] .= p.Ψ_x, Ψ_y1
                 else
-                    boundarySamples[:, count] .= Ψ_y1, p[:Ψ_x]
+                    boundarySamples[:, count] .= Ψ_y1, p.Ψ_x
                 end
             else
-                boundarySamples[i, count] = p[:Ψ_x]
+                boundarySamples[i, count] = p.Ψ_x
                 boundarySamples[j, count] = Ψ_y1
 
-                variablemapping2d!(@view(boundarySamples[:, count]), bivariate_optimiser(Ψ_y1, p)[2], θranges, λranges)
+                variablemapping2d!(@view(boundarySamples[:, count]), p.λ_opt, θranges, λranges)
             end
         end
     end
@@ -314,20 +327,26 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
 
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
-    g(x,p) = bivariate_optimiser(x,p)[1]
 
-    boundarySamples = zeros(model.core.num_pars, num_points)
-
+    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical_vectorsearch
+    
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
 
-    p0=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                θranges=θranges, λranges=λranges, consistent=consistent)
+    if biv_opt_is_ellipse_analytical
+        boundarySamples = zeros(2, num_points)
+        p0=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                    θranges=θranges, λranges=λranges, consistent=consistent)
+    else
+        boundarySamples = zeros(model.core.num_pars, num_points)
+        p0=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                    θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+    end
 
     if num_radial_directions == 0
-        insidePoints, outsidePoints = findNpointpairs_simultaneous(g, model, p0, num_points, ind1, ind2)
+        insidePoints, outsidePoints = findNpointpairs_simultaneous(bivariate_optimiser, model, p0, num_points, ind1, ind2)
     else
-        insidePoints, outsidePoints = findNpointpairs_radial(g, model, p0, num_points, num_radial_directions, ind1, ind2)
+        insidePoints, outsidePoints = findNpointpairs_radial(bivariate_optimiser, model, p0, num_points, num_radial_directions, ind1, ind2)
     end
 
     for i in 1:num_points
@@ -337,15 +356,25 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
         v_bar_norm = norm(v_bar, 2)
         uhat .= v_bar / v_bar_norm
 
-        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                θranges=θranges, λranges=λranges, consistent=consistent)
+        if biv_opt_is_ellipse_analytical
+            p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                    θranges=θranges, λranges=λranges, consistent=consistent)
+        else
+            p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                    θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+        end
 
         ϵ=v_bar_norm/10^6
 
-        Ψ_y1 = find_zero(g, (0.0, v_bar_norm), atol=ϵ, Roots.Brent(); p=p)
+        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=ϵ, Roots.Brent(); p=p)
         
-        boundarySamples[[ind1, ind2], i] .= pointa + Ψ_y1*uhat
-        variablemapping2d!(@view(boundarySamples[:, i]), bivariate_optimiser(Ψ_y1, p)[2], θranges, λranges)
+        if biv_opt_is_ellipse_analytical
+            boundarySamples[:, i] .= pointa + Ψ_y1*uhat
+        else
+            boundarySamples[[ind1, ind2], i] .= pointa + Ψ_y1*uhat
+            variablemapping2d!(@view(boundarySamples[:, i]), p.λ_opt, θranges, λranges)
+        end
+
     end
 
     return boundarySamples
@@ -402,7 +431,9 @@ function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations::Ve
                         num_points, consistent, ind1, ind2)
         end
         
-        confidenceDict[(model.core.θnames[ind1], model.core.θnames[ind2])] = BivariateConfidenceStruct((model.core.θmle[ind1], model.core.θmle[ind2]), boundarySamples, model.core.θlb[[ind1, ind2]], model.core.θub[[ind1, ind2]])
+        confidenceDict[(model.core.θnames[ind1], model.core.θnames[ind2])] = 
+                BivariateConfidenceStruct((model.core.θmle[ind1], model.core.θmle[ind2]), 
+                                            boundarySamples, model.core.θlb[[ind1, ind2]], model.core.θub[[ind1, ind2]])
     end
 
     return confidenceDict

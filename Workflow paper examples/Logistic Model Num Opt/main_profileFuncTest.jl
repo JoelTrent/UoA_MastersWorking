@@ -133,6 +133,13 @@ Random.seed!(12348)
 Random.seed!(12348)
 @time bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodRadial(8))
 
+
+test = bivariate_confidenceprofiles(model, 10, profile_type=:EllipseApproxAnalytical, method=BracketingMethodFix1Axis())
+
+test[(:K, :C0)].confidence_boundary_all_pars
+
+a=10
+
 # # 1D profiles
 # confInts, p = univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
 
