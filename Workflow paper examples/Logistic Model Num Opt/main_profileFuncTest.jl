@@ -90,6 +90,17 @@ H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
 Γ
 inv(Γ[[2,3], [2,3]])
 
+# using LinearAlgebra
+# sqrt.(1.0 ./ eigvals(inv(Γ[[2,3], [2,3]]) .* 0.5 ./ (quantile(Chisq(2), 0.95)*0.5)))
+
+# eigs = eigvecs(inv(Γ[[2,3], [2,3]]) .* 0.5 ./ (quantile(Chisq(2), 0.95)*0.5))
+
+# atan(eigs[2,1], eigs[1,1]) + pi/2
+
+
+# using EllipseSampling
+# EllipseSampling.calculate_ellipse_parameters(Γ, 2, 3, 0.95)
+
 
 likelihoodFunc = loglhood
 θnames = [:λ, :K, :C0]
@@ -102,6 +113,8 @@ model = initialiseLikelihoodModel(likelihoodFunc, data, θnames, θG, lb, ub)
 # not strictly required - functions that rely on these being computed will check if 
 # they're missing and call this function on model if so.
 getMLE_ellipse_approximation!(model)
+
+analytic_ellipse_loglike_1D_soln(3, (θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle), -quantile(Chisq(1), 0.95)/2 )
 
 univariate_confidenceintervals(model, profile_type=:EllipseApproxAnalytical)
 univariate_confidenceintervals(model, profile_type=:EllipseApprox)

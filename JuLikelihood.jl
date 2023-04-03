@@ -5,6 +5,7 @@ using StatsBase
 using Combinatorics
 using DataStructures
 using LinearAlgebra
+using EllipseSampling
 
 include("NLopt_optimiser.jl")
 include("model_structs.jl")

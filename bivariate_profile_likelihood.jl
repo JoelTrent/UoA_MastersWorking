@@ -379,6 +379,75 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
 end
 
 
+
+
+
+
+
+
+function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function, model::LikelihoodModel, num_points::Int, consistent::NamedTuple, ind1::Int, ind2::Int)
+
+
+    newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
+
+    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical_vectorsearch
+    
+    pointa = [0.0,0.0]
+    uhat   = [0.0,0.0]
+
+    # if biv_opt_is_ellipse_analytical
+    #     boundarySamples = zeros(2, num_points)
+    #     p0=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+    #                 θranges=θranges, λranges=λranges, consistent=consistent)
+    # else
+    boundarySamples = zeros(model.core.num_pars, num_points)
+    p0=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+    # end
+
+    # if num_radial_directions == 0
+    #     insidePoints, outsidePoints = findNpointpairs_simultaneous(bivariate_optimiser, model, p0, num_points, ind1, ind2)
+    # else
+    #     insidePoints, outsidePoints = findNpointpairs_radial(bivariate_optimiser, model, p0, num_points, num_radial_directions, ind1, ind2)
+    # end
+
+    # for i in 1:num_points
+    #     pointa .= insidePoints[:,i]
+    #     v_bar = outsidePoints[:,i] - insidePoints[:,i]
+
+    #     v_bar_norm = norm(v_bar, 2)
+    #     uhat .= v_bar / v_bar_norm
+    #     ϵ=1e-8
+
+    #     if biv_opt_is_ellipse_analytical
+    #         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+    #                 θranges=θranges, λranges=λranges, consistent=consistent)
+    #     else
+    #         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+    #                 θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+    #     end
+
+    #     Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=ϵ, Roots.Brent(); p=p)
+        
+    #     if biv_opt_is_ellipse_analytical
+    #         boundarySamples[:, i] .= pointa + Ψ_y1*uhat
+    #     else
+    #         boundarySamples[[ind1, ind2], i] .= pointa + Ψ_y1*uhat
+    #         variablemapping2d!(@view(boundarySamples[:, i]), p.λ_opt, θranges, λranges)
+    #     end
+    # end
+
+    return boundarySamples
+end
+
+
+
+
+
+
+
+
+
 # num_points is the number of points to compute for a given method, that are on the boundary and/or inside the boundary.
 function bivariate_confidenceprofiles(model::LikelihoodModel, θcombinations::Vector{Vector{Int64}}, num_points::Int; 
     confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood,
