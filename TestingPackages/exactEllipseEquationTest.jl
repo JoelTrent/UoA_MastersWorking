@@ -135,7 +135,7 @@ b2=value(b)
 
 # ANALYTICAL VALUES
 H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
-indexes=[2,3]
+indexes=[1,3]
 Hw = inv(Γ[indexes, indexes]) .* 0.5 ./ (quantile(Chisq(2), 0.01)/2) # normalise Hw so that the RHS of the ellipse equation == 1
 
 ellipse_rotation = atan(2*Hw[1,2]/(Hw[1,1]-Hw[2,2]))/2
@@ -155,34 +155,34 @@ E(m) * 4 * a_analyt
 E(0.5*pi, m) * 4 * a_analyt
 
 # functions from https://www.johndcook.com/blog/2022/11/02/ellipse-rng/
-function E_inverse(z, m)
-    em = E(m)
+function E_inverse(em::T, z::T, m::T) where T<:Float64
     t = (z/em)*(pi/2)
     f(y) = E(y, m) - z
     r = find_zero(f, t, Order0())
     return r
 end
 
-function t_from_length(length, a, b)
+function t_from_arclength(arc_len::T, a::T, b::T) where T<:Float64
     m = 1 - (b/a)^2
-    T = 0.5*pi - E_inverse(E(m) - length/a, m)
-    return T
+    em = E(m)
+    t = 0.5*pi - E_inverse(em, em - arc_len/a, m)
+    return t
 end
 
-function t_from_length_robust(length, a, b, x_radius, y_radius)
+function t_from_arclength_robust(arc_len::T, a::T, b::T, x_radius::T, y_radius::T) where T<:Float64
     if x_radius < y_radius
-        return t_from_length(length, a, b) + 0.5*pi
+        return t_from_arclength(arc_len, a, b) + 0.5*pi
     else
-        return t_from_length(length, a, b) 
+        return t_from_arclength(arc_len, a, b) 
     end
 end
 
 function param_ellipse_x(angle::T, x_radius::T, y_radius::T, α::T, xmle::T) where T<:Float64
-    return x_radius*cos(angle)*cos(α) - y_radius*sin(angle)*sin(α) + xmle
+    return x_radius*(cos(angle)*cos(α)) - y_radius*(sin(angle)*sin(α)) + xmle
 end
 
 function param_ellipse_y(angle::T, x_radius::T, y_radius::T, α::T, ymle::T) where T<:Float64
-    return x_radius*cos(angle)*sin(α) + y_radius*sin(angle)*cos(α) + ymle
+    return x_radius*(cos(angle)*sin(α)) + y_radius*(sin(angle)*cos(α)) + ymle
 end
 
 N = 100
@@ -190,7 +190,7 @@ perimeter_len = E(m) * 4 * a_analyt
 lengths = collect(LinRange(0, perimeter_len, N+1))[1:end-1]
 
 # angle from major axis
-@time angles = t_from_length_robust.(lengths, a_analyt, b_analyt, x_radius, y_radius)
+@time angles = t_from_arclength_robust.(lengths, a_analyt, b_analyt, x_radius, y_radius)
 
 x = param_ellipse_x.(angles, x_radius, y_radius, ellipse_rotation, θmle[indexes[1]])
 y = param_ellipse_y.(angles, x_radius, y_radius, ellipse_rotation, θmle[indexes[2]])
@@ -211,7 +211,7 @@ display(boundaryPlot)
 [analytic_ellipse_loglike([x[i],y[i]], indexes, (θmle=θmle, Γmle = Γ)) for i in 1:N] 
 
 
-function calculate_ellipse_parameters(Γ, ind1, ind2, confidence_level)
+function calculate_ellipse_parameters(Γ::Matrix{Float64}, ind1::Int, ind2::Int, confidence_level::Float64)
     Hw = inv(Γ[[ind1, ind2], [ind1, ind2]]) .* 0.5 ./ (quantile(Chisq(2), confidence_level)*0.5) # normalise Hw so that the RHS of the ellipse equation == 1
 
     ellipse_rotation = atan(2*Hw[1,2]/(Hw[1,1]-Hw[2,2]))/2
@@ -225,8 +225,9 @@ function calculate_ellipse_parameters(Γ, ind1, ind2, confidence_level)
 end
 
 # start_point_shift ∈ [0,1] (random by default)
-function generateNpoints_on_ellipse(Γ, θmle, ind1, ind2, num_points; confidence_level=0.01,             
+function generateNpoints_on_ellipse(Γ::Matrix{Float64}, θmle::Vector{Float64}, ind1::Int, ind2::Int, num_points::Int; confidence_level::Float64=0.01,             
     start_point_shift::Float64=rand())
+
     points = zeros(2,num_points)
 
     a_analyt, b_analyt, x_radius, y_radius, ellipse_rotation = calculate_ellipse_parameters(Γ, ind1, ind2, confidence_level)
@@ -243,7 +244,7 @@ function generateNpoints_on_ellipse(Γ, θmle, ind1, ind2, num_points; confidenc
     lengths = collect(LinRange((shift)*perimeter_len, 
                                 (1+shift)*perimeter_len, num_points+1)
                         )[1:end-1]
-    angles = t_from_length_robust.(lengths, a_analyt, b_analyt, x_radius, y_radius)
+    angles = t_from_arclength_robust.(lengths, a_analyt, b_analyt, x_radius, y_radius)
     
     for i in 1:num_points
         points[:,i] .= param_ellipse_x(angles[i], x_radius, y_radius, ellipse_rotation, θmle[ind1]), 
@@ -253,20 +254,32 @@ function generateNpoints_on_ellipse(Γ, θmle, ind1, ind2, num_points; confidenc
     return points
 end
 
-points1 = generateNpoints_on_ellipse(Γ, θmle, 2, 3, 20, confidence_level=0.01)
+# points1 = generateNpoints_on_ellipse(Γ, θmle, 1, 3, 100, confidence_level=0.01)
 
-points2 = generateNpoints_on_ellipse(Γ, θmle, 2, 3, 20, confidence_level=0.01, start_point_shift=0.0)
+points2 = generateNpoints_on_ellipse(Γ, θmle, 2, 3, 50, confidence_level=0.01, start_point_shift=0.9)
 
-boundaryPlot=scatter(points1[1,:], points1[2,:],
-            markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=2,
-            aspect_ratio = :equal,
-            # xlimits=(85,115),
-            # ylimits=(-5, 25)
-            )
-scatter!(points2[1,:], points2[2,:],
+# boundaryPlot=scatter(points1[1,:], points1[2,:],
+#             markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=2,
+#             # aspect_ratio = :equal,
+#             # xlimits=(85,115),
+#             # ylimits=(-5, 25)
+#             )
+scatter(points2[1,:], points2[2,:],
             markersize=3, markershape=:circle, markercolor=:blue, msw=0, ms=2,
             aspect_ratio = :equal,
             # xlimits=(85,115),
             # ylimits=(-5, 25)
             )
 display(boundaryPlot)
+
+
+import EllipseSampling
+
+e = EllipseSampling.construct_ellipse(1.0, 2.0)
+points = EllipseSampling.generateN_equally_spaced_points(100, e)
+boundaryPlot=scatter(points[1,:], points[2,:],
+            markersize=3, markershape=:circle, markercolor=:fuchsia, msw=0, ms=2,
+            aspect_ratio = :equal,
+            # xlimits=(85,115),
+            # ylimits=(-5, 25)
+            )
