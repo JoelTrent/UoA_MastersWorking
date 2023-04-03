@@ -267,7 +267,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, mod
     count=0
     for (i, j, N) in [[ind1, ind2, div(num_points,2)], [ind2, ind1, (div(num_points,2) + rem(num_points,2))]]
 
-        ϵ=(model.core.θub[i]-model.core.θlb[i])/10^6
+        ϵ=1e-8
         indexesSorted = i < j
 
         for k in 1:N
@@ -355,7 +355,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
 
         v_bar_norm = norm(v_bar, 2)
         uhat .= v_bar / v_bar_norm
-        ϵ=v_bar_norm/10^6
+        ϵ=1e-8
 
         if biv_opt_is_ellipse_analytical
             p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,

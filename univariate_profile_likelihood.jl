@@ -72,14 +72,20 @@ function univariate_confidenceinterval(univariate_optimiser::Function, model::Li
     boundsmapping1d!(initGuess, model.core.θmle, θi)
 
     θranges, λranges = variablemapping1dranges(model.core.num_pars, θi)
-    ϵ=(model.core.θub[θi]-model.core.θlb[θi])/10^6
+    ϵ=1e-8
 
     if univ_opt_is_ellipse_analytical
-        p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
-            θranges=θranges, λranges=λranges, consistent=consistent)
+        # p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+        #     θranges=θranges, λranges=λranges, consistent=consistent)
 
-        interval[1] = univariate_optimiser(model.core.θlb[θi], p) <= 0.0 ? find_zero(univariate_optimiser, (model.core.θlb[θi], model.core.θmle[θi]), atol=ϵ, Roots.Brent(), p=p) : NaN
-        interval[2] = univariate_optimiser(model.core.θub[θi], p) <= 0.0 ? find_zero(univariate_optimiser, (model.core.θmle[θi], model.core.θub[θi]), atol=ϵ, Roots.Brent(), p=p) : NaN
+        # interval[1] = univariate_optimiser(model.core.θlb[θi], p) <= 0.0 ? find_zero(univariate_optimiser, (model.core.θlb[θi], model.core.θmle[θi]), atol=ϵ, Roots.Brent(), p=p) : NaN
+        # interval[2] = univariate_optimiser(model.core.θub[θi], p) <= 0.0 ? find_zero(univariate_optimiser, (model.core.θmle[θi], model.core.θub[θi]), atol=ϵ, Roots.Brent(), p=p) : NaN
+
+        interval .= analytic_ellipse_loglike_1D_soln(θi, consistent.data, consistent.targetll)
+
+        if interval[1] < model.core.θlb[θi]; interval[1]=NaN end
+        if interval[2] > model.core.θub[θi]; interval[2]=NaN end
+
         return UnivariateConfidenceStructAnalytical(model.core.θmle[θi], interval, model.core.θlb[θi], model.core.θub[θi])
     end
 

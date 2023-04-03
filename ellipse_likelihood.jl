@@ -20,6 +20,17 @@ function analytic_ellipse_loglike(θ::Vector{T}, θIndexes::Vector{Int},
     return -0.5 * (θ-mleTuple.θmle[θIndexes])' * inv(mleTuple.Γmle[θIndexes, θIndexes]) * (θ-mleTuple.θmle[θIndexes])
 end
 
+"""
+```math
+L^* = -\\frac{1}{2}(w_i - w_i^*)^2 * Γ_i(θ^*)^{-1}
+w_1 =  w_1^* + \\sqrt{\\frac{-2 L^*}{Γ_i(θ^*)^{-1}}}
+```
+"""
+function analytic_ellipse_loglike_1D_soln(θIndex::Int, mleTuple::@NamedTuple{θmle::Vector{T}, Γmle::Matrix{T}}, targetll::T) where T<:Float64
+    sqrt_part = sqrt((-2 * targetll) / inv(mleTuple.Γmle[θIndex, θIndex]))
+    return mleTuple.θmle[θIndex] - sqrt_part, mleTuple.θmle[θIndex] + sqrt_part
+end
+
 # function ellipse_loglike(θ::Vector{T}, θmle::Vector{T}, H::Matrix{T})::Float64 where T<:Float64
 function ellipse_loglike(θ::Vector{T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}})::Float64 where T<:Float64
     return -0.5 * ((θ - mleTuple.θmle)' * mleTuple.Hmle * (θ - mleTuple.θmle))
