@@ -1,29 +1,31 @@
 
 using EllipseSampling
+using LinearAlgebra
 using Plots
 gr()
 
-e = construct_ellipse(2., 1.0)
-num_points=20
+e = construct_ellipse(10., 1.0)
+num_points=5
 
 # place N equally spaced points on boundary of ellipse approximation at some small confidence level.
 # generateN_equally_spaced_points(10, Γ, θmle, ind1, ind2)
-points = generateN_equally_spaced_points(num_points, e, start_point_shift=0.0)
+points = generate_N_equally_spaced_points(num_points, e, start_point_shift=0.0)
 
 # determine true loglikelihood function values at all N points
 # ll_vals = .....
-ll_vals = zeros(num_points) - 0.03
+ll_vals = zeros(num_points) .- 0.03
 # θmle = zeros(model.core.num_pars)
-θmle = zeros(model.core.num_pars)
+θmle = zeros(3)
 
 gradient_i = zeros(num_points)
-for i in 1:N
+# for i in 1:num_points
     # estimate gradient of normal as function value change between mle and ellipse point ÷ euclidean distance
     
 
-end
+# end
 
 # calculate normal at each point
+# Also implement via forward diff - gives both magnitude and 
 normal_vectors = zeros(2, num_points)
 
 # NOTE: METHOD REQUIRES THERE TO BE AT LEAST 3 POINTS

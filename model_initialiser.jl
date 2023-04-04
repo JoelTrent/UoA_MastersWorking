@@ -25,6 +25,5 @@ function initialiseLikelihoodModel(loglikefunction::Function,
                                     missing,
                                     conf_levels_evaluated, conf_ints_evaluated)
 
-
-    return likelihoodmodel    
+    return likelihoodmodel
 end

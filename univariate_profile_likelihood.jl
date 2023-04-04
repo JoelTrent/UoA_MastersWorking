@@ -45,11 +45,11 @@ function univariateΨ(Ψ, p)
     return llb
 end
 
-function get_univariate_opt_func(profile_type::Symbol)
+function get_univariate_opt_func(profile_type::AbstractProfileType=LogLikelihood())
 
-    if profile_type == :LogLikelihood || profile_type == :EllipseApprox
+    if profile_type isa LogLikelihood || profile_type isa EllipseApprox
         return univariateΨ
-    elseif profile_type == :EllipseApproxAnalytical
+    elseif profile_type isa EllipseApproxAnalytical
         return univariateΨ_ellipse_analytical
     end
 
@@ -117,12 +117,9 @@ end
 
 # profile provided θ indices
 function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::Vector{<:Int64}; 
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood)
-    
-    valid_profile_type = profile_type in [:EllipseApprox, :EllipseApproxAnalytical, :LogLikelihood]
-    @assert valid_profile_type "Specified `profile_type` is invalid. Allowed values are :EllipseApprox, :EllipseApproxAnalytical, :LogLikelihood."
+    confidence_level::Float64=0.95, profile_type::AbstractProfileType=LogLikelihood())
 
-    if profile_type in [:EllipseApprox, :EllipseApproxAnalytical]
+    if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
     end
 
@@ -144,7 +141,7 @@ end
 
 # profile just provided θnames
 function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::Vector{<:Symbol}; 
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood)
+    confidence_level::Float64=0.95, profile_type::AbstractProfileType=LogLikelihood())
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     return univariate_confidenceintervals(model, indices_to_profile, confidence_level=confidence_level,
@@ -153,14 +150,11 @@ end
 
 # profile m random parameters (sampling without replacement), where 0 < m ≤ model.core.num_pars
 function univariate_confidenceintervals(model::LikelihoodModel, profile_m_random_parameters::Int; 
-    confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood)
+    confidence_level::Float64=0.95, profile_type::AbstractProfileType=LogLikelihood())
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
 
-    if profile_m_random_parameters == 0
-        @error "`profile_m_random_parameters` must be a strictly positive integer."
-        return nothing
-    end
+    profile_m_random_parameters > 0 || throw(DomainError("profile_m_random_parameters must be a strictly positive integer"))
 
     indices_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
 
@@ -170,7 +164,7 @@ end
 
 # profile all 
 function univariate_confidenceintervals(model::LikelihoodModel; 
-        confidence_level::Float64=0.95, profile_type::Symbol=:LogLikelihood)
+        confidence_level::Float64=0.95, profile_type::AbstractProfileType=LogLikelihood())
     return univariate_confidenceintervals(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
                             profile_type=profile_type)
 end

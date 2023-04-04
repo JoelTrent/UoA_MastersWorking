@@ -2,7 +2,7 @@
 using Plots, DifferentialEquations
 using Distributions
 
-include("JuLikelihood.jl")
+include(joinpath("..", "JuLikelihood.jl"))
 Random.seed!(12348)
 
 # Workflow functions ##########################################################################

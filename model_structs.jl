@@ -2,6 +2,10 @@ abstract type AbstractLikelihoodModel end
 abstract type AbstractCoreLikelihoodModel end
 abstract type AbstractEllipseMLEApprox end
 
+abstract type AbstractConfidenceStruct end
+
+abstract type AbstractProfileType end
+abstract type AbstractEllipseProfileType <: AbstractProfileType end
 abstract type AbstractBivariateMethod end
 
 struct CoreLikelihoodModel <: AbstractCoreLikelihoodModel
@@ -41,8 +45,6 @@ mutable struct LikelihoodModel <: AbstractLikelihoodModel
 
 end
 
-abstract type AbstractConfidenceStruct end
-
 struct UnivariateConfidenceStructAnalytical <: AbstractConfidenceStruct
     mle::Float64
     confidence_interval::Vector{<:Float64}
@@ -78,9 +80,37 @@ struct BivariateConfidenceStruct <: AbstractConfidenceStruct
     # confidence_level::Float64
 end
 
+struct LogLikelihood <: AbstractProfileType end
+
+struct EllipseApprox <: AbstractEllipseProfileType end
+struct EllipseApproxAnalytical <: AbstractEllipseProfileType end
+
 struct BracketingMethodRadial <: AbstractBivariateMethod
     num_radial_directions::Int
+    BracketingMethodRadial(x) = x < 1 ? error("`num_radial_directions` must be greater than zero") : new(x)
 end
-struct BracketingMethodSimultaneous <: AbstractBivariateMethod end
 
+struct BracketingMethodSimultaneous <: AbstractBivariateMethod end
 struct BracketingMethodFix1Axis <: AbstractBivariateMethod end
+
+"""
+`ellipse_confidence_level` is the confidence level at which to construct the initial ellipse.
+`num_level_sets` the number of level sets used to get to the highest confidence level set specified in target_confidence_levels. `num_level_sets` ≥ length(target_confidence_levels)
+"""
+struct ContinuationMethod <: AbstractBivariateMethod 
+    ellipse_confidence_level::Float64
+    target_confidence_levels::Union{Float64, Vector{<:Float64}}
+    num_level_sets::Int
+
+    function ContinuationMethod(x,y,z)
+        (0.0 ≤ confidence_level && confidence_level ≤ 1.0) || throw(DomainError("confidence_level must be in the interval [0,1]"))
+
+        if y isa Float64
+            
+
+        num_level_sets
+        return new(x,y,z)
+    end
+end
+
+struct AnalyticalEllipseMethod <: AbstractBivariateMethod end
