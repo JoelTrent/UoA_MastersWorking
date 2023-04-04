@@ -36,7 +36,7 @@ function findNpointpairs_simultaneous(bivariate_optimiser::Function, model::Like
     while Noutside<num_points && Ninside<num_points
 
         x, y = generatepoint(model, ind1, ind2)
-        p=merge(p, (pointa=[x,y],))
+        p.pointa .= [x,y]
         if bivariate_optimiser(0.0, p) > 0
             Ninside+=1
             insidePoints[:,Ninside] .= [x,y]
@@ -51,7 +51,7 @@ function findNpointpairs_simultaneous(bivariate_optimiser::Function, model::Like
     # while Ninside < N && iters < maxIters
     while Ninside < num_points
         x, y = generatepoint(model, ind1, ind2)
-        p=merge(p, (pointa=[x,y],))
+        p.pointa .= [x,y]
         if bivariate_optimiser(0.0, p) > 0
             Ninside+=1
             insidePoints[:,Ninside] .= [x,y]
@@ -63,7 +63,7 @@ function findNpointpairs_simultaneous(bivariate_optimiser::Function, model::Like
     # while Noutside < N && iters < maxIters
     while Noutside < num_points
         x, y = generatepoint(model, ind1, ind2)
-        p=merge(p, (pointa=[x,y],))
+        p.pointa .= [x,y]
         if bivariate_optimiser(0.0, p) < 0
             Noutside+=1
             outsidePoints[:,Noutside] .= [x,y]
@@ -132,7 +132,7 @@ function findNpointpairs_radial(bivariate_optimiser::Function, model::Likelihood
         # find an internal point
         while true
             x, y = generatepoint(model, ind1, ind2)
-            p=merge(p, (pointa=[x,y],))
+            p.pointa .= [x,y]
             (bivariate_optimiser(0.0, p) < 0) || break
         end
         
@@ -142,7 +142,7 @@ function findNpointpairs_radial(bivariate_optimiser::Function, model::Likelihood
             boundpoint = findpointonbounds(model, (x, y), radial_dirs[i], ind1, ind2)
 
             # if bound point is a point outside the boundary, accept the point combination
-            p=merge(p, (pointa=boundpoint,))
+            p.pointa .= boundpoint
             if (bivariate_optimiser(0.0, p) < 0)
                 count +=1
                 insidePoints[:, count] .= x, y 
