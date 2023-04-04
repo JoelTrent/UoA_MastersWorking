@@ -56,7 +56,7 @@ end
 struct UnivariateConfidenceStruct <: AbstractConfidenceStruct
     mle::Float64
     confidence_interval::Vector{<:Float64}
-    confidence_interval_all_pars::Matrix{<:Float64}
+    confidence_interval_all_pars::Matrix{Float64}
     lb::Float64
     ub::Float64
     # confidence_level::Float64
@@ -81,7 +81,6 @@ struct BivariateConfidenceStruct <: AbstractConfidenceStruct
 end
 
 struct LogLikelihood <: AbstractProfileType end
-
 struct EllipseApprox <: AbstractEllipseProfileType end
 struct EllipseApproxAnalytical <: AbstractEllipseProfileType end
 
@@ -105,7 +104,7 @@ struct ContinuationMethod <: AbstractBivariateMethod
     function ContinuationMethod(x,y,z)
         (0.0 ≤ confidence_level && confidence_level ≤ 1.0) || throw(DomainError("confidence_level must be in the interval [0,1]"))
 
-        if y isa Float64
+        # if y isa Float64
             
 
         num_level_sets

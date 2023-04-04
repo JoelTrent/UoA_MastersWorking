@@ -116,38 +116,40 @@ getMLE_ellipse_approximation!(model)
 
 analytic_ellipse_loglike_1D_soln(3, (θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle), -quantile(Chisq(1), 0.95)/2 )
 
-univariate_confidenceintervals(model, profile_type=:EllipseApproxAnalytical)
-univariate_confidenceintervals(model, profile_type=:EllipseApprox)
-univariate_confidenceintervals(model, profile_type=:LogLikelihood)
+univariate_confidenceintervals(model, profile_type=EllipseApproxAnalytical())
+univariate_confidenceintervals(model, profile_type=EllipseApprox())
+univariate_confidenceintervals(model, profile_type=LogLikelihood())
 
-univariate_confidenceintervals(model, [1], profile_type=:EllipseApproxAnalytical)
-univariate_confidenceintervals(model, [:K], profile_type=:EllipseApprox)
+univariate_confidenceintervals(model, [1], profile_type=EllipseApproxAnalytical())
+univariate_confidenceintervals(model, [:K], profile_type=EllipseApprox())
 univariate_confidenceintervals(model, [1,2,3])
-univariate_confidenceintervals(model, 2, profile_type=:EllipseApprox)
+univariate_confidenceintervals(model, 2, profile_type=EllipseApprox())
 
 
-@time bivariate_confidenceprofiles(model, 100, profile_type=:EllipseApproxAnalytical)
-@time bivariate_confidenceprofiles(model, 10, profile_type=:EllipseApprox)
+@time bivariate_confidenceprofiles(model, 100, profile_type=EllipseApproxAnalytical())
+@time bivariate_confidenceprofiles(model, 10, profile_type=EllipseApprox())
 Random.seed!(12348)
-@time bivariate_confidenceprofiles(model, 30, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+@time bivariate_confidenceprofiles(model, 30, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
 Random.seed!(12348)
-@time bivariate_confidenceprofiles(model, 10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
+@time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
 
 
-bivariate_confidenceprofiles(model, [[:K, :C0], [:λ, :K]],  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
-bivariate_confidenceprofiles(model, [(:K, :C0)],  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
-# @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
-# @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+bivariate_confidenceprofiles(model, [[:K, :C0], [:λ, :K]],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
+bivariate_confidenceprofiles(model, [(:K, :C0)],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
+# @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
+# @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
 
 Random.seed!(12348)
-@time bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodFix1Axis())
+@time bivariate_confidenceprofiles(model, 100, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
 Random.seed!(12348)
-@time bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodSimultaneous())
+@time bivariate_confidenceprofiles(model, 100, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
 Random.seed!(12348)
-@time bivariate_confidenceprofiles(model, 100, profile_type=:LogLikelihood, method=BracketingMethodRadial(8))
+@time bivariate_confidenceprofiles(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(8))
 
 
-test = bivariate_confidenceprofiles(model, 10, profile_type=:EllipseApproxAnalytical, method=BracketingMethodFix1Axis())
+test = bivariate_confidenceprofiles(model, 10, profile_type=EllipseApproxAnalytical(), method=BracketingMethodFix1Axis())
+
+test = bivariate_confidenceprofiles(model, 10, method=AnalyticalEllipseMethod())
 
 test[(:K, :C0)].confidence_boundary_all_pars
 
