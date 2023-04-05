@@ -24,7 +24,7 @@ function get_target_loglikelihood(model::LikelihoodModel, confidence_level::Floa
 
     (0.0 ≤ confidence_level && confidence_level ≤ 1.0) || throw(DomainError("confidence_level must be in the interval [0,1]"))
 
-    llstar = -quantile(Chisq(df), confidence_level)/2
+    llstar = -quantile(Chisq(df), confidence_level)/2.0
 
     if profile_type isa LogLikelihood
         return model.core.maximisedmle+llstar

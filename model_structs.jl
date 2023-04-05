@@ -98,16 +98,18 @@ struct BracketingMethodFix1Axis <: AbstractBivariateMethod end
 """
 struct ContinuationMethod <: AbstractBivariateMethod 
     ellipse_confidence_level::Float64
-    target_confidence_levels::Union{Float64, Vector{<:Float64}}
+    target_confidence_level::Float64
+    # target_confidence_levels::Union{Float64, Vector{<:Float64}}
     num_level_sets::Int
 
     function ContinuationMethod(x,y,z)
-        (0.0 ≤ confidence_level && confidence_level ≤ 1.0) || throw(DomainError("confidence_level must be in the interval [0,1]"))
+        (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the interval (0.0,1.0)"))
+
+        (0.0 < y && y < 1.0) || throw(DomainError("target_confidence_level must be in the interval (0.0,1.0)"))
 
         # if y isa Float64
-            
 
-        num_level_sets
+        z > 0 || throw(DomainError("num_level_sets must be greater than zero"))
         return new(x,y,z)
     end
 end
