@@ -173,7 +173,7 @@ function bivariateΨ(Ψ::Real, p)
     θs=zeros(p.consistent.num_pars)
     
     function fun(λ)
-        θs[p.ind1] = p.Ψ_x
+        θs[p.ind1] = p.Ψ_x[1]
         θs[p.ind2] = Ψ
         return p.consistent.loglikefunction(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data)
     end
@@ -225,7 +225,7 @@ function bivariateΨ_gradient(Ψ::Vector{<:Float64}, p)
 end
 
 function bivariateΨ_ellipse_analytical(Ψ, p)
-    return analytic_ellipse_loglike([p.Ψ_x, Ψ], [p.ind1, p.ind2], p.consistent.data) - p.consistent.targetll
+    return analytic_ellipse_loglike([p.Ψ_x[1], Ψ], [p.ind1, p.ind2], p.consistent.data) - p.consistent.targetll
 end
 
 function bivariateΨ_ellipse_analytical_vectorsearch(Ψ, p)
@@ -287,50 +287,37 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, mod
         ϵ=1e-8
         indexesSorted = i < j
 
+        if biv_opt_is_ellipse_analytical
+            p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=[0.0],
+                θranges=θranges, λranges=λranges, consistent=consistent)
+        else
+            p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=[0.0],
+                θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+        end
+
         for _ in 1:N
             count +=1
-            Ψ_x, Ψ_y0, Ψ_y1 = 0.0, 0.0, 0.0
+            Ψ_y0, Ψ_y1 = 0.0, 0.0
 
             # do-while loop
             while true
-                Ψ_x = rand(Uniform(lb[i], ub[i]))
+                p.Ψ_x[1] = rand(Uniform(lb[i], ub[i]))
                 Ψ_y0 = rand(Uniform(lb[j], ub[j]))
-                Ψ_y1 = rand(Uniform(lb[j], ub[j]))
+                Ψ_y1 = rand(Uniform(lb[j], ub[j])) 
 
-                if biv_opt_is_ellipse_analytical
-                    p0=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
-                        θranges=θranges, λranges=λranges, consistent=consistent)
-                else
-                    p0=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
-                        θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
-                end
-
-                (( bivariate_optimiser(Ψ_y0, p0) * bivariate_optimiser(Ψ_y1, p0) ) ≥ 0) || break
-            end
-
-            p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
-                θranges=θranges, λranges=λranges, consistent=consistent)
-
-            # println(count)
-
-            if biv_opt_is_ellipse_analytical
-                p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
-                    θranges=θranges, λranges=λranges, consistent=consistent)
-            else
-                p=(ind1=i, ind2=j, newLb=newLb, newUb=newUb, initGuess=initGuess, Ψ_x=Ψ_x,
-                    θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+                (( bivariate_optimiser(Ψ_y0, p) * bivariate_optimiser(Ψ_y1, p) ) ≥ 0) || break
             end
 
             Ψ_y1 = find_zero(bivariate_optimiser, (Ψ_y0, Ψ_y1), atol=ϵ, Roots.Brent(); p=p)
 
             if biv_opt_is_ellipse_analytical
                 if indexesSorted
-                    boundarySamples[:, count] .= p.Ψ_x, Ψ_y1
+                    boundarySamples[:, count] .= p.Ψ_x[1], Ψ_y1
                 else
-                    boundarySamples[:, count] .= Ψ_y1, p.Ψ_x
+                    boundarySamples[:, count] .= Ψ_y1, p.Ψ_x[1]
                 end
             else
-                boundarySamples[i, count] = p.Ψ_x
+                boundarySamples[i, count] = p.Ψ_x[1]
                 boundarySamples[j, count] = Ψ_y1
 
                 variablemapping2d!(@view(boundarySamples[:, count]), p.λ_opt, θranges, λranges)
@@ -352,42 +339,34 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
 
     if biv_opt_is_ellipse_analytical
         boundarySamples = zeros(2, num_points)
-        p0=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
                     θranges=θranges, λranges=λranges, consistent=consistent)
     else
         boundarySamples = zeros(model.core.num_pars, num_points)
-        p0=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
                     θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
     end
 
     if num_radial_directions == 0
-        insidePoints, outsidePoints = findNpointpairs_simultaneous(bivariate_optimiser, model, p0, num_points, ind1, ind2)
+        insidePoints, outsidePoints = findNpointpairs_simultaneous(bivariate_optimiser, model, p, num_points, ind1, ind2)
     else
-        insidePoints, outsidePoints = findNpointpairs_radial(bivariate_optimiser, model, p0, num_points, num_radial_directions, ind1, ind2)
+        insidePoints, outsidePoints = findNpointpairs_radial(bivariate_optimiser, model, p, num_points, num_radial_directions, ind1, ind2)
     end
 
+    ϵ=1e-8
     for i in 1:num_points
-        pointa .= insidePoints[:,i]
+        p.pointa .= insidePoints[:,i]
         v_bar = outsidePoints[:,i] - insidePoints[:,i]
 
         v_bar_norm = norm(v_bar, 2)
-        uhat .= v_bar / v_bar_norm
-        ϵ=1e-8
-
-        if biv_opt_is_ellipse_analytical
-            p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, λranges=λranges, consistent=consistent)
-        else
-            p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
-        end
+        p.uhat .= v_bar / v_bar_norm
 
         Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=ϵ, Roots.Brent(); p=p)
         
         if biv_opt_is_ellipse_analytical
-            boundarySamples[:, i] .= pointa + Ψ_y1*uhat
+            boundarySamples[:, i] .= p.pointa + Ψ_y1*p.uhat
         else
-            boundarySamples[[ind1, ind2], i] .= pointa + Ψ_y1*uhat
+            boundarySamples[[ind1, ind2], i] .= p.pointa + Ψ_y1*p.uhat
             variablemapping2d!(@view(boundarySamples[:, i]), p.λ_opt, θranges, λranges)
         end
     end
