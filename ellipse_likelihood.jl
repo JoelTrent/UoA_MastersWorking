@@ -15,7 +15,7 @@
 # where a bound would be active.
 # Pushing forward from these confidence bounds may be infeasible - if analytical profile has entered a space
 # where a parameter bound is active.
-function analytic_ellipse_loglike(θ::Vector{T}, θIndexes::Vector{Int}, 
+function analytic_ellipse_loglike(θ::Vector, θIndexes::Vector{Int}, 
     mleTuple::@NamedTuple{θmle::Vector{T}, Γmle::Matrix{T}}) where T<:Float64
     return -0.5 * (θ-mleTuple.θmle[θIndexes])' * inv(mleTuple.Γmle[θIndexes, θIndexes]) * (θ-mleTuple.θmle[θIndexes])
 end
@@ -32,7 +32,7 @@ function analytic_ellipse_loglike_1D_soln(θIndex::Int, mleTuple::@NamedTuple{θ
 end
 
 # function ellipse_loglike(θ::Vector{T}, θmle::Vector{T}, H::Matrix{T})::Float64 where T<:Float64
-function ellipse_loglike(θ::Vector{T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}})::Float64 where T<:Float64
+function ellipse_loglike(θ::Vector, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where T<:Float64
     return -0.5 * ((θ - mleTuple.θmle)' * mleTuple.Hmle * (θ - mleTuple.θmle))
 end
 
