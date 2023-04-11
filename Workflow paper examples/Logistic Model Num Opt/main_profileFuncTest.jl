@@ -116,22 +116,28 @@ getMLE_ellipse_approximation!(model)
 
 analytic_ellipse_loglike_1D_soln(3, (θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle), -quantile(Chisq(1), 0.95)/2 )
 
-f(x) = likelihoodFunc([x[1], x[2], θmle[3]], data)
+f(x) = likelihoodFunc([θmle[1], x[1], x[2]], data)
 # import Zygote
 # using SciMLSensitivity
 # Zygote.gradient(f, θmle[1:2])
-ForwardDiff.gradient(f, θmle[1:2])
+ForwardDiff.gradient(f, θmle[2:3])
 
 function h(x)
     xs = zeros(eltype(x),3) 
 
     function fun(λ)
-        xs[:] .= x[1], x[2], λ 
+        xs[:] .= λ, x[1], x[2]
         likelihoodFunc(xs, data) 
     end
-    fun(θmle[3])
+    fun(θmle[1])
 end
-ForwardDiff.gradient(h, θmle[1:2])
+twodgrad = ForwardDiff.gradient(h, θmle[2:3])
+
+e(x) = likelihoodFunc(x, data)
+fullgrad = ForwardDiff.gradient(e, θmle)
+
+fullgrad[2:3] / norm(fullgrad[2:3],2)
+twodgrad / norm(twodgrad,2)
 
 newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, 1, 2)
 
@@ -140,7 +146,7 @@ g(x) = bivariateΨ_gradient!(x, p)
 # ForwardDiff.gradient(g, θmle[1:2])
 ForwardDiff.gradient(g, θmle[1:2])
 
-@time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=ContinuationMethod(0.99, 0.95, 5))
+@time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 0.95, 5))
 
 univariate_confidenceintervals(model, profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals(model, profile_type=EllipseApprox())

@@ -1,13 +1,15 @@
-# parameters are vectors of ints - i.e. call using vectors of ints directly or look up position of parameter
-# from a symbol vector using a lookup table.
-# Note. we assume that ordering remains the same.
-# A 'independentParameter' is one where the new parameter Θ[i] depends only on f(θ[i]).
-# A 'dependentParameter' is one where the new parameter Θ[i] depends on f(θ[i], θ[j], j!=i)
-# 
-# I suspect that the dependentParameter heuristic may fail if there are multiple local minima - a binary integer 
-# programme may be required instead (however, integer requirement on variables can be relaxed)
-# 
-# ONLY VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES
+"""
+parameters are vectors of ints - i.e. call using vectors of ints directly or look up position of parameter
+from a symbol vector using a lookup table.
+Note. we assume that ordering remains the same.
+A 'independentParameter' is one where the new parameter Θ[i] depends only on f(θ[i]).
+A 'dependentParameter' is one where the new parameter Θ[i] depends on f(θ[i], θ[j], j!=i)
+
+I suspect that the dependentParameter heuristic may fail if there are multiple local minima - a binary integer 
+programme may be required instead (however, integer requirement on variables can be relaxed)
+
+ONLY VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES
+"""
 function transformbounds(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64},
     independentParameterIndexes::Vector{<:Int}=Int[], dependentParameterIndexes::Vector{<:Int}=Int[])
 

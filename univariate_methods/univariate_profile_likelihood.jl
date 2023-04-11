@@ -1,50 +1,3 @@
-function variablemapping1dranges(num_pars::T, index::T) where T <: Int
-    θranges = (1:(index-1), (index+1):num_pars)
-    λranges = (1:(index-1), index:(num_pars-1))
-    return θranges, λranges
-end
-
-function variablemapping1d!(θ, λ, θranges, λranges)
-    θ[θranges[1]] .= @view(λ[λranges[1]])
-    θ[θranges[2]] .= @view(λ[λranges[2]])
-    return θ
-end
-
-function boundsmapping1d!(newbounds::Vector{<:Float64}, bounds::Vector{<:Float64}, index::Int)
-    newbounds[1:(index-1)] .= @view(bounds[1:(index-1)])
-    newbounds[index:end]   .= @view(bounds[(index+1):end])
-    return nothing
-end
-
-function univariateΨ_ellipse_analytical(Ψ, p)
-    return analytic_ellipse_loglike([Ψ], [p.ind], p.consistent.data) - p.consistent.targetll
-end
-
-# function univariateΨ_unsafe(Ψ, p)
-#     θs=zeros(p.consistent.num_pars)
-#     θs[p.ind] = Ψ
-    
-#     function fun(λ); p.consistent.loglikefunction(variablemapping1d!(θs, λ, p.θranges, p.λranges), p.consistent.data) end
-
-#     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
-#     llb=fopt-p.consistent.targetll
-#     return llb, xopt
-# end
-
-function univariateΨ(Ψ, p)
-    θs=zeros(p.consistent.num_pars)
-
-    function fun(λ)
-        θs[p.ind] = Ψ
-        return p.consistent.loglikefunction(variablemapping1d!(θs, λ, p.θranges, p.λranges), p.consistent.data) 
-    end
-
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
-    llb=fopt-p.consistent.targetll
-    p.λ_opt .= xopt
-    return llb
-end
-
 function get_univariate_opt_func(profile_type::AbstractProfileType=LogLikelihood())
 
     if profile_type isa LogLikelihood || profile_type isa EllipseApprox
@@ -56,7 +9,10 @@ function get_univariate_opt_func(profile_type::AbstractProfileType=LogLikelihood
     return (missing)
 end
 
-function univariate_confidenceinterval(univariate_optimiser::Function, model::LikelihoodModel, consistent::NamedTuple, θi::Int)
+function univariate_confidenceinterval(univariate_optimiser::Function, 
+                                        model::LikelihoodModel, 
+                                        consistent::NamedTuple, 
+                                        θi::Int)
 
     univ_opt_is_ellipse_analytical = univariate_optimiser == univariateΨ_ellipse_analytical
 
@@ -116,8 +72,10 @@ function univariate_confidenceinterval(univariate_optimiser::Function, model::Li
 end
 
 # profile provided θ indices
-function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::Vector{<:Int64}; 
-    confidence_level::Float64=0.95, profile_type::AbstractProfileType=LogLikelihood())
+function univariate_confidenceintervals(model::LikelihoodModel, 
+                                        θs_to_profile::Vector{<:Int64}; 
+                                        confidence_level::Float64=0.95, 
+                                        profile_type::AbstractProfileType=LogLikelihood())
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
@@ -140,8 +98,10 @@ function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::
 end
 
 # profile just provided θnames
-function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::Vector{<:Symbol}; 
-    confidence_level::Float64=0.95, profile_type::AbstractProfileType=LogLikelihood())
+function univariate_confidenceintervals(model::LikelihoodModel, 
+                                        θs_to_profile::Vector{<:Symbol}; 
+                                        confidence_level::Float64=0.95, 
+                                        profile_type::AbstractProfileType=LogLikelihood())
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     return univariate_confidenceintervals(model, indices_to_profile, confidence_level=confidence_level,
@@ -149,8 +109,10 @@ function univariate_confidenceintervals(model::LikelihoodModel, θs_to_profile::
 end
 
 # profile m random parameters (sampling without replacement), where 0 < m ≤ model.core.num_pars
-function univariate_confidenceintervals(model::LikelihoodModel, profile_m_random_parameters::Int; 
-    confidence_level::Float64=0.95, profile_type::AbstractProfileType=LogLikelihood())
+function univariate_confidenceintervals(model::LikelihoodModel, 
+                                        profile_m_random_parameters::Int; 
+                                        confidence_level::Float64=0.95, 
+                                        profile_type::AbstractProfileType=LogLikelihood())
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
 
@@ -164,7 +126,8 @@ end
 
 # profile all 
 function univariate_confidenceintervals(model::LikelihoodModel; 
-        confidence_level::Float64=0.95, profile_type::AbstractProfileType=LogLikelihood())
+                                        confidence_level::Float64=0.95, 
+                                        profile_type::AbstractProfileType=LogLikelihood())
     return univariate_confidenceintervals(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
                             profile_type=profile_type)
 end
