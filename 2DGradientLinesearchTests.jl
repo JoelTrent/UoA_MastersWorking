@@ -162,9 +162,10 @@ mappedLikeFunction(0.00, p)
 ϵ=1e-8
 
 println("find_zero methods:")
-@btime psi = find_zero(bivariateΨ_vectorsearch!, 0.0, atol=ϵ, Roots.Order0(); p=p)
-@btime psi = find_zero(bivariateΨ_vectorsearch!, 0.0, atol=ϵ, Roots.Order8(); p=p)
+@btime find_zero(bivariateΨ_vectorsearch!, 0.0, atol=ϵ, Roots.Order0(); p=p)
+@btime find_zero(bivariateΨ_vectorsearch!, 0.0, atol=ϵ, Roots.Order8(); p=p)
 
+psi = find_zero(bivariateΨ_vectorsearch!, 0.0, atol=ϵ, Roots.Order8(); p=p)
 p.pointa .+ psi*p.uhat
 mappedLikeFunction(psi, p)
 
