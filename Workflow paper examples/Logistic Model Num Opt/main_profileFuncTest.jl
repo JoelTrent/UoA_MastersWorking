@@ -146,11 +146,11 @@ g(x) = bivariateΨ_gradient!(x, p)
 # ForwardDiff.gradient(g, θmle[1:2])
 ForwardDiff.gradient(g, θmle[1:2])
 
-@time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 0.95, 5))
+@time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 0.95, 2))
 
 univariate_confidenceintervals(model, profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals(model, profile_type=EllipseApprox())
-univariate_confidenceintervals(model, profile_type=LogLikelihood())
+@time univariate_confidenceintervals(model, profile_type=LogLikelihood())
 
 univariate_confidenceintervals(model, [1], profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals(model, [:K], profile_type=EllipseApprox())
@@ -166,7 +166,7 @@ univariate_confidenceintervals(model, 2, profile_type=EllipseApprox())
 # @time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
 
 
-bivariate_confidenceprofiles(model, [[:K, :C0], [:λ, :K]],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
+@time bivariate_confidenceprofiles(model, [[:K, :C0], [:λ, :K]],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), atol=1.0)
 bivariate_confidenceprofiles(model, [(:K, :C0)],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
 # @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
 # @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())

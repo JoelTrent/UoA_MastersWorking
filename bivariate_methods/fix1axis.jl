@@ -3,7 +3,8 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                                                 num_points::Int, 
                                                 consistent::NamedTuple, 
                                                 ind1::Int, 
-                                                ind2::Int)
+                                                ind2::Int,
+                                                atol::Float64)
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
 
@@ -18,7 +19,6 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
     count=0
     for (i, j, N) in [[ind1, ind2, div(num_points,2)], [ind2, ind1, (div(num_points,2) + rem(num_points,2))]]
 
-        ϵ=1e-8
         indexesSorted = i < j
 
         if biv_opt_is_ellipse_analytical
@@ -42,7 +42,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                 (( bivariate_optimiser(Ψ_y0, p) * bivariate_optimiser(Ψ_y1, p) ) ≥ 0) || break
             end
 
-            Ψ_y1 = find_zero(bivariate_optimiser, (Ψ_y0, Ψ_y1), atol=ϵ, Roots.Brent(); p=p)
+            Ψ_y1 = find_zero(bivariate_optimiser, (Ψ_y0, Ψ_y1), atol=atol, Roots.Brent(); p=p)
 
             if biv_opt_is_ellipse_analytical
                 if indexesSorted

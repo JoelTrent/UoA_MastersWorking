@@ -23,13 +23,19 @@ function get_bivariate_opt_func(profile_type::AbstractProfileType, method::Abstr
     return missing
 end
 
-# num_points is the number of points to compute for a given method, that are on the boundary and/or inside the boundary.
+# 
+"""
+atol is the absolute tolerance that decides if f(x) ≈ 0.0. I.e. if the loglikelihood function is approximately at the boundary of interest.
+
+num_points is the number of points to compute for a given method, that are on the boundary and/or inside the boundary.
+"""
 function bivariate_confidenceprofiles(model::LikelihoodModel, 
                                         θcombinations::Vector{Vector{Int64}}, 
                                         num_points::Int; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis())
+                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                        atol=1e-8)
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
@@ -64,16 +70,16 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
         elseif method isa BracketingMethodFix1Axis
             boundarySamples =  bivariate_confidenceprofile_fix1axis(
                         bivariate_optimiser, model, 
-                        num_points, consistent, ind1, ind2)
+                        num_points, consistent, ind1, ind2, atol)
             
         elseif method isa BracketingMethodSimultaneous
             boundarySamples = bivariate_confidenceprofile_vectorsearch(
                         bivariate_optimiser, model, 
-                        num_points, consistent, ind1, ind2)
+                        num_points, consistent, ind1, ind2,atol)
         elseif method isa BracketingMethodRadial
             boundarySamples = bivariate_confidenceprofile_vectorsearch(
                         bivariate_optimiser, model, 
-                        num_points, consistent, ind1, ind2, 
+                        num_points, consistent, ind1, ind2, atol,
                         num_radial_directions=method.num_radial_directions)
         elseif method isa ContinuationMethod
             if profile_type isa EllipseApproxAnalytical
@@ -86,7 +92,7 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
 
             boundarySamples = bivariate_confidenceprofile_continuation(
                         bivariate_optimiser, bivariate_optimiser_gradient,
-                        model, num_points, consistent, ind1, ind2, profile_type,
+                        model, num_points, consistent, ind1, ind2, atol, profile_type,
                         method.ellipse_confidence_level,
                         method.target_confidence_level, method.num_level_sets)
         end
@@ -105,13 +111,14 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
                                         num_points::Int;
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis())
+                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                        atol=1e-8)
 
     θcombinations = convertθnames_toindices(model, θcombinations_symbols)
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method)
+            method=method, atol=atol)
 end
 
 # profile m random combinations of parameters (sampling without replacement), where 0 < m ≤ binomial(model.core.num_pars,2)
@@ -120,7 +127,8 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
                                         num_points::Int;
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis())
+                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                        atol=1e-8)
 
     profile_m_random_combinations = max(0, min(profile_m_random_combinations, binomial(model.core.num_pars,2)))
 
@@ -133,7 +141,7 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method)
+            method=method, atol=atol)
 end
 
 # profile all combinations
@@ -141,12 +149,13 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
                                         num_points::Int; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis())
+                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                        atol=1e-8)
 
     θcombinations = collect(combinations(1:model.core.num_pars, 2))
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method)
+            method=method, atol=atol)
 end
 

@@ -112,9 +112,9 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     num_points::Int, 
                                                     consistent::NamedTuple, 
                                                     ind1::Int, 
-                                                    ind2::Int; 
+                                                    ind2::Int,
+                                                    atol::Float64;
                                                     num_radial_directions::Int=0)
-
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
 
@@ -139,7 +139,6 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
         insidePoints, outsidePoints = findNpointpairs_radial!(p, bivariate_optimiser, model, num_points, num_radial_directions, ind1, ind2)
     end
 
-    ϵ=1e-8
     for i in 1:num_points
         p.pointa .= insidePoints[:,i]
         v_bar = outsidePoints[:,i] - insidePoints[:,i]
@@ -147,7 +146,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
         v_bar_norm = norm(v_bar, 2)
         p.uhat .= v_bar / v_bar_norm
 
-        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=ϵ, Roots.Brent(); p=p)
+        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=atol, Roots.Brent(); p=p)
         
         if biv_opt_is_ellipse_analytical
             boundarySamples[:, i] .= p.pointa + Ψ_y1*p.uhat

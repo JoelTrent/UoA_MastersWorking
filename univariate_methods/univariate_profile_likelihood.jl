@@ -12,7 +12,8 @@ end
 function univariate_confidenceinterval(univariate_optimiser::Function, 
                                         model::LikelihoodModel, 
                                         consistent::NamedTuple, 
-                                        θi::Int)
+                                        θi::Int, 
+                                        atol::Float64)
 
     univ_opt_is_ellipse_analytical = univariate_optimiser == univariateΨ_ellipse_analytical
 
@@ -28,7 +29,6 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
     boundsmapping1d!(initGuess, model.core.θmle, θi)
 
     θranges, λranges = variablemapping1dranges(model.core.num_pars, θi)
-    ϵ=1e-8
 
     if univ_opt_is_ellipse_analytical
         # p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
@@ -51,7 +51,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
     # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
     if univariate_optimiser(model.core.θlb[θi], p) <= 0.0
-        interval[1] =  find_zero(univariate_optimiser, (model.core.θlb[θi], model.core.θmle[θi]), atol=ϵ, Roots.Brent(), p=p) 
+        interval[1] =  find_zero(univariate_optimiser, (model.core.θlb[θi], model.core.θmle[θi]), atol=atol, Roots.Brent(), p=p) 
         boundarySamples[θi,1] = interval[1]
         variablemapping1d!(@view(boundarySamples[:, 1]), p.λ_opt, θranges, λranges)
     else
@@ -60,7 +60,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
     end
 
     if univariate_optimiser(model.core.θub[θi], p) <= 0.0
-        interval[2] =  find_zero(univariate_optimiser, (model.core.θmle[θi], model.core.θub[θi]), atol=ϵ, Roots.Brent(), p=p)
+        interval[2] =  find_zero(univariate_optimiser, (model.core.θmle[θi], model.core.θub[θi]), atol=atol, Roots.Brent(), p=p)
         boundarySamples[θi,2] = interval[2]
         variablemapping1d!(@view(boundarySamples[:,2]), p.λ_opt, θranges, λranges)
     else
@@ -72,10 +72,14 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 end
 
 # profile provided θ indices
+"""
+atol is the absolute tolerance that decides if f(x) ≈ 0.0. I.e. if the loglikelihood function is approximately at the boundary of interest.
+"""
 function univariate_confidenceintervals(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Int64}; 
                                         confidence_level::Float64=0.95, 
-                                        profile_type::AbstractProfileType=LogLikelihood())
+                                        profile_type::AbstractProfileType=LogLikelihood(),
+                                        atol=1e-8)
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
@@ -91,7 +95,7 @@ function univariate_confidenceintervals(model::LikelihoodModel,
     # at a later date, want to check if a this interval has already been evaluated for a given parameter
     # and/or if a wider/thinner confidence level has been evaluated yet (can use that knowledge to decrease the search bounds in 1D)
     for θi in θs_to_profile
-        confidenceDict[model.core.θnames[θi]] = univariate_confidenceinterval(univariate_optimiser, model, consistent, θi)
+        confidenceDict[model.core.θnames[θi]] = univariate_confidenceinterval(univariate_optimiser, model, consistent, θi, atol)
     end
 
     return confidenceDict
@@ -101,18 +105,20 @@ end
 function univariate_confidenceintervals(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Symbol}; 
                                         confidence_level::Float64=0.95, 
-                                        profile_type::AbstractProfileType=LogLikelihood())
+                                        profile_type::AbstractProfileType=LogLikelihood(),
+                                        atol=1e-8)
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     return univariate_confidenceintervals(model, indices_to_profile, confidence_level=confidence_level,
-                                profile_type=profile_type)
+                                profile_type=profile_type, atol=atol)
 end
 
 # profile m random parameters (sampling without replacement), where 0 < m ≤ model.core.num_pars
 function univariate_confidenceintervals(model::LikelihoodModel, 
                                         profile_m_random_parameters::Int; 
                                         confidence_level::Float64=0.95, 
-                                        profile_type::AbstractProfileType=LogLikelihood())
+                                        profile_type::AbstractProfileType=LogLikelihood(),
+                                        atol=1e-8)
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
 
@@ -121,13 +127,14 @@ function univariate_confidenceintervals(model::LikelihoodModel,
     indices_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
 
     return univariate_confidenceintervals(model, indices_to_profile, confidence_level=confidence_level,
-                                profile_type=profile_type)
+                                profile_type=profile_type, atol=atol)
 end
 
 # profile all 
 function univariate_confidenceintervals(model::LikelihoodModel; 
                                         confidence_level::Float64=0.95, 
-                                        profile_type::AbstractProfileType=LogLikelihood())
+                                        profile_type::AbstractProfileType=LogLikelihood(),
+                                        atol=1e-8)
     return univariate_confidenceintervals(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
-                            profile_type=profile_type)
+                            profile_type=profile_type, atol=atol)
 end
