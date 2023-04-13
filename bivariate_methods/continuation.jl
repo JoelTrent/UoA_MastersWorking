@@ -19,9 +19,10 @@ start_level_set only has two rows. Within this function we keep track of both th
 For a given level set to get to, that's larger than all points in current level set. 
 * Find normal direction at each point (either using ForwardDiff or a first order approximation)
 * Check where this normal direction intersects bounds and ensure that the next level set is bracketed by current point and point on boundary
+* If a bracket between current point and point on boundary does not exist the level set point recorded will be the point on the boundary
 * init guess for nuisance parameters should be their value at current point
 * using vector search bivariate function as input to find_zero(), using Order0 method, with starting guess of Ψ=0
-* record point at that level set.
+* record point at that level set
 
 
 LATER: Update to allow specification of alternate method to find_zero(), e.g. Order8 OR alternate method using NLsolve (and LineSearches) in "2DGradientLinesearchTests.jl" which is gradient based.
@@ -30,6 +31,7 @@ function continuation_line_search!(p::NamedTuple,
                                     bivariate_optimiser::Function, 
                                     bivariate_optimiser_gradient::Function, 
                                     model::LikelihoodModel, 
+                                    num_points::Int,
                                     ind1::Int, 
                                     ind2::Int,
                                     target_confidence_ll::Float64, 
@@ -40,13 +42,8 @@ function continuation_line_search!(p::NamedTuple,
     
     start_have_all_pars = !(start_level_set_all isa Missing) 
     
-    current_num_points = size(start_level_set_2D, 2)
-    
-    # in the event that we fail to find a boundary point of the next level set
-    # we will filter that index from our array
-    found_boundary_point = trues(current_num_points)
-    target_level_set_2D = zeros(2, current_num_points)
-    target_level_set_all = zeros(model.core.num_pars, current_num_points)
+    target_level_set_2D = zeros(2, num_points)
+    target_level_set_all = zeros(model.core.num_pars, num_points)
     
     gradient_i = [0.0,0.0]
     boundpoint = [0.0,0.0]
@@ -54,7 +51,7 @@ function continuation_line_search!(p::NamedTuple,
     p = update_targetll!(p, target_confidence_ll)
     ϵ=1e-8
     
-    for i in 1:current_num_points
+    for i in 1:num_points
         p.pointa .= start_level_set_2D[:,i]
 
         # if know the optimised values of nuisance parameters at a given start point,
@@ -75,19 +72,28 @@ function continuation_line_search!(p::NamedTuple,
         boundpoint .= findpointonbounds(model, p.pointa, p.uhat, ind1, ind2)
 
         # if bound point and pointa bracket a boundary, search for the boundary
+        # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
         if bivariate_optimiser_gradient(boundpoint, p) < 0
-            Ψ_y1 = find_zero(bivariate_optimiser, 0.0, atol=ϵ, Roots.Order0(); p=p)
+            Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), atol=ϵ, Roots.Order8(); p=p)
+
+            # in event Roots.Order8 fails to converge, switch to bracketing method
+            if isnan(Ψ_y1)
+                # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
+                v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1] 
+                Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=ϵ, Roots.Brent(); p=p)
+            end
 
             boundarypoint .= p.pointa + Ψ_y1*p.uhat
             target_level_set_2D[:, i] .= boundarypoint
             target_level_set_all[[ind1, ind2], i] .= boundarypoint
-            variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
         else
-            found_boundary_point[i] = false
+            target_level_set_2D[:, i] .= boundpoint
+            target_level_set_all[[ind1, ind2], i] .= boundpoint
         end
+        variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
     end
 
-    return target_level_set_2D[:, found_boundary_point], target_level_set_all[:, found_boundary_point]
+    return target_level_set_2D, target_level_set_all
 end
 
 function continuation_inwards_radial_search!(p::NamedTuple, 
@@ -189,7 +195,8 @@ function initial_continuation_solution!(p::NamedTuple,
     if target_confidence_ll < min_ll # case 1
         corrected_ll = ll_correction(model, profile_type, min_ll)
         a, b = continuation_line_search!(p, bivariate_optimiser, 
-                                            bivariate_optimiser_gradient, model, ind1, ind2,
+                                            bivariate_optimiser_gradient, model, 
+                                            num_points, ind1, ind2,
                                             corrected_ll, ellipse_points)
         return a, b, min_ll
 
@@ -277,7 +284,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     for level_set_ll in level_set_lls
         current_level_set_2D, current_level_set_all = 
             continuation_line_search!(p, bivariate_optimiser, bivariate_optimiser_gradient,
-                                        model, ind1, ind2, level_set_ll,
+                                        model, num_points, ind1, ind2, level_set_ll,
                                         current_level_set_2D, current_level_set_all)
     end
 
