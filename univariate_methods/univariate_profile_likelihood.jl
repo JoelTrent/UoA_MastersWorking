@@ -64,8 +64,8 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
         boundarySamples[θi,2] = interval[2]
         variablemapping1d!(@view(boundarySamples[:,2]), p.λ_opt, θranges, λranges)
     else
-        interval[1] =  NaN
-        boundarySamples[:, 1] .= NaN
+        interval[2] =  NaN
+        boundarySamples[:, 2] .= NaN
     end
 
     return UnivariateConfidenceStruct(model.core.θmle[θi], interval, boundarySamples, model.core.θlb[θi], model.core.θub[θi])
