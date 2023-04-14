@@ -37,11 +37,11 @@ function continuation_line_search!(p::NamedTuple,
                                     atol::Float64,
                                     target_confidence_ll::Float64, 
                                     start_level_set_2D::Matrix{Float64}, 
-                                    start_level_set_all::Union{Matrix{Float64}, Missing}=missing)
+                                    start_level_set_all::Matrix{Float64}=Matrix{Float64}(undef,0,0))
 
     f_gradient(x) = bivariate_optimiser_gradient(x, p)
     
-    start_have_all_pars = !(start_level_set_all isa Missing) 
+    start_have_all_pars = !isempty(start_level_set_all) 
     
     target_level_set_2D = zeros(2, num_points)
     target_level_set_all = zeros(model.core.num_pars, num_points)

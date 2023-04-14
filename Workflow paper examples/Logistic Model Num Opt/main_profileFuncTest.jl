@@ -148,14 +148,15 @@ ForwardDiff.gradient(g, θmle[1:2])
 
 @time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 0.95, 2))
 
-univariate_confidenceintervals(model, profile_type=EllipseApproxAnalytical())
-univariate_confidenceintervals(model, profile_type=EllipseApprox())
-@time univariate_confidenceintervals(model, profile_type=LogLikelihood())
+univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
+univariate_confidenceintervals!(model, profile_type=EllipseApprox())
+@time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 
-univariate_confidenceintervals(model, [1], profile_type=EllipseApproxAnalytical())
-univariate_confidenceintervals(model, [:K], profile_type=EllipseApprox())
-univariate_confidenceintervals(model, [1,2,3])
-univariate_confidenceintervals(model, 2, profile_type=EllipseApprox())
+univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical())
+univariate_confidenceintervals!(model, [:K], profile_type=EllipseApprox())
+univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.5)
+univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.7, use_existing_profiles=true)
+univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
 
 
 # @time bivariate_confidenceprofiles(model, 100, profile_type=EllipseApproxAnalytical())

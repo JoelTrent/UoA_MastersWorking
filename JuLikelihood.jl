@@ -7,6 +7,7 @@ using Combinatorics
 using DataStructures
 using LinearAlgebra
 using EllipseSampling
+using DataFrames
 
 include("NLopt_optimiser.jl")
 include("model_structs.jl")

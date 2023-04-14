@@ -35,7 +35,8 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
-                                        atol=1e-8)
+                                        atol=1e-8, 
+                                        θcombinations_is_unique::Bool=false)
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
@@ -49,18 +50,12 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
     bivariate_optimiser = get_bivariate_opt_func(profile_type, method)
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
 
-    # Find confidence intervals for each parameter in θ
-    # Search between [lb[i], θmle[i]] for the left side and [θmle[i], ub[i]] for the right side
-    # If it doesn't exist in either range, then the parameter is locally unidentifiable in that range for 
-    # that confidence level.
-
     confidenceDict = Dict{Tuple{Symbol,Symbol}, BivariateConfidenceStruct}()
 
-    for (ind1, ind2) in θcombinations
+    # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
+    θcombinations_is_unique || (sort!.(θcombinations); sort!(θcombinations); unique!(θcombinations))
 
-        if ind2 < ind1
-            ind1, ind2 = ind2, ind1
-        end
+    for (ind1, ind2) in θcombinations
 
         if method isa AnalyticalEllipseMethod
             boundarySamples = generate_N_equally_spaced_points(
@@ -99,7 +94,7 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
         
         confidenceDict[(model.core.θnames[ind1], model.core.θnames[ind2])] = 
                 BivariateConfidenceStruct((model.core.θmle[ind1], model.core.θmle[ind2]), 
-                                            boundarySamples, model.core.θlb[[ind1, ind2]], model.core.θub[[ind1, ind2]])
+                                            boundarySamples)
     end
 
     return confidenceDict
@@ -112,13 +107,14 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
-                                        atol=1e-8)
+                                        atol=1e-8,
+                                        θcombinations_is_unique::Bool=false)
 
     θcombinations = convertθnames_toindices(model, θcombinations_symbols)
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, atol=atol)
+            method=method, atol=atol, θcombinations_is_unique=θcombinations_is_unique)
 end
 
 # profile m random combinations of parameters (sampling without replacement), where 0 < m ≤ binomial(model.core.num_pars,2)
@@ -141,7 +137,7 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, atol=atol)
+            method=method, atol=atol, θcombinations_is_unique=true)
 end
 
 # profile all combinations
@@ -156,6 +152,6 @@ function bivariate_confidenceprofiles(model::LikelihoodModel,
 
     return bivariate_confidenceprofiles(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, atol=atol)
+            method=method, atol=atol, θcombinations_is_unique=true)
 end
 

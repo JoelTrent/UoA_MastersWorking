@@ -3,6 +3,8 @@ abstract type AbstractCoreLikelihoodModel end
 abstract type AbstractEllipseMLEApprox end
 
 abstract type AbstractConfidenceStruct end
+abstract type AbstractUnivariateConfidenceStruct <: AbstractConfidenceStruct end
+abstract type AbstractBivariateConfidenceStruct <: AbstractConfidenceStruct end
 
 abstract type AbstractProfileType end
 abstract type AbstractEllipseProfileType <: AbstractProfileType end
@@ -36,48 +38,63 @@ mutable struct LikelihoodModel <: AbstractLikelihoodModel
     # - which parameters have been evaluated at a given level and the dimensionality used
     # - whether an ellipse approximation (analytical or profile) was used or full likelihood was used
     # - make it easy to check if a wider or smaller confidence level has been evaluated yet (can use that knowledge to change the search bounds in 1D or perhaps provide initial points in 2D that are guaranteed to be inside/outside a confidence level boundary)
-    confidence_levels_evaluated::DefaultDict{Float64, Bool}
-    confidence_intervals_evaluated::Dict{Float64, DefaultDict{Union{Int, Symbol}, Bool}}
+    # confidence_levels_evaluated::DefaultDict{Float64, Bool}
+    # confidence_intervals_evaluated::Dict{Float64, DefaultDict{Union{Int, Symbol}, Bool}}
     # univariate_intervals
     # bivariate_intervals
+    num_uni_profiles::Int
+    num_biv_profiles::Int
+
+    uni_profiles_df::DataFrame
+    biv_profiles_df::DataFrame
+
+    uni_profile_row_exists::Dict{Tuple{Int, AbstractProfileType}, DefaultDict{Float64, Int}}
+    biv_profile_row_exists::Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}
+
+    uni_profiles_dict::Dict{Int, AbstractUnivariateConfidenceStruct}
+    biv_profiles_dict::Dict{Int, AbstractBivariateConfidenceStruct}
 
     # other relevant fields
 
 end
 
-struct UnivariateConfidenceStructAnalytical <: AbstractConfidenceStruct
-    mle::Float64
+struct UnivariateConfidenceStructAnalytical <: AbstractUnivariateConfidenceStruct
     confidence_interval::Vector{<:Float64}
-    lb::Float64
-    ub::Float64
-    # confidence_level::Float64
+    internal_points::Matrix{Float64}
+
+    function UnivariateConfidenceStructAnalytical(x,y=Matrix{Float64}(undef,0,0))
+        return new(x,y)
+    end
 end
 
-struct UnivariateConfidenceStruct <: AbstractConfidenceStruct
-    mle::Float64
+struct UnivariateConfidenceStruct <: AbstractUnivariateConfidenceStruct
     confidence_interval::Vector{<:Float64}
     confidence_interval_all_pars::Matrix{Float64}
-    lb::Float64
-    ub::Float64
-    # confidence_level::Float64
+    internal_points::Matrix{Float64}
+
+    function UnivariateConfidenceStruct(x,y,z=Matrix{Float64}(undef,0,0))
+        return new(x,y,z)
+    end
 end
 
-struct BivariateConfidenceStructAnalytical <: AbstractConfidenceStruct
+struct BivariateConfidenceStructAnalytical <: AbstractBivariateConfidenceStruct
     mle::Tuple{T,T} where T <: Float64
-    # var_indexes::Vector{<:Int64}
-    confidence_boundary_all_pars::Matrix{Float64}
-    lb::Vector{<:Float64}
-    ub::Vector{<:Float64}
-    # confidence_level::Float64
+    confidence_boundary::Matrix{Float64}
+    internal_points::Matrix{Float64}
+
+    function BivariateConfidenceStructAnalytical(x,y,z=Matrix{Float64}(undef,0,0))
+        return new(x,y,z)
+    end
 end
 
-struct BivariateConfidenceStruct <: AbstractConfidenceStruct
+struct BivariateConfidenceStruct <: AbstractBivariateConfidenceStruct
     mle::Tuple{T,T} where T <: Float64
-    # var_indexes::Vector{<:Int64}
     confidence_boundary_all_pars::Matrix{Float64}
-    lb::Vector{<:Float64}
-    ub::Vector{<:Float64}
-    # confidence_level::Float64
+    internal_points::Matrix{Float64}
+
+    function BivariateConfidenceStruct(x,y,z=Matrix{Float64}(undef,0,0))
+        return new(x,y,z)
+    end
 end
 
 struct LogLikelihood <: AbstractProfileType end
