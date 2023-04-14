@@ -86,7 +86,7 @@ struct EllipseApproxAnalytical <: AbstractEllipseProfileType end
 
 struct BracketingMethodRadial <: AbstractBivariateMethod
     num_radial_directions::Int
-    BracketingMethodRadial(x) = x < 1 ? error("`num_radial_directions` must be greater than zero") : new(x)
+    BracketingMethodRadial(x) = x < 1 ? error("num_radial_directions must be greater than zero") : new(x)
 end
 
 struct BracketingMethodSimultaneous <: AbstractBivariateMethod end
