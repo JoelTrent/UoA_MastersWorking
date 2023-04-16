@@ -1,5 +1,6 @@
 function update_targetll!(p, target_confidence_ll)
-    return merge(p, (targetll=target_confidence_ll,))
+    @reset p.targetll=target_confidence_ll
+    return nothing
 end
 
 function normal_vector_i_2d!(gradient_i, index, points)
@@ -49,7 +50,7 @@ function continuation_line_search!(p::NamedTuple,
     gradient_i = [0.0,0.0]
     boundpoint = [0.0,0.0]
     boundarypoint = [0.0,0.0]
-    p = update_targetll!(p, target_confidence_ll)
+    update_targetll!(p, target_confidence_ll)
     
     for i in 1:num_points
         p.pointa .= start_level_set_2D[:,i]
@@ -112,7 +113,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
     target_level_set_all = zeros(model.core.num_pars, num_points)
     
     boundarypoint = [0.0, 0.0]
-    p = update_targetll!(p, target_confidence_ll)
+    update_targetll!(p, target_confidence_ll)
 
     p.pointa .= mle_point
     # effectively equivalent code to vector search code 

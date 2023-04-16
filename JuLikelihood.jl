@@ -8,6 +8,7 @@ using DataStructures
 using LinearAlgebra
 using EllipseSampling
 using DataFrames
+using Accessors
 
 include("NLopt_optimiser.jl")
 include("model_structs.jl")
