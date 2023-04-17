@@ -1,13 +1,11 @@
 function init_uni_profile_row_exists!(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Int},
                                         profile_type::AbstractProfileType)
-
     for θi in θs_to_profile
         if !haskey(model.uni_profile_row_exists, (θi, profile_type))
             model.uni_profile_row_exists[(θi, profile_type)] = DefaultDict{Float64, Int}(0)
         end
     end
-
     return nothing
 end
 
@@ -44,14 +42,14 @@ end
 """
 TODO: user control of how many new rows get added if/when we need to add them.
 """
-function add_uni_profile_rows!(model::LikelihoodModel)
+function add_uni_profiles_rows!(model::LikelihoodModel)
     new_rows = init_uni_profiles_df(model.core.num_pars, existing_largest_row=nrow(model.uni_profiles_df))
 
     model.uni_profiles_df = vcat(model.uni_profiles_df, new_rows)
     return nothing
 end
 
-function update_uni_profile_row!(model::LikelihoodModel, 
+function update_uni_profiles_row!(model::LikelihoodModel, 
                                     θi::Int,
                                     evaluated_internal_points::Bool,
                                     confidence_level::Float64,
@@ -153,7 +151,7 @@ function univariate_confidenceinterval_master(univariate_optimiser::Function,
                                         θi::Int,
                                         confidence_level::Float64, 
                                         profile_type::AbstractProfileType, 
-                                        atol::Float64,
+                                        atol::Real,
                                         use_existing_profiles::Bool)
     if use_existing_profiles
         bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
@@ -183,6 +181,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         use_distributed::Bool=false)
                                         # existing_profiles::Symbol=:overwrite)
 
+    atol > 0 || throw(DomainError("atol must be a strictly positive integer"))
+
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
     end
@@ -197,7 +197,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     init_uni_profile_row_exists!(model, θs_to_profile, profile_type)
 
     # check if profile has already been evaluated
-
     θs_to_keep = trues(length(θs_to_profile))
     for (i, θi) in enumerate(θs_to_profile)
         if model.uni_profile_row_exists[(θi, profile_type)][confidence_level] != 0
@@ -221,9 +220,9 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
             
             # fill out a new row in the dataframe (make sure that we haven't run out of rows yet)
             if nrow(model.uni_profiles_df) < model.num_uni_profiles
-                add_uni_profile_rows!(model)
+                add_uni_profiles_rows!(model)
             end
-            update_uni_profile_row!(model, θi, false, confidence_level, profile_type, 2)
+            update_uni_profiles_row!(model, θi, false, confidence_level, profile_type, 2)
         end
 
     else
@@ -242,9 +241,9 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
             # fill out a new row in the dataframe (make sure that we haven't run out of rows yet)
             if nrow(model.uni_profiles_df) < model.num_uni_profiles
-                add_uni_profile_rows!(model)
+                add_uni_profiles_rows!(model)
             end
-            update_uni_profile_row!(model, θi, false, confidence_level, profile_type, 2)
+            update_uni_profiles_row!(model, θi, false, confidence_level, profile_type, 2)
         end        
     end
     
@@ -256,15 +255,16 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         θs_to_profile::Vector{<:Symbol}; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        atol=1e-8,
+                                        atol::Real=1e-8,
                                         use_existing_profiles::Bool=false,
                                         θs_is_unique::Bool=false)
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
-    return univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
+    univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
                                 profile_type=profile_type, atol=atol,
                                 use_existing_profiles=use_existing_profiles,
                                 θs_is_unique=θs_is_unique)
+    return nothing
 end
 
 # profile m random parameters (sampling without replacement), where 0 < m ≤ model.core.num_pars
@@ -272,29 +272,30 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         profile_m_random_parameters::Int; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        atol=1e-8,
+                                        atol::Real=1e-8,
                                         use_existing_profiles::Bool=false)
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
-
     profile_m_random_parameters > 0 || throw(DomainError("profile_m_random_parameters must be a strictly positive integer"))
 
     indices_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
 
-    return univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
+    univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
                                 profile_type=profile_type, atol=atol,
                                 use_existing_profiles=use_existing_profiles,
                                 θs_is_unique=true)
+    return nothing
 end
 
 # profile all 
 function univariate_confidenceintervals!(model::LikelihoodModel; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        atol=1e-8,
+                                        atol::Real=1e-8,
                                         use_existing_profiles::Bool=false)
-    return univariate_confidenceintervals!(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
+    univariate_confidenceintervals!(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
                             profile_type=profile_type, atol=atol,
                             use_existing_profiles=use_existing_profiles,
                             θs_is_unique=true)
+    return nothing
 end
