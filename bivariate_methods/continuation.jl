@@ -1,6 +1,7 @@
-function update_targetll!(p, target_confidence_ll)
-    @reset p.targetll=target_confidence_ll
-    return nothing
+function update_targetll!(p::NamedTuple, 
+                            target_confidence_ll::Float64)
+    p = @set p.targetll=target_confidence_ll
+    return p
 end
 
 function normal_vector_i_2d!(gradient_i, index, points)
@@ -25,10 +26,12 @@ For a given level set to get to, that's larger than all points in current level 
 * using vector search bivariate function as input to find_zero(), using Order0 method, with starting guess of Ψ=0
 * record point at that level set
 
+p and point_is_on_bounds is mutated by this function.
 
 LATER: Update to allow specification of alternate method to find_zero(), e.g. Order8 OR alternate method using NLsolve (and LineSearches) in "2DGradientLinesearchTests.jl" which is gradient based.
 """
 function continuation_line_search!(p::NamedTuple, 
+                                    point_is_on_bounds::BitVector,
                                     bivariate_optimiser::Function, 
                                     bivariate_optimiser_gradient::Function, 
                                     model::LikelihoodModel, 
@@ -50,48 +53,54 @@ function continuation_line_search!(p::NamedTuple,
     gradient_i = [0.0,0.0]
     boundpoint = [0.0,0.0]
     boundarypoint = [0.0,0.0]
-    update_targetll!(p, target_confidence_ll)
+    p = update_targetll!(p, target_confidence_ll)
     
     for i in 1:num_points
-        p.pointa .= start_level_set_2D[:,i]
+        if point_is_on_bounds[i]
+            target_level_set_2D[:, i] .= start_level_set_2D[:, i]
+            target_level_set_all[[ind1, ind2], i] .= start_level_set_all[[ind1, ind2], i]
+        else
+            p.pointa .= start_level_set_2D[:,i]
 
-        # if know the optimised values of nuisance parameters at a given start point,
-        # pass them to the optimiser
-        if start_have_all_pars
-            boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
-        end
-
-        # calculate gradient at point i; want to go in downhill direction
-        # FORWARDDIFF NOT WORKING WITH ANON FUNCTION JUST YET - likely because it is contains a mutating function, i.e. zeros()
-        # 
-        # gradient_i .= -ForwardDiff.gradient(f_gradient, p.pointa)
-
-        normal_vector_i_2d!(gradient_i, i, start_level_set_2D)
-
-        p.uhat .= (gradient_i / (norm(gradient_i, 2))) 
-
-        boundpoint .= findpointonbounds(model, p.pointa, p.uhat, ind1, ind2)
-
-        # if bound point and pointa bracket a boundary, search for the boundary
-        # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
-        if bivariate_optimiser_gradient(boundpoint, p) < 0
-            Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), atol=atol, Roots.Order8(); p=p)
-
-            # in event Roots.Order8 fails to converge, switch to bracketing method
-            if isnan(Ψ_y1)
-                # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
-                v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1] 
-                Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=atol, Roots.Brent(); p=p)
+            # if know the optimised values of nuisance parameters at a given start point,
+            # pass them to the optimiser
+            if start_have_all_pars
+                boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
             end
 
-            boundarypoint .= p.pointa + Ψ_y1*p.uhat
-            target_level_set_2D[:, i] .= boundarypoint
-            target_level_set_all[[ind1, ind2], i] .= boundarypoint
-        else
-            target_level_set_2D[:, i] .= boundpoint
-            target_level_set_all[[ind1, ind2], i] .= boundpoint
+            # calculate gradient at point i; want to go in downhill direction
+            # FORWARDDIFF NOT WORKING WITH ANON FUNCTION JUST YET - likely because it is contains a mutating function, i.e. zeros()
+            # 
+            # gradient_i .= -ForwardDiff.gradient(f_gradient, p.pointa)
+
+            normal_vector_i_2d!(gradient_i, i, start_level_set_2D)
+
+            p.uhat .= (gradient_i / (norm(gradient_i, 2))) 
+
+            boundpoint .= findpointonbounds(model, p.pointa, p.uhat, ind1, ind2)
+            v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
+
+            # if bound point and pointa bracket a boundary, search for the boundary
+            # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
+            if bivariate_optimiser(v_bar_norm, p) < 0
+                Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), atol=atol, Roots.Order8(); p=p)
+
+                # in event Roots.Order8 fails to converge, switch to bracketing method
+                if isnan(Ψ_y1)
+                    # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
+                    Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=atol, Roots.Brent(); p=p)
+                end
+
+                boundarypoint .= p.pointa + Ψ_y1*p.uhat
+                target_level_set_2D[:, i] .= boundarypoint
+                target_level_set_all[[ind1, ind2], i] .= boundarypoint
+            else
+                point_is_on_bounds[i] = true
+                target_level_set_2D[:, i] .= boundpoint
+                target_level_set_all[[ind1, ind2], i] .= boundpoint
+            end
+            variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
         end
-        variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
     end
 
     return target_level_set_2D, target_level_set_all
@@ -113,7 +122,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
     target_level_set_all = zeros(model.core.num_pars, num_points)
     
     boundarypoint = [0.0, 0.0]
-    update_targetll!(p, target_confidence_ll)
+    p = update_targetll!(p, target_confidence_ll)
 
     p.pointa .= mle_point
     # effectively equivalent code to vector search code 
@@ -159,14 +168,15 @@ function initial_continuation_solution!(p::NamedTuple,
                                         ind2::Int,
                                         atol::Float64,
                                         profile_type::AbstractProfileType,
-                                        ellipse_confidence_level::Float64, 
-                                        target_confidence_ll::Float64)
+                                        ellipse_confidence_level::Float64,
+                                        target_confidence_ll::Float64,
+                                        ellipse_start_point_shift::Float64)
     # get initial continuation starting solution
     # internal boundary - preferably very small
     ellipse_points = generate_N_equally_spaced_points(num_points, model.ellipse_MLE_approx.Γmle,
                                                         model.core.θmle, ind1, ind2,
                                                         confidence_level=ellipse_confidence_level, 
-                                                        start_point_shift=0.0)
+                                                        start_point_shift=ellipse_start_point_shift)
 
     for i in 1:num_points
         if model.core.θlb[ind1] > ellipse_points[1,i] || model.core.θub[ind1] < ellipse_points[1,i]
@@ -181,7 +191,7 @@ function initial_continuation_solution!(p::NamedTuple,
 
     # calculate true log likelihood at each point on ellipse approx
     ellipse_true_lls = zeros(num_points)
-    update_targetll!(p, 0.0)
+    p = update_targetll!(p, 0.0)
 
     for i in 1:num_points
         p.pointa .= ellipse_points[:,i]
@@ -194,13 +204,15 @@ function initial_continuation_solution!(p::NamedTuple,
 
     min_ll, max_ll = extrema(ellipse_true_lls)
 
+    point_is_on_bounds = falses(num_points)
+
     if target_confidence_ll < min_ll # case 1
         corrected_ll = ll_correction(model, profile_type, min_ll)
-        a, b = continuation_line_search!(p, bivariate_optimiser, 
+        a, b = continuation_line_search!(p, point_is_on_bounds, bivariate_optimiser, 
                                             bivariate_optimiser_gradient, model, 
                                             num_points, ind1, ind2, atol,
                                             corrected_ll, ellipse_points)
-        return a, b, min_ll
+        return a, b, min_ll, point_is_on_bounds
 
     elseif max_ll < target_confidence_ll # case 2
         corrected_ll = ll_correction(model, profile_type, target_confidence_ll)
@@ -209,7 +221,7 @@ function initial_continuation_solution!(p::NamedTuple,
         a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
                                                     num_points, ind1, ind2, atol,
                                                     corrected_ll, ellipse_points)
-        return a, b, target_confidence_ll
+        return a, b, target_confidence_ll, point_is_on_bounds
     end
 
     # else # case 3
@@ -222,7 +234,7 @@ function initial_continuation_solution!(p::NamedTuple,
     @warn string("ellipse starting point for continuation intersects the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
     a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, num_points, 
                                                 ind1, ind2, atol, corrected_ll, ellipse_points)
-    return a, b, max_ll
+    return a, b, max_ll, point_is_on_bounds
 end
 
 """
@@ -239,7 +251,8 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     atol::Float64,
                                                     profile_type::AbstractProfileType,
                                                     ellipse_confidence_level::Float64, 
-                                                    target_confidence_level::Float64, 
+                                                    target_confidence_level::Float64,
+                                                    ellipse_start_point_shift::Float64,
                                                     num_level_sets::Int)
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
@@ -268,10 +281,11 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                  EllipseApproxAnalytical(), 2)
 
     # find initial solution
-    current_level_set_2D, current_level_set_all, initial_ll =
+    current_level_set_2D, current_level_set_all, initial_ll, point_is_on_bounds =
         initial_continuation_solution!(p, bivariate_optimiser, bivariate_optimiser_gradient, 
                                         model, num_points, ind1, ind2, atol, profile_type,
-                                        ellipse_confidence_level, initial_target_ll)
+                                        ellipse_confidence_level, initial_target_ll, 
+                                        ellipse_start_point_shift)
 
     if initial_ll == initial_target_ll
         return current_level_set_all
@@ -286,7 +300,8 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
 
     for level_set_ll in level_set_lls
         current_level_set_2D, current_level_set_all = 
-            continuation_line_search!(p, bivariate_optimiser, bivariate_optimiser_gradient,
+            continuation_line_search!(p, point_is_on_bounds, 
+                                        bivariate_optimiser, bivariate_optimiser_gradient,
                                         model, num_points, ind1, ind2, atol, level_set_ll,
                                         current_level_set_2D, current_level_set_all)
     end

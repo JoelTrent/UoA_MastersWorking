@@ -15,7 +15,6 @@ function init_biv_profiles_df(num_rows; existing_largest_row=0)
    
     biv_profiles_df = DataFrame()
     biv_profiles_df.row_ind = collect(1:num_rows) .+ existing_largest_row
-    biv_profiles_df.θindex = zeros(Int, num_rows)
     biv_profiles_df.θindexes = fill((0,0), num_rows)
     biv_profiles_df.evaluated_internal_points = falses(num_rows)
     biv_profiles_df.conf_level = zeros(num_rows)

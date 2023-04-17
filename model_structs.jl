@@ -78,22 +78,20 @@ struct UnivariateConfidenceStruct <: AbstractUnivariateConfidenceStruct
 end
 
 struct BivariateConfidenceStructAnalytical <: AbstractBivariateConfidenceStruct
-    mle::Tuple{T,T} where T <: Float64
     confidence_boundary::Matrix{Float64}
     internal_points::Matrix{Float64}
 
-    function BivariateConfidenceStructAnalytical(x,y,z=Matrix{Float64}(undef,0,0))
-        return new(x,y,z)
+    function BivariateConfidenceStructAnalytical(x,y=Matrix{Float64}(undef,0,0))
+        return new(x,y)
     end
 end
 
 struct BivariateConfidenceStruct <: AbstractBivariateConfidenceStruct
-    mle::Tuple{T,T} where T <: Float64
     confidence_boundary_all_pars::Matrix{Float64}
     internal_points::Matrix{Float64}
 
-    function BivariateConfidenceStruct(x,y,z=Matrix{Float64}(undef,0,0))
-        return new(x,y,z)
+    function BivariateConfidenceStruct(x,y=Matrix{Float64}(undef,0,0))
+        return new(x,y)
     end
 end
 
@@ -115,18 +113,22 @@ struct BracketingMethodFix1Axis <: AbstractBivariateMethod end
 """
 struct ContinuationMethod <: AbstractBivariateMethod 
     ellipse_confidence_level::Float64
-    target_confidence_level::Float64
+    # target_confidence_level::Float64
     # target_confidence_levels::Union{Float64, Vector{<:Float64}}
     num_level_sets::Int
+    ellipse_start_point_shift::Float64
 
-    function ContinuationMethod(x,y,z)
+    function ContinuationMethod(x,y,z=rand())
         (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the interval (0.0,1.0)"))
 
-        (0.0 < y && y < 1.0) || throw(DomainError("target_confidence_level must be in the interval (0.0,1.0)"))
+        # (0.0 < y && y < 1.0) || throw(DomainError("target_confidence_level must be in the interval (0.0,1.0)"))
 
         # if y isa Float64
 
-        z > 0 || throw(DomainError("num_level_sets must be greater than zero"))
+        y > 0 || throw(DomainError("num_level_sets must be greater than zero"))
+
+        (0.0 < z && z < 1.0) || throw(DomainError("ellipse_start_point_shift must be in the interval (0.0,1.0)"))
+
         return new(x,y,z)
     end
 end
