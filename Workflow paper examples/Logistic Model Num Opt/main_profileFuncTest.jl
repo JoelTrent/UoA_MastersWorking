@@ -1,13 +1,14 @@
 # Section 1: set up packages and parameter values
-using Plots, DifferentialEquations
+# using Plots
+using DifferentialEquations
 using .Threads 
 using Interpolations, Random, Distributions
 using BenchmarkTools
-gr()
+# gr()
 
 Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
-include(joinpath("..", "plottingFunctions.jl"))
+# include(joinpath("..", "plottingFunctions.jl"))
 include(joinpath("..", "..", "JuLikelihood.jl"))
 
 using Distributed
@@ -28,7 +29,7 @@ end
     p=(λ,K)
     tspan=(0.0, t[end])
     prob=ODEProblem(DE!, [C0], tspan, p)
-    sol=solve(prob, saveat=t)
+    sol=solve(prob, saveat=t, verbose=false)
     return sol[1,:]
 end
 
@@ -151,7 +152,11 @@ g(x) = bivariateΨ_gradient!(x, p)
 # ForwardDiff.gradient(g, θmle[1:2])
 ForwardDiff.gradient(g, θmle[1:2])
 
-@time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 0.95, 2))
+@time bivariate_confidenceprofiles!(model, 5, confidence_level=0.91, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 2, 0.2), use_distributed=true)
+
+@time bivariate_confidenceprofiles!(model, 50, confidence_level=0.905, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 2, 0.2), use_distributed=true)
+
+@time bivariate_confidenceprofiles!(model, 50, confidence_level=0.90, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 2, 0.2), use_distributed=false)
 
 univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, profile_type=EllipseApprox())
@@ -165,31 +170,33 @@ univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.7, use_existi
 univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
 
 
-# @time bivariate_confidenceprofiles(model, 100, profile_type=EllipseApproxAnalytical())
-# @time bivariate_confidenceprofiles(model, 10, profile_type=EllipseApprox())
+# @time bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApproxAnalytical())
+# @time bivariate_confidenceprofiles!(model, 10, profile_type=EllipseApprox())
 # Random.seed!(12348)
-# @time bivariate_confidenceprofiles(model, 30, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
+# @time bivariate_confidenceprofiles!(model, 30, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
 # Random.seed!(12348)
-# @time bivariate_confidenceprofiles(model, 10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
+# @time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
 
+@time bivariate_confidenceprofiles!(model, 50, confidence_level=0.95, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), use_distributed=true)
+@time bivariate_confidenceprofiles!(model, 50, confidence_level=0.949, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), atol=1.0, use_distributed=false)
 
-@time bivariate_confidenceprofiles(model, [[:K, :C0], [:λ, :K]],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), atol=1.0)
-bivariate_confidenceprofiles(model, [(:K, :C0)],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
-# @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
-# @profview bivariate_confidenceprofiles(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
+# @time bivariate_confidenceprofiles!(model, [[:K, :C0], [:λ, :K]],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), atol=1.0)
+bivariate_confidenceprofiles!(model, [(:K, :C0)],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
+# @profview bivariate_confidenceprofiles!(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
+# @profview bivariate_confidenceprofiles!(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
 
 # Random.seed!(12348)
-# @time bivariate_confidenceprofiles(model, 100, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
+# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
 # Random.seed!(12348)
-# @time bivariate_confidenceprofiles(model, 100, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
+# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
 # Random.seed!(12348)
-# @time bivariate_confidenceprofiles(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(8))
+# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(8))
 
 
 
-# test = bivariate_confidenceprofiles(model, 10, profile_type=EllipseApproxAnalytical(), method=BracketingMethodFix1Axis())
+# test = bivariate_confidenceprofiles!(model, 10, profile_type=EllipseApproxAnalytical(), method=BracketingMethodFix1Axis())
 
-# test = bivariate_confidenceprofiles(model, 10, method=AnalyticalEllipseMethod())
+# test = bivariate_confidenceprofiles!(model, 10, method=AnalyticalEllipseMethod())
 
 # test[(:K, :C0)].confidence_boundary_all_pars
 
