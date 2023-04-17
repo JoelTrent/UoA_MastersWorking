@@ -9,6 +9,7 @@ using LinearAlgebra
 using EllipseSampling
 using DataFrames
 using Accessors
+using Distributed
 
 include("NLopt_optimiser.jl")
 include("model_structs.jl")

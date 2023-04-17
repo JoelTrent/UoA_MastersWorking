@@ -147,6 +147,28 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
     return UnivariateConfidenceStruct(interval, boundarySamples)
 end
 
+function univariate_confidenceinterval_master(univariate_optimiser::Function,
+                                        model::LikelihoodModel,
+                                        consistent::NamedTuple, 
+                                        θi::Int,
+                                        confidence_level::Float64, 
+                                        profile_type::AbstractProfileType, 
+                                        atol::Float64,
+                                        use_existing_profiles::Bool)
+    if use_existing_profiles
+        bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
+                                                        profile_type)                
+
+        interval_struct = univariate_confidenceinterval(univariate_optimiser, model, consistent,
+                                                        θi, atol, bracket_l=bracket_l,
+                                                        bracket_r=bracket_r)
+    else
+        interval_struct = univariate_confidenceinterval(univariate_optimiser, model, consistent,
+                                                        θi, atol)
+    end
+    return interval_struct
+end
+
 # profile provided θ indices
 """
 atol is the absolute tolerance that decides if f(x) ≈ 0.0. I.e. if the loglikelihood function is approximately at the boundary of interest.
@@ -155,9 +177,11 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         θs_to_profile::Vector{<:Int64}; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        atol=1e-8,
+                                        atol::Float64=1e-8,
                                         use_existing_profiles::Bool=false,
-                                        θs_is_unique::Bool=false)
+                                        θs_is_unique::Bool=false,
+                                        use_distributed::Bool=false)
+                                        # existing_profiles::Symbol=:overwrite)
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
@@ -170,26 +194,28 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
     θs_is_unique || (sort(θs_to_profile); unique!(θs_to_profile))
 
-    # at a later date, want to check if a this interval has already been evaluated for a given parameter
-    # and/or if a wider/thinner confidence level has been evaluated yet (can use that knowledge to decrease the search bounds in 1D)
-
     init_uni_profile_row_exists!(model, θs_to_profile, profile_type)
 
-    for θi in θs_to_profile
+    # check if profile has already been evaluated
 
-        if model.uni_profile_row_exists[(θi, profile_type)][confidence_level] == 0
+    θs_to_keep = trues(length(θs_to_profile))
+    for (i, θi) in enumerate(θs_to_profile)
+        if model.uni_profile_row_exists[(θi, profile_type)][confidence_level] != 0
+            θs_to_keep[i] = false
+        end
+    end
+    θs_to_profile = θs_to_profile[θs_to_keep]
+    length(θs_to_profile) > 0 || return nothing
+
+    if !use_distributed
+        for θi in θs_to_profile
             model.num_uni_profiles += 1
             model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = model.num_uni_profiles * 1
 
-            if use_existing_profiles
-
-                bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level, profile_type)                
-
-                interval_struct = univariate_confidenceinterval(univariate_optimiser, model, consistent, θi, atol, bracket_l=bracket_l, bracket_r=bracket_r)
-            else
-                interval_struct = univariate_confidenceinterval(univariate_optimiser, model, consistent, θi, atol)
-            end
-
+            interval_struct = univariate_confidenceinterval_master(univariate_optimiser, model,
+                                                                consistent, θi, 
+                                                                confidence_level, profile_type,
+                                                                atol, use_existing_profiles)
 
             model.uni_profiles_dict[model.num_uni_profiles] = interval_struct
             
@@ -199,8 +225,29 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
             end
             update_uni_profile_row!(model, θi, false, confidence_level, profile_type, 2)
         end
-    end
 
+    else
+        profiles_to_add = @distributed (vcat) for θi in θs_to_profile
+            (θi, univariate_confidenceinterval_master(univariate_optimiser, model,
+                                                        consistent, θi, 
+                                                        confidence_level, profile_type,
+                                                        atol, use_existing_profiles))
+        end
+
+        for (θi, interval_struct) in profiles_to_add
+            model.num_uni_profiles += 1
+            model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = model.num_uni_profiles * 1
+
+            model.uni_profiles_dict[model.num_uni_profiles] = interval_struct
+
+            # fill out a new row in the dataframe (make sure that we haven't run out of rows yet)
+            if nrow(model.uni_profiles_df) < model.num_uni_profiles
+                add_uni_profile_rows!(model)
+            end
+            update_uni_profile_row!(model, θi, false, confidence_level, profile_type, 2)
+        end        
+    end
+    
     return nothing
 end
 

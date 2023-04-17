@@ -10,16 +10,21 @@ fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "P
 include(joinpath("..", "plottingFunctions.jl"))
 include(joinpath("..", "..", "JuLikelihood.jl"))
 
+using Distributed
+addprocs(3)
+@everywhere using DifferentialEquations, Random, Distributions
+@everywhere include(joinpath("..", "..", "JuLikelihood.jl"))
+
 # Workflow functions ##########################################################################
 
 # Section 2: Define ODE model
-function DE!(dC, C, p, t)
+@everywhere function DE!(dC, C, p, t)
     λ,K=p
     dC[1]= λ * C[1] * (1.0 - C[1]/K)
 end
 
 # Section 3: Solve ODE model
-function odesolver(t, λ, K, C0)
+@everywhere function odesolver(t, λ, K, C0)
     p=(λ,K)
     tspan=(0.0, t[end])
     prob=ODEProblem(DE!, [C0], tspan, p)
@@ -28,13 +33,13 @@ function odesolver(t, λ, K, C0)
 end
 
 # Section 4: Define function to solve ODE model 
-function ODEmodel(t, a)
+@everywhere function ODEmodel(t, a)
     y=odesolver(t, a[1],a[2],a[3])
     return y
 end
 
 # Section 6: Define loglikelihood function
-function loglhood(a, data)
+@everywhere function loglhood(a, data)
     y=ODEmodel(data.t, a)
     return sum(loglikelihood(data.dist, data.yobs-y))
 end
@@ -43,7 +48,7 @@ end
 # Section 8: Function to be optimised for MLE
 # note this function pulls in the globals, data and σ and would break if used outside of 
 # this file's scope
-function funmle(a); return loglhood(a, data) end 
+@everywhere function funmle(a); return loglhood(a, data) end 
 
 # Data setup #################################################################################
 # true parameters
@@ -102,7 +107,7 @@ inv(Γ[[2,3], [2,3]])
 # EllipseSampling.calculate_ellipse_parameters(Γ, 2, 3, 0.95)
 
 
-likelihoodFunc = loglhood
+@everywhere likelihoodFunc = loglhood
 θnames = [:λ, :K, :C0]
 confLevel = 0.95
 
@@ -154,7 +159,8 @@ univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 
 univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, [:K], profile_type=EllipseApprox())
-univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.5)
+@time univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.6, use_distributed=true)
+@time univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.61, use_distributed=false)
 univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.7, use_existing_profiles=true)
 univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
 
@@ -283,3 +289,8 @@ end
 
 newlb, newub = transformbounds(forward_parameter_transformKminusC0, lb, ub, Int[1,3], Int[2])
 newθmle = forward_parameter_transformKminusC0(θmle)
+
+
+# REMOVE WORKER PROCESSORS WHEN FINISHED #######################################
+rmprocs(workers())
+################################################################################
