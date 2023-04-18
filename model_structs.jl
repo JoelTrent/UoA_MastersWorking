@@ -6,9 +6,12 @@ abstract type AbstractConfidenceStruct end
 abstract type AbstractUnivariateConfidenceStruct <: AbstractConfidenceStruct end
 abstract type AbstractBivariateConfidenceStruct <: AbstractConfidenceStruct end
 
+abstract type AbstractPredictionStruct end
+
 abstract type AbstractProfileType end
 abstract type AbstractEllipseProfileType <: AbstractProfileType end
 abstract type AbstractBivariateMethod end
+
 
 struct CoreLikelihoodModel <: AbstractCoreLikelihoodModel
     loglikefunction::Function
@@ -55,8 +58,8 @@ mutable struct LikelihoodModel <: AbstractLikelihoodModel
     uni_profiles_dict::Dict{Int, AbstractUnivariateConfidenceStruct}
     biv_profiles_dict::Dict{Int, AbstractBivariateConfidenceStruct}
 
-    # other relevant fields
-
+    uni_predictions_dict::Dict{Int, AbstractPredictionStruct}
+    biv_predictions_dict::Dict{Int, AbstractPredictionStruct}
 end
 
 struct PointsAndLogLikelihood
@@ -64,23 +67,28 @@ struct PointsAndLogLikelihood
     ll::Vector{<:Float64}
 end
 
+struct PredictionStruct <: AbstractPredictionStruct
+    predictions::Array{Float64}
+    extrema::Array{Float64}
+end
+
 struct UnivariateConfidenceStructAnalytical <: AbstractUnivariateConfidenceStruct
     confidence_interval::Vector{<:Float64}
-    internal_points::PointsAndLogLikelihood
+    interval_points::PointsAndLogLikelihood
 
-    function UnivariateConfidenceStructAnalytical(x,y=PointsAndLogLikelihood(Float64[], Float64[]))
-        return new(x,y)
-    end
+    # function UnivariateConfidenceStructAnalytical(x,y=PointsAndLogLikelihood(Float64[], Float64[]))
+    #     return new(x,y)
+    # end
 end
 
 struct UnivariateConfidenceStruct <: AbstractUnivariateConfidenceStruct
     confidence_interval::Vector{<:Float64}
-    confidence_interval_all_pars::Matrix{Float64}
-    internal_points::PointsAndLogLikelihood
+    # confidence_interval_all_pars::Matrix{Float64}
+    interval_points::PointsAndLogLikelihood
 
-    function UnivariateConfidenceStruct(x,y,z=PointsAndLogLikelihood(Float64[], Float64[]))
-        return new(x,y,z)
-    end
+    # function UnivariateConfidenceStruct(x,y,z=PointsAndLogLikelihood(Float64[], Float64[]))
+    #     return new(x,y,z)
+    # end
 end
 
 struct BivariateConfidenceStructAnalytical <: AbstractBivariateConfidenceStruct

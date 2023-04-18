@@ -22,6 +22,14 @@ function convertθnames_toindices(model::LikelihoodModel,
     return indices
 end
 
+function loglikelihood_shifter(model::LikelihoodModel, 
+                                profile_type::AbstractProfileType)
+    if profile_type isa LogLikelihood
+        return model.core.maximisedmle
+    end        
+    return 0.0
+end
+
 function get_target_loglikelihood(model::LikelihoodModel, 
                                     confidence_level::Float64,
                                     profile_type::AbstractProfileType,
@@ -31,11 +39,7 @@ function get_target_loglikelihood(model::LikelihoodModel,
 
     llstar = -quantile(Chisq(df), confidence_level)/2.0
 
-    if profile_type isa LogLikelihood
-        return model.core.maximisedmle+llstar
-    end
-
-    return llstar
+    return llstar + loglikelihood_shifter(model, profile_type)
 end
 
 function get_consistent_tuple(model::LikelihoodModel, 

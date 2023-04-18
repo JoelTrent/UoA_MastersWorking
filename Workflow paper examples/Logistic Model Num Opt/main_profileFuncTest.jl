@@ -69,7 +69,7 @@ data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
 Kmin, Kmax = (50., 150.)
-C0min, C0max = (0.0, 50.)
+C0min, C0max = (10., 50.)
 
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
@@ -117,8 +117,8 @@ univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
 @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
 
 
-
-
+get_points_in_interval!(model, 10)
+generate_predictions_univariate!(model, 1.0, profile_types=[LogLikelihood(), EllipseApprox()])
 
 
 

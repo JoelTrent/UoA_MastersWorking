@@ -1,13 +1,9 @@
 function update_uni_dict_internal!(model::LikelihoodModel,
                                     uni_row_number::Int,
-                                    internal_points::Array{Float64},
-                                    ll::Vector{<:Float64})
-    
-    points = PointsAndLogLikelihood(internal_points, ll)
+                                    points::PointsAndLogLikelihood)
 
     interval_struct = model.uni_profiles_dict[uni_row_number]
-
-    model.uni_profiles_dict[uni_row_number] = @set interval_struct.internal_points = points
+    model.uni_profiles_dict[uni_row_number] = @set interval_struct.interval_points = points
 
     return nothing
 end
@@ -23,35 +19,35 @@ end
 
 """
 Will get points in the interval and at the interval boundaries. E.g. if a boundary is NaN, that means the true boundary is on the other side of a user provided bound - we want to generate the point on the bound to make plots and forward propogation useful.
+
+Presently doesn't reuse info on what the boundaries are.
 """
-function get_points_in_interval_single_row!(model::LikelihoodModel,
-                                uni_row_number::Int,
-                                num_new_points::Int;
-                                update_df::Bool=true)
+function get_points_in_interval_single_row(univariate_optimiser::Function, 
+                                model::LikelihoodModel,
+                                num_new_points::Int,
+                                θi::Int,
+                                profile_type::AbstractProfileType,
+                                current_interval_points::PointsAndLogLikelihood)
 
     num_new_points > 0 || throw(DomainError("num_new_points must be a strictly positive integer"))
-
-    θi = model.uni_profiles_df.θindex[uni_row_number]
-    profile_type = model.uni_profiles_df.profile_type[uni_row_number]
-    univariate_optimiser = get_univariate_opt_func(profile_type)
-
-    interval = get_uni_confidenceinterval(model, uni_row_number) * 1.0
-    interval[1] = isnan(interval[1]) ? model.core.θlb[θi] : interval[1]
-    interval[2] = isnan(interval[2]) ? model.core.θub[θi] : interval[2]
     
-    point_locations = LinRange(interval[1], interval[2], num_new_points+2)
     ll = zeros(num_new_points+2)
+    ll[[1,end]] .= current_interval_points.ll[1], current_interval_points.ll[end]
 
     if univariate_optimiser == univariateΨ_ellipse_analytical
 
-        internal_points = collect(point_locations)
+        point_locations = LinRange(current_interval_points.points[1], current_interval_points.points[end], num_new_points+2)
+        interval_points = collect(point_locations)
         
-        for (i, θ) in enumerate(internal_points)
-            ll[i] = analytic_ellipse_loglike([θ], [θi], (θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle))
+        for i in 2:(num_new_points+1)
+            ll[i] = analytic_ellipse_loglike([interval_points[i]], [θi], 
+                        (θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle))
         end
-        
+       
     else
-        internal_points = zeros(model.core.num_pars, num_new_points+2)
+        point_locations = LinRange(current_interval_points.points[θi,1], current_interval_points.points[θi,end], num_new_points+2)
+
+        interval_points = zeros(model.core.num_pars, num_new_points+2)
 
         newLb, newUb, initGuess, θranges, λranges = 
                                 init_univariate_parameters(model, θi)
@@ -60,30 +56,41 @@ function get_points_in_interval_single_row!(model::LikelihoodModel,
         p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
             θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-1))
 
-        for (i, θ) in enumerate(point_locations)
-            ll[i] = univariate_optimiser(θ, p)
-            variablemapping1d!(@view(internal_points[:,i]), p.λ_opt, θranges, λranges)
+        for i in 2:(num_new_points+1)
+            ll[i] = univariate_optimiser(point_locations[i], p)
+            variablemapping1d!(@view(interval_points[:,i]), p.λ_opt, θranges, λranges)
         end
-        internal_points[θi,:] .= point_locations
+        interval_points[θi,:] .= point_locations
     end
 
-    update_uni_dict_internal!(model, uni_row_number, internal_points, ll)
-
-    if update_df
-        update_uni_df_internal_points!(model, uni_row_number, num_new_points)
-    end
-    return nothing
+    return PointsAndLogLikelihood(interval_points, ll)
 end
+
+function get_points_in_interval_single_row(model::LikelihoodModel,
+                                uni_row_number::Int,
+                                num_new_points::Int)
+
+    θi = model.uni_profiles_df.θindex[uni_row_number]
+    profile_type = model.uni_profiles_df.profile_type[uni_row_number]
+    univariate_optimiser = get_univariate_opt_func(profile_type)
+    current_interval_points = model.uni_profiles_dict[uni_row_number].interval_points
+
+    return get_points_in_interval_single_row(univariate_optimiser, model, num_new_points, 
+                                                θi, profile_type, current_interval_points)
+end
+
 
 function get_points_in_interval!(model::LikelihoodModel,
                                     num_new_points::Int;
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[]
                                     )
+
+    0 < num_new_points || throw(DomainError("num_new_points must be strictly positive"))
     df = model.uni_profiles_df
     row_subset = trues(nrow(df))
-    row_subset .= df.num_points .!= (num_new_points+2)
 
+    row_subset .= (df.num_points .!= (num_new_points+2))
     if !isempty(confidence_levels)
         row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
     end
@@ -94,8 +101,10 @@ function get_points_in_interval!(model::LikelihoodModel,
     sub_df = @view(df[row_subset, :])
 
     for i in 1:nrow(sub_df)
-        get_points_in_interval_single_row!(model, sub_df[i, :row_ind], 
-                                            num_new_points, update_df=false)
+        points = get_points_in_interval_single_row(model, sub_df[i, :row_ind], 
+                                            num_new_points)
+
+        update_uni_dict_internal!(model, sub_df[i, :row_ind], points)
     end
 
     sub_df[:, :evaluated_internal_points] .= true

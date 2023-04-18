@@ -69,12 +69,17 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
     biv_profiles_dict = Dict{Int, AbstractBivariateConfidenceStruct}()
 
+    uni_predictions_dict = Dict{Int, AbstractPredictionStruct}()
+    biv_predictions_dict = Dict{Int, AbstractPredictionStruct}()
+
+
     likelihoodmodel = LikelihoodModel(corelikelihoodmodel,
                                     missing, 
                                     num_uni_profiles, num_biv_profiles,
                                     uni_profiles_df, biv_profiles_df,
                                     uni_profile_row_exists, biv_profile_row_exists, 
-                                    uni_profiles_dict, biv_profiles_dict)
+                                    uni_profiles_dict, biv_profiles_dict,
+                                    uni_predictions_dict, biv_predictions_dict)
 
     return likelihoodmodel
 end
