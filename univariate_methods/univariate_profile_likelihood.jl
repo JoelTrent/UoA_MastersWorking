@@ -29,9 +29,14 @@ function get_interval_brackets(model::LikelihoodModel,
 
         if conf_ind>1
             bracket_l[2], bracket_r[1] = get_uni_confidenceinterval(model, model.uni_profile_row_exists[(θi, profile_type)][prof_keys[conf_ind-1]])
+        else
+            bracket_l[2], bracket_r[1] = model.core.θmle[θi], model.core.θmle[θi]
         end
+        
         if conf_ind<len_keys
             bracket_l[1], bracket_r[2] = get_uni_confidenceinterval(model, model.uni_profile_row_exists[(θi, profile_type)][prof_keys[conf_ind+1]])
+        else
+            bracket_l[1], bracket_r[2] = model.core.θlb[θi], model.core.θub[θi]
         end
     else
         bracket_l, bracket_r = Float64[], Float64[]
