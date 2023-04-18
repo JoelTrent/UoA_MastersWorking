@@ -12,6 +12,7 @@ abstract type AbstractBivariateMethod end
 
 struct CoreLikelihoodModel <: AbstractCoreLikelihoodModel
     loglikefunction::Function
+    predictfunction::Union{Function, Missing}
     data::Union{Tuple, NamedTuple}
     θnames::Vector{<:Symbol}
     θname_to_index::Dict{Symbol, Int}
@@ -58,11 +59,16 @@ mutable struct LikelihoodModel <: AbstractLikelihoodModel
 
 end
 
+struct PointsAndLogLikelihood
+    points::Array{Float64}
+    ll::Vector{<:Float64}
+end
+
 struct UnivariateConfidenceStructAnalytical <: AbstractUnivariateConfidenceStruct
     confidence_interval::Vector{<:Float64}
-    internal_points::Matrix{Float64}
+    internal_points::PointsAndLogLikelihood
 
-    function UnivariateConfidenceStructAnalytical(x,y=Matrix{Float64}(undef,0,0))
+    function UnivariateConfidenceStructAnalytical(x,y=PointsAndLogLikelihood(Float64[], Float64[]))
         return new(x,y)
     end
 end
@@ -70,9 +76,9 @@ end
 struct UnivariateConfidenceStruct <: AbstractUnivariateConfidenceStruct
     confidence_interval::Vector{<:Float64}
     confidence_interval_all_pars::Matrix{Float64}
-    internal_points::Matrix{Float64}
+    internal_points::PointsAndLogLikelihood
 
-    function UnivariateConfidenceStruct(x,y,z=Matrix{Float64}(undef,0,0))
+    function UnivariateConfidenceStruct(x,y,z=PointsAndLogLikelihood(Float64[], Float64[]))
         return new(x,y,z)
     end
 end

@@ -19,7 +19,7 @@ function add_biv_profiles_rows!(model::LikelihoodModel,
     return nothing
 end
 
-function update_biv_profiles_row!(model::LikelihoodModel, 
+function set_biv_profiles_row!(model::LikelihoodModel, 
                                     θcombination::Tuple{Int, Int},
                                     evaluated_internal_points::Bool,
                                     confidence_level::Float64,
@@ -171,7 +171,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
             model.biv_profiles_dict[model.num_biv_profiles] = boundary_struct
 
-            update_biv_profiles_row!(model, (ind1, ind2), false, confidence_level, profile_type, method, num_points)        
+            set_biv_profiles_row!(model, (ind1, ind2), false, confidence_level, profile_type, method, num_points)        
         end
     else
         profiles_to_add = @distributed (vcat) for (ind1, ind2) in θcombinations
@@ -187,7 +187,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
             model.biv_profiles_dict[model.num_biv_profiles] = boundary_struct
 
-            update_biv_profiles_row!(model, inds, false, confidence_level, profile_type, method, num_points)        
+            set_biv_profiles_row!(model, inds, false, confidence_level, profile_type, method, num_points)        
         end
     end
 

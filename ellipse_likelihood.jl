@@ -14,7 +14,7 @@ Analytic ellipse log-likelihood has no knowledge of lower and upper bounds on pa
 Pushing forward from these confidence bounds may be infeasible - if analytical profile has entered a space where a parameter bound is active.
 """
 function analytic_ellipse_loglike(θ::Vector, θIndexes::Vector{Int}, 
-    mleTuple::@NamedTuple{θmle::Vector{T}, Γmle::Matrix{T}}) where T<:Float64
+                                    mleTuple::@NamedTuple{θmle::Vector{T}, Γmle::Matrix{T}}) where T<:Float64
     return -0.5 * (θ-mleTuple.θmle[θIndexes])' * inv(mleTuple.Γmle[θIndexes, θIndexes]) * (θ-mleTuple.θmle[θIndexes])
 end
 

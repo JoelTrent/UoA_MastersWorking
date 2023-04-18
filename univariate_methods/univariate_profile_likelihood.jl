@@ -44,9 +44,6 @@ function get_interval_brackets(model::LikelihoodModel,
     return bracket_l, bracket_r
 end
 
-"""
-TODO: user control of how many new rows get added if/when we need to add them.
-"""
 function add_uni_profiles_rows!(model::LikelihoodModel, 
                                 num_rows_to_add::Int)
     new_rows = init_uni_profiles_df(num_rows_to_add, 
@@ -56,7 +53,7 @@ function add_uni_profiles_rows!(model::LikelihoodModel,
     return nothing
 end
 
-function update_uni_profiles_row!(model::LikelihoodModel, 
+function set_uni_profiles_row!(model::LikelihoodModel, 
                                     θi::Int,
                                     evaluated_internal_points::Bool,
                                     confidence_level::Float64,
@@ -89,22 +86,10 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         bracket_l::Vector{<:Float64}=Float64[],
                                         bracket_r::Vector{<:Float64}=Float64[])
 
-    univ_opt_is_ellipse_analytical = univariate_optimiser == univariateΨ_ellipse_analytical
-
     interval = zeros(2)
-    boundarySamples = zeros(model.core.num_pars, 2)
 
-    newLb=zeros(model.core.num_pars-1) 
-    newUb=zeros(model.core.num_pars-1)
-    initGuess=zeros(model.core.num_pars-1)
+    if univariate_optimiser == univariateΨ_ellipse_analytical
 
-    boundsmapping1d!(newLb, model.core.θlb, θi)
-    boundsmapping1d!(newUb, model.core.θub, θi)
-    boundsmapping1d!(initGuess, model.core.θmle, θi)
-
-    θranges, λranges = variablemapping1dranges(model.core.num_pars, θi)
-
-    if univ_opt_is_ellipse_analytical
         # p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
         #     θranges=θranges, λranges=λranges, consistent=consistent)
 
@@ -127,6 +112,9 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
     end
 
     # else
+    boundarySamples = zeros(model.core.num_pars, 2)
+    newLb, newUb, initGuess, θranges, λranges = init_univariate_parameters(model, θi)
+
     p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
         θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-1))
 
@@ -232,7 +220,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
             model.uni_profiles_dict[model.num_uni_profiles] = interval_struct
             
-            update_uni_profiles_row!(model, θi, false, confidence_level, profile_type, 2)
+            set_uni_profiles_row!(model, θi, false, confidence_level, profile_type, 2)
         end
 
     else
@@ -249,7 +237,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
             model.uni_profiles_dict[model.num_uni_profiles] = interval_struct
 
-            update_uni_profiles_row!(model, θi, false, confidence_level, profile_type, 2)
+            set_uni_profiles_row!(model, θi, false, confidence_level, profile_type, 2)
         end        
     end
     

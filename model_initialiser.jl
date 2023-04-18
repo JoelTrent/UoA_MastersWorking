@@ -29,6 +29,7 @@ end
 TO DO: Add support for user defined size of preallocation of the uni and biv profiles dataframes
 """
 function initialiseLikelihoodModel(loglikefunction::Function,
+    predictfunction::Union{Function, Missing},
     data::Union{Tuple, NamedTuple},
     θnames::Vector{<:Symbol},
     θinitialGuess::Vector{<:Float64},
@@ -44,7 +45,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     function funmle(θ); return loglikefunction(θ, data) end
     (θmle, maximisedmle) = optimise(funmle, θinitialGuess, θlb, θub)
 
-    corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, data, θnames, θnameToIndex,
+    corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, predictfunction, data, θnames, θnameToIndex,
                                         θlb, θub, θmle, maximisedmle, num_pars)
 
 
@@ -76,4 +77,20 @@ function initialiseLikelihoodModel(loglikefunction::Function,
                                     uni_profiles_dict, biv_profiles_dict)
 
     return likelihoodmodel
+end
+
+"""
+Can be called without a prediction function
+"""
+function initialiseLikelihoodModel(loglikefunction::Function,
+    data::Union{Tuple, NamedTuple},
+    θnames::Vector{<:Symbol},
+    θinitialGuess::Vector{<:Float64},
+    θlb::Vector{<:Float64},
+    θub::Vector{<:Float64};
+    uni_prealloaction_size=NaN,
+    biv_preallocation_size=NaN)
+
+    return initialiseLikelihoodModel(loglikefunction, missing, data, θnames,
+                                        θinitialGuess, θlb, θub)
 end

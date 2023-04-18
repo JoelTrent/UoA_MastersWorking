@@ -12,7 +12,7 @@ fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "P
 include(joinpath("..", "..", "JuLikelihood.jl"))
 
 using Distributed
-addprocs(3)
+# addprocs(3)
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere include(joinpath("..", "..", "JuLikelihood.jl"))
 
@@ -90,124 +90,39 @@ ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 # Section 12: Prediction interval from the univariate quadratic approximation of log-likelihood for parameter λ
 # Compute and propogate uncertainty forward from the univariate likelihood for parameter λ
 
-# 3D approximation of the likelihood around the MLE solution
-H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
-θmle
-Γ
-inv(Γ[[2,3], [2,3]])
-
-# using LinearAlgebra
-# sqrt.(1.0 ./ eigvals(inv(Γ[[2,3], [2,3]]) .* 0.5 ./ (quantile(Chisq(2), 0.95)*0.5)))
-
-# eigs = eigvecs(inv(Γ[[2,3], [2,3]]) .* 0.5 ./ (quantile(Chisq(2), 0.95)*0.5))
-
-# atan(eigs[2,1], eigs[1,1]) + pi/2
-
-
-# using EllipseSampling
-# EllipseSampling.calculate_ellipse_parameters(Γ, 2, 3, 0.95)
-
-
 @everywhere likelihoodFunc = loglhood
+@everywhere function predictFunc(θ, data); ODEmodel(data.t, θ) end
 θnames = [:λ, :K, :C0]
 confLevel = 0.95
 
-
 # initialisation. model is a mutable struct that is currently intended to hold all model information
-model = initialiseLikelihoodModel(likelihoodFunc, data, θnames, θG, lb, ub)
+model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub)
 
 # not strictly required - functions that rely on these being computed will check if 
 # they're missing and call this function on model if so.
 getMLE_ellipse_approximation!(model)
 
-analytic_ellipse_loglike_1D_soln(3, (θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle), -quantile(Chisq(1), 0.95)/2 )
 
-f(x) = likelihoodFunc([θmle[1], x[1], x[2]], data)
-# import Zygote
-# using SciMLSensitivity
-# Zygote.gradient(f, θmle[1:2])
-ForwardDiff.gradient(f, θmle[2:3])
-
-function h(x)
-    xs = zeros(eltype(x),3) 
-
-    function fun(λ)
-        xs[:] .= λ, x[1], x[2]
-        likelihoodFunc(xs, data) 
-    end
-    fun(θmle[1])
-end
-twodgrad = ForwardDiff.gradient(h, θmle[2:3])
-
-e(x) = likelihoodFunc(x, data)
-fullgrad = ForwardDiff.gradient(e, θmle)
-
-fullgrad[2:3] / norm(fullgrad[2:3],2)
-twodgrad / norm(twodgrad,2)
-
-newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, 1, 2)
-
-p = (consistent=get_consistent_tuple(model, 0.95, LogLikelihood(), 2), initGuess=initGuess, newLb=newLb, newUb=newUb, λ_opt=zeros(1), θranges=θranges, λranges=λranges, λ=[θmle[3]], ind1=1,ind2=2)
-g(x) = bivariateΨ_gradient!(x, p)
-# ForwardDiff.gradient(g, θmle[1:2])
-ForwardDiff.gradient(g, θmle[1:2])
-
-@time bivariate_confidenceprofiles!(model, 5, confidence_level=0.91, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 2, 0.2), use_distributed=true)
-
-@time bivariate_confidenceprofiles!(model, 50, confidence_level=0.905, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 2, 0.2), use_distributed=true)
-
-@time bivariate_confidenceprofiles!(model, 50, confidence_level=0.90, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 2, 0.2), use_distributed=false)
-
-univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
+univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, profile_type=EllipseApprox())
-@time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
+univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 
 univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, [:K], profile_type=EllipseApprox())
-@time univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.6, use_distributed=true)
-@time univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.61, use_distributed=false)
 univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.7, use_existing_profiles=true)
 univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
 
 
-# @time bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApproxAnalytical())
-# @time bivariate_confidenceprofiles!(model, 10, profile_type=EllipseApprox())
-# Random.seed!(12348)
-# @time bivariate_confidenceprofiles!(model, 30, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
-# Random.seed!(12348)
-# @time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
-
-@time bivariate_confidenceprofiles!(model, 50, confidence_level=0.95, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), use_distributed=true)
-@time bivariate_confidenceprofiles!(model, 50, confidence_level=0.949, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), atol=1.0, use_distributed=false)
-
-# @time bivariate_confidenceprofiles!(model, [[:K, :C0], [:λ, :K]],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), atol=1.0)
-bivariate_confidenceprofiles!(model, [(:K, :C0)],  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
-# @profview bivariate_confidenceprofiles!(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
-# @profview bivariate_confidenceprofiles!(model, 2,  10, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
-
-# Random.seed!(12348)
-# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis())
-# Random.seed!(12348)
-# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous())
-# Random.seed!(12348)
-# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(8))
+@time bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApproxAnalytical())
+@time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
 
 
 
-# test = bivariate_confidenceprofiles!(model, 10, profile_type=EllipseApproxAnalytical(), method=BracketingMethodFix1Axis())
 
-# test = bivariate_confidenceprofiles!(model, 10, method=AnalyticalEllipseMethod())
 
-# test[(:K, :C0)].confidence_boundary_all_pars
 
-# a=10
 
-# # 1D profiles
-# confInts, p = univariateprofiles(likelihoodFunc, fmle, data, θnames, θmle, lb, ub; confLevel=0.95)
 
-# # 1D profile using elliptical approximation
-# confInts_ellipse_analyt, p_ellipse_analyt = univariateprofiles_ellipse_analytical(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
-# confInts_ellipse, p_ellipse = univariateprofiles_ellipse(θnames, θmle, lb, ub, H, Γ; confLevel=0.95)
 
 
 # Combination profiles

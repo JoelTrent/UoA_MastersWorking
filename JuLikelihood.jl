@@ -18,10 +18,12 @@ include("combination_relationships.jl")
 include("transform_bounds.jl")
 include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")
+include("predictions.jl")
 
-include("univariate_methods/array_mapping.jl")
+include("univariate_methods/init_and_array_mapping.jl")
 include("univariate_methods/loglikelihood_functions.jl")
 include("univariate_methods/univariate_profile_likelihood.jl")
+include("univariate_methods/points_in_interval.jl")
 
 include("bivariate_methods/init_and_array_mapping.jl")
 include("bivariate_methods/findpointon2Dbounds.jl")
