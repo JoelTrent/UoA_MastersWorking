@@ -1,8 +1,9 @@
 using LinearAlgebra: norm, dot
 
 # Section 1: set up packages and parameter values
-using Plots, DifferentialEquations
-using .Threads 
+# using Plots
+using DifferentialEquations
+# using .Threads 
 using Interpolations, Random, Distributions
 using BenchmarkTools
 gr()
