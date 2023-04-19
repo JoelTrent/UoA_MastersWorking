@@ -2,6 +2,7 @@
 using EllipseSampling
 using LinearAlgebra
 using Plots
+using DifferentialEquations, Random, Distributions
 gr()
 
 include("JuLikelihood.jl")
