@@ -1,7 +1,7 @@
 # Section 1: set up packages and parameter values
 # using Plots
 using DifferentialEquations
-using .Threads 
+# using .Threads 
 using Interpolations, Random, Distributions
 using BenchmarkTools
 # gr()
@@ -119,7 +119,8 @@ univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
 
 get_points_in_interval!(model, 10)
 generate_predictions_univariate!(model, 1.0, profile_types=[LogLikelihood(), EllipseApprox()])
-
+generate_predictions_bivariate!(model, 1.0, profile_types=[LogLikelihood(), EllipseApprox()])
+println()
 
 
 

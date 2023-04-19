@@ -1,14 +1,3 @@
-function init_uni_profile_row_exists!(model::LikelihoodModel, 
-                                        θs_to_profile::Vector{<:Int},
-                                        profile_type::AbstractProfileType)
-    for θi in θs_to_profile
-        if !haskey(model.uni_profile_row_exists, (θi, profile_type))
-            model.uni_profile_row_exists[(θi, profile_type)] = DefaultDict{Float64, Int}(0)
-        end
-    end
-    return nothing
-end
-
 function get_uni_confidenceinterval(model::LikelihoodModel,
                                     uni_row_number::Int)
     return model.uni_profiles_dict[uni_row_number].confidence_interval
@@ -55,12 +44,14 @@ end
 
 function set_uni_profiles_row!(model::LikelihoodModel, 
                                     θi::Int,
-                                    evaluated_internal_points::Bool,
+                                    not_evaluated_internal_points::Bool,
+                                    not_evaluated_predictions::Bool,
                                     confidence_level::Float64,
                                     profile_type::AbstractProfileType,
                                     num_points::Int)
     model.uni_profiles_df[model.num_uni_profiles, 2:end] .= θi*1, 
-                                                            evaluated_internal_points,
+                                                            not_evaluated_internal_points,
+                                                            not_evaluated_predictions,
                                                             confidence_level,
                                                             profile_type,
                                                             num_points
@@ -262,7 +253,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
             model.uni_profiles_dict[model.num_uni_profiles] = interval_struct
             
-            set_uni_profiles_row!(model, θi, false, confidence_level, profile_type, 2)
+            set_uni_profiles_row!(model, θi, true, true, confidence_level, profile_type, 2)
         end
 
     else
@@ -280,7 +271,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
             model.uni_profiles_dict[model.num_uni_profiles] = interval_struct
 
-            set_uni_profiles_row!(model, θi, false, confidence_level, profile_type, 2)
+            set_uni_profiles_row!(model, θi, true, true, confidence_level, profile_type, 2)
         end        
     end
     

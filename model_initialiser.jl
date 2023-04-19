@@ -1,9 +1,33 @@
+function init_uni_profile_row_exists!(model::LikelihoodModel, 
+                                        θs_to_profile::Vector{<:Int},
+                                        profile_type::AbstractProfileType)
+    for θi in θs_to_profile
+        if !haskey(model.uni_profile_row_exists, (θi, profile_type))
+            model.uni_profile_row_exists[(θi, profile_type)] = DefaultDict{Float64, Int}(0)
+        end
+    end
+    return nothing
+end
+
+function init_biv_profile_row_exists!(model::LikelihoodModel, 
+                                        θcombinations::Vector{Vector{Int}},
+                                        profile_type::AbstractProfileType,
+                                        method::AbstractBivariateMethod)
+    for (ind1, ind2) in θcombinations
+        if !haskey(model.biv_profile_row_exists, ((ind1, ind2), profile_type, method))
+            model.biv_profile_row_exists[((ind1, ind2), profile_type, method)] = DefaultDict{Float64, Int}(0)
+        end
+    end
+    return nothing
+end
+
 function init_uni_profiles_df(num_rows; existing_largest_row=0)
    
     uni_profiles_df = DataFrame()
     uni_profiles_df.row_ind = collect(1:num_rows) .+ existing_largest_row
     uni_profiles_df.θindex = zeros(Int, num_rows)
-    uni_profiles_df.evaluated_internal_points = falses(num_rows)
+    uni_profiles_df.not_evaluated_internal_points = trues(num_rows)
+    uni_profiles_df.not_evaluated_predictions = trues(num_rows)
     uni_profiles_df.conf_level = zeros(num_rows)
     uni_profiles_df.profile_type = Vector{AbstractProfileType}(undef, num_rows)
     uni_profiles_df.num_points = zeros(Int, num_rows)
@@ -16,7 +40,8 @@ function init_biv_profiles_df(num_rows; existing_largest_row=0)
     biv_profiles_df = DataFrame()
     biv_profiles_df.row_ind = collect(1:num_rows) .+ existing_largest_row
     biv_profiles_df.θindexes = fill((0,0), num_rows)
-    biv_profiles_df.evaluated_internal_points = falses(num_rows)
+    biv_profiles_df.not_evaluated_internal_points = trues(num_rows)
+    biv_profiles_df.not_evaluated_predictions = trues(num_rows)
     biv_profiles_df.conf_level = zeros(num_rows)
     biv_profiles_df.profile_type = Vector{AbstractProfileType}(undef, num_rows)
     biv_profiles_df.method = Vector{AbstractBivariateMethod}(undef, num_rows)

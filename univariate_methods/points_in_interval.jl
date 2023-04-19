@@ -8,14 +8,14 @@ function update_uni_dict_internal!(model::LikelihoodModel,
     return nothing
 end
 
-function update_uni_df_internal_points!(model::LikelihoodModel,
-                                        uni_row_number::Int,
-                                        num_new_points::Int)
-
-    model.uni_profiles_df[uni_row_number, [:evaluated_internal_points, :num_points]] .= true, num_new_points+2
-
-    return nothing
-end
+# function update_uni_df_internal_points!(model::LikelihoodModel,
+#                                         uni_row_number::Int,
+#                                         num_new_points::Int)
+# 
+#     model.uni_profiles_df[uni_row_number, [:not_evaluated_internal_points, :num_points]] .= false, num_new_points+2
+# 
+#     return nothing
+# end
 
 """
 Will get points in the interval and at the interval boundaries. E.g. if a boundary is NaN, that means the true boundary is on the other side of a user provided bound - we want to generate the point on the bound to make plots and forward propogation useful.
@@ -60,7 +60,9 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
             ll[i] = univariate_optimiser(point_locations[i], p)
             variablemapping1d!(@view(interval_points[:,i]), p.λ_opt, θranges, λranges)
         end
-        interval_points[θi,:] .= point_locations
+        interval_points[θi,2:(end-1)]  .= point_locations[2:(end-1)]
+        interval_points[:,1]   .= current_interval_points.points[:,1]
+        interval_points[:,end] .= current_interval_points.points[:,end]
     end
 
     return PointsAndLogLikelihood(interval_points, ll)
@@ -78,7 +80,6 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
     return get_points_in_interval_single_row(univariate_optimiser, model, num_new_points, 
                                                 θi, profile_type, current_interval_points)
 end
-
 
 function get_points_in_interval!(model::LikelihoodModel,
                                     num_new_points::Int;
@@ -107,7 +108,8 @@ function get_points_in_interval!(model::LikelihoodModel,
         update_uni_dict_internal!(model, sub_df[i, :row_ind], points)
     end
 
-    sub_df[:, :evaluated_internal_points] .= true
+    sub_df[:, :not_evaluated_internal_points] .= false
+    sub_df[:, :not_evaluated_predictions] .= true
     sub_df[:, :num_points] .= num_new_points+2
 
     return nothing

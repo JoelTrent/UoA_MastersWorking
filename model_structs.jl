@@ -101,7 +101,7 @@ struct BivariateConfidenceStructAnalytical <: AbstractBivariateConfidenceStruct
 end
 
 struct BivariateConfidenceStruct <: AbstractBivariateConfidenceStruct
-    confidence_boundary_all_pars::Matrix{Float64}
+    confidence_boundary::Matrix{Float64}
     internal_points::Matrix{Float64}
 
     function BivariateConfidenceStruct(x,y=Matrix{Float64}(undef,0,0))
