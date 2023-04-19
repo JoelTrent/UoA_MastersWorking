@@ -18,9 +18,7 @@ end
 # end
 
 """
-Will get points in the interval and at the interval boundaries. E.g. if a boundary is NaN, that means the true boundary is on the other side of a user provided bound - we want to generate the point on the bound to make plots and forward propogation useful.
-
-Presently doesn't reuse info on what the boundaries are.
+Will get points in the interval and at the interval boundaries - current_interval_points has at least the boundary points. 
 """
 function get_points_in_interval_single_row(univariate_optimiser::Function, 
                                 model::LikelihoodModel,
@@ -87,7 +85,7 @@ function get_points_in_interval!(model::LikelihoodModel,
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[]
                                     )
 
-    0 < num_new_points || throw(DomainError("num_new_points must be strictly positive"))
+    0 < num_new_points || throw(DomainError("num_new_points must be a strictly positive integer"))
     df = model.uni_profiles_df
     row_subset = trues(nrow(df))
 

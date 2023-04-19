@@ -12,11 +12,12 @@ If a model has multiple predictive variables, it assumes that `model.predictfunc
 We are going to store values for each variable in the 3rd dimension (row=dim1, col=dim2, )
 """
 function generate_prediction(predictfunction::Function,
+                                data,
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Float64)
 
     num_points = size(parameter_points, 2)
-    prediction_one = predictfunction(parameter_points[:,1], model.core.data)
+    prediction_one = predictfunction(parameter_points[:,1], data)
     
     if ndims(prediction_one) > 2
         error("this function has not been written to handle predictions that are stored in higher than 2 dimensions")
@@ -28,7 +29,7 @@ function generate_prediction(predictfunction::Function,
         predictions[:,1,:] .= prediction_one
 
         for i in 2:num_points
-            predictions[:,i,:] .= predictfunction(parameter_points[:,i], model.core.data)
+            predictions[:,i,:] .= predictfunction(parameter_points[:,i], data)
         end
 
     else
@@ -36,7 +37,7 @@ function generate_prediction(predictfunction::Function,
         predictions[:,1] .= prediction_one
 
         for i in 2:num_points
-            predictions[:,i] .= predictfunction(parameter_points[:,i], model.core.data)
+            predictions[:,i] .= predictfunction(parameter_points[:,i],data)
         end
     end
     
@@ -87,7 +88,8 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 
     if !use_distributed
         for i in 1:nrow(sub_df)
-            predict_struct = generate_prediction(model.core.predictfunction, 
+            predict_struct = generate_prediction(model.core.predictfunction,
+                model.core.data,
                 model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points, 
                                             proportion_to_keep)
 
@@ -97,6 +99,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
     else
         predictions = @distributed (vcat) for i in 1:nrow(sub_df)
             generate_prediction(model.core.predictfunction, 
+                model.core.data,
                 model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points, 
                                             proportion_to_keep)
         end
@@ -148,10 +151,12 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
 
             if !isempty(conf_struct.internal_points)
                 predict_struct = generate_prediction(model.core.predictfunction, 
+                                    model.core.data,
                                     hcat(conf_struct.confidence_boundary, conf_struct.internal_points), 
                                                 proportion_to_keep)
             else
                 predict_struct = generate_prediction(model.core.predictfunction, 
+                                    model.core.data,
                                     conf_struct.confidence_boundary, 
                                                 proportion_to_keep)
             end
@@ -165,10 +170,12 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
 
             if !isempty(conf_struct.internal_points)
                 generate_prediction(model.core.predictfunction, 
+                                    model.core.data,
                                     hcat(conf_struct.confidence_boundary, conf_struct.internal_points), 
                                                 proportion_to_keep)
             else
                 generate_prediction(model.core.predictfunction, 
+                                    model.core.data,
                                     conf_struct.confidence_boundary, 
                                                 proportion_to_keep)
             end

@@ -60,8 +60,8 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θinitialGuess::Vector{<:Float64},
     θlb::Vector{<:Float64},
     θub::Vector{<:Float64};
-    uni_prealloaction_size=NaN,
-    biv_preallocation_size=NaN)
+    uni_row_prealloaction_size=NaN,
+    biv_row_preallocation_size=NaN)
 
     # Initialise CoreLikelihoodModel, finding the MLE solution
     θnameToIndex = Dict{Symbol,Int}(name=>i for (i, name) in enumerate(θnames))
@@ -82,14 +82,14 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     num_uni_profiles = 0
     num_biv_profiles = 0
 
-    uni_profiles_df = init_uni_profiles_df(num_pars)    
+    uni_profiles_df = isnan(uni_row_prealloaction_size) ? init_uni_profiles_df(num_pars) : init_uni_profiles_df(uni_row_prealloaction_size)
     # if zero, is invalid row
     uni_profile_row_exists = Dict{Tuple{Int, AbstractProfileType}, DefaultDict{Float64, Int}}()    
     # uni_profile_row_exists = DefaultDict{Tuple{Int, Float64, AbstractProfileType}, Int}(0)
     uni_profiles_dict = Dict{Int, AbstractUnivariateConfidenceStruct}()
 
     num_combinations = binomial(num_pars, 2)
-    biv_profiles_df = init_biv_profiles_df(num_combinations)
+    biv_profiles_df = isnan(biv_row_preallocation_size) ? init_biv_profiles_df(num_combinations) : init_biv_profiles_df(biv_row_preallocation_size)
     # if zero, is invalid row
     biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
     biv_profiles_dict = Dict{Int, AbstractBivariateConfidenceStruct}()
