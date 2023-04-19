@@ -76,9 +76,11 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         model::LikelihoodModel, 
                                         consistent::NamedTuple, 
                                         θi::Int, 
+                                        profile_type::AbstractProfileType,
                                         atol::Float64,
                                         mle_targetll::Float64,
-                                        ll_shift::Float64; 
+                                        ll_shift::Float64,
+                                        num_points_in_interval::Int; 
                                         bracket_l::Vector{<:Float64}=Float64[],
                                         bracket_r::Vector{<:Float64}=Float64[])
 
@@ -119,6 +121,13 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
         end
 
         points = PointsAndLogLikelihood(interval_points, ll)
+
+        if num_points_in_interval > 0
+            points = get_points_in_interval_single_row(univariate_optimiser, model,
+                                                        num_points_in_interval, θi,
+                                                        profile_type, points)
+        end
+
         return UnivariateConfidenceStructAnalytical(interval, points)
     end
 
@@ -165,6 +174,12 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
     points = PointsAndLogLikelihood(interval_points, ll)
 
+    if num_points_in_interval > 0
+        points = get_points_in_interval_single_row(univariate_optimiser, model,
+                                                    num_points_in_interval, θi,
+                                                    profile_type, points)
+    end
+
     return UnivariateConfidenceStruct(interval, points)
 end
 
@@ -177,17 +192,20 @@ function univariate_confidenceinterval_master(univariate_optimiser::Function,
                                         atol::Real,
                                         mle_targetll::Float64,
                                         ll_shift::Float64,
-                                        use_existing_profiles::Bool)
+                                        use_existing_profiles::Bool,
+                                        num_points_in_interval::Int)
     if use_existing_profiles
         bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
                                                         profile_type)                
 
         interval_struct = univariate_confidenceinterval(univariate_optimiser, model, consistent,
-                                                        θi, atol, mle_targetll, ll_shift, 
+                                                        θi, profile_type, atol, mle_targetll, ll_shift, 
+                                                        num_points_in_interval,
                                                         bracket_l=bracket_l, bracket_r=bracket_r)
     else
         interval_struct = univariate_confidenceinterval(univariate_optimiser, model, consistent,
-                                                        θi, atol, mle_targetll, ll_shift)
+                                                        θi, profile_type, atol, mle_targetll, ll_shift, 
+                                                        num_points_in_interval)
     end
     return interval_struct
 end
@@ -203,10 +221,12 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         atol::Float64=1e-8,
                                         use_existing_profiles::Bool=false,
                                         θs_is_unique::Bool=false,
-                                        use_distributed::Bool=false)
+                                        use_distributed::Bool=false, 
+                                        num_points_in_interval::Int=0)
                                         # existing_profiles::Symbol=:overwrite)
 
     atol > 0 || throw(DomainError("atol must be a strictly positive integer"))
+    num_points_in_interval >= 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
@@ -240,6 +260,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
         add_uni_profiles_rows!(model, num_rows_required)
     end
 
+    not_evaluated_internal_points = num_points_in_interval > 0 ? false : true
+
     if !use_distributed
         for θi in θs_to_profile
             model.num_uni_profiles += 1
@@ -249,11 +271,12 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                                                 consistent, θi, 
                                                                 confidence_level, profile_type,
                                                                 atol, mle_targetll, ll_shift,
-                                                                use_existing_profiles)
+                                                                use_existing_profiles,
+                                                                num_points_in_interval)
 
             model.uni_profiles_dict[model.num_uni_profiles] = interval_struct
             
-            set_uni_profiles_row!(model, θi, true, true, confidence_level, profile_type, 2)
+            set_uni_profiles_row!(model, θi, not_evaluated_internal_points, true, confidence_level, profile_type, 2)
         end
 
     else
@@ -262,7 +285,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                                         consistent, θi, 
                                                         confidence_level, profile_type,
                                                         atol, mle_targetll, ll_shift,
-                                                        use_existing_profiles))
+                                                        use_existing_profiles,
+                                                        num_points_in_interval))
         end
 
         for (θi, interval_struct) in profiles_to_add
@@ -271,7 +295,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
             model.uni_profiles_dict[model.num_uni_profiles] = interval_struct
 
-            set_uni_profiles_row!(model, θi, true, true, confidence_level, profile_type, 2)
+            set_uni_profiles_row!(model, θi, not_evaluated_internal_points, true, confidence_level, profile_type, 2)
         end        
     end
     
@@ -286,13 +310,15 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         atol::Real=1e-8,
                                         use_existing_profiles::Bool=false,
                                         θs_is_unique::Bool=false,
-                                        use_distributed::Bool=false)
+                                        use_distributed::Bool=false, 
+                                        num_points_in_interval::Int=0)
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
                                 profile_type=profile_type, atol=atol,
                                 use_existing_profiles=use_existing_profiles,
-                                θs_is_unique=θs_is_unique, use_distributed=use_distributed)
+                                θs_is_unique=θs_is_unique, use_distributed=use_distributed,
+                                num_points_in_interval=num_points_in_interval)
     return nothing
 end
 
@@ -303,7 +329,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         atol::Real=1e-8,
                                         use_existing_profiles::Bool=false,
-                                        use_distributed::Bool=false)
+                                        use_distributed::Bool=false, 
+                                        num_points_in_interval::Int=0)
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
     profile_m_random_parameters > 0 || throw(DomainError("profile_m_random_parameters must be a strictly positive integer"))
@@ -313,7 +340,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
                                 profile_type=profile_type, atol=atol,
                                 use_existing_profiles=use_existing_profiles,
-                                θs_is_unique=true, use_distributed=use_distributed)
+                                θs_is_unique=true, use_distributed=use_distributed,
+                                num_points_in_interval=num_points_in_interval)
     return nothing
 end
 
@@ -323,10 +351,12 @@ function univariate_confidenceintervals!(model::LikelihoodModel;
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         atol::Real=1e-8,
                                         use_existing_profiles::Bool=false,
-                                        use_distributed::Bool=false)
+                                        use_distributed::Bool=false, 
+                                        num_points_in_interval::Int=0)
     univariate_confidenceintervals!(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
                             profile_type=profile_type, atol=atol,
                             use_existing_profiles=use_existing_profiles,
-                            θs_is_unique=true, use_distributed=use_distributed)
+                            θs_is_unique=true, use_distributed=use_distributed,
+                            num_points_in_interval=num_points_in_interval)
     return nothing
 end
