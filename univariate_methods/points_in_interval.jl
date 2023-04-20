@@ -32,37 +32,27 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
     ll = zeros(num_new_points+2)
     ll[[1,end]] .= current_interval_points.ll[1], current_interval_points.ll[end]
 
-    if univariate_optimiser == univariateΨ_ellipse_analytical
+    point_locations = LinRange(current_interval_points.points[θi,1], 
+                                current_interval_points.points[θi,end], 
+                                num_new_points+2)
 
-        point_locations = LinRange(current_interval_points.points[1], current_interval_points.points[end], num_new_points+2)
-        interval_points = collect(point_locations)
-        
-        for i in 2:(num_new_points+1)
-            ll[i] = analytic_ellipse_loglike([interval_points[i]], [θi], 
-                        (θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle))
-        end
-       
-    else
-        point_locations = LinRange(current_interval_points.points[θi,1], current_interval_points.points[θi,end], num_new_points+2)
+    interval_points = zeros(model.core.num_pars, num_new_points+2)
 
-        interval_points = zeros(model.core.num_pars, num_new_points+2)
+    newLb, newUb, initGuess, θranges, λranges = 
+                            init_univariate_parameters(model, θi)
 
-        newLb, newUb, initGuess, θranges, λranges = 
-                                init_univariate_parameters(model, θi)
+    consistent = get_consistent_tuple(model, 0.0, profile_type, 1)
+    p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+        θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-1))
 
-        consistent = get_consistent_tuple(model, 0.0, profile_type, 1)
-        p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
-            θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-1))
-
-        for i in 2:(num_new_points+1)
-            ll[i] = univariate_optimiser(point_locations[i], p)
-            variablemapping1d!(@view(interval_points[:,i]), p.λ_opt, θranges, λranges)
-        end
-        interval_points[θi,2:(end-1)]  .= point_locations[2:(end-1)]
-        interval_points[:,1]   .= current_interval_points.points[:,1]
-        interval_points[:,end] .= current_interval_points.points[:,end]
+    for i in 2:(num_new_points+1)
+        ll[i] = univariate_optimiser(point_locations[i], p)
+        variablemapping1d!(@view(interval_points[:,i]), p.λ_opt, θranges, λranges)
     end
-
+    interval_points[θi,2:(end-1)]  .= point_locations[2:(end-1)]
+    interval_points[:,1]   .= current_interval_points.points[:,1]
+    interval_points[:,end] .= current_interval_points.points[:,end]
+    
     return PointsAndLogLikelihood(interval_points, ll)
 end
 
@@ -87,9 +77,9 @@ function get_points_in_interval!(model::LikelihoodModel,
 
     0 < num_new_points || throw(DomainError("num_new_points must be a strictly positive integer"))
     df = model.uni_profiles_df
-    row_subset = trues(nrow(df))
+    row_subset = df.num_points .> 0
 
-    row_subset .= (df.num_points .!= (num_new_points+2))
+    row_subset .= row_subset .&& (df.num_points .!= (num_new_points+2))
     if !isempty(confidence_levels)
         row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
     end
@@ -98,6 +88,10 @@ function get_points_in_interval!(model::LikelihoodModel,
     end
 
     sub_df = @view(df[row_subset, :])
+
+    if nrow(sub_df) < 1
+        return nothing
+    end
 
     for i in 1:nrow(sub_df)
         points = get_points_in_interval_single_row(model, sub_df[i, :row_ind], 

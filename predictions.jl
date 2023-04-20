@@ -58,7 +58,6 @@ function generate_prediction(predictfunction::Function,
 end
 
 """
-CURRENTLY BREAKS FOR ANALYTICAL INTERVALS WHICH PRESENTLY DON'T EVALUATE THE VALUES OF NUISANCE PARAMETERS
 """
 function generate_predictions_univariate!(model::LikelihoodModel,
                                 proportion_to_keep::Float64;
@@ -69,7 +68,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
 
     df = model.uni_profiles_df
-    row_subset = trues(nrow(df))
+    row_subset = df.num_points .> 0
     row_subset = df.not_evaluated_predictions .&& row_subset
     if !isempty(confidence_levels)
         row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
@@ -83,8 +82,6 @@ function generate_predictions_univariate!(model::LikelihoodModel,
     if nrow(sub_df) < 1
         return nothing
     end
-
-    # println(sub_df)
 
     if !use_distributed
         for i in 1:nrow(sub_df)
@@ -124,7 +121,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
 
     df = model.biv_profiles_df
-    row_subset = trues(nrow(df))
+    row_subset = df.num_points .> 0
     row_subset = df.not_evaluated_predictions .&& row_subset
     if !isempty(confidence_levels)
         row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
@@ -141,8 +138,6 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
     if nrow(sub_df) < 1
         return nothing
     end
-
-    println(sub_df)
 
     if !use_distributed
         for i in 1:nrow(sub_df)

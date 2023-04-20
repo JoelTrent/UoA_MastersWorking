@@ -50,6 +50,29 @@ function get_bivariate_opt_func(profile_type::AbstractProfileType, method::Abstr
     return missing
 end
 
+function get_λs_bivariate_ellipse_analytical(boundarySamples::Matrix{Float64},
+                                                            num_points::Int,
+                                                            consistent::NamedTuple, 
+                                                            ind1::Int, 
+                                                            ind2::Int, 
+                                                            num_pars::Int,
+                                                            initGuess::Vector{<:Float64}, 
+                                                            θranges::Tuple{T, T, T}, 
+                                                            λranges::Tuple{T, T, T}) where T<:UnitRange
+
+    p=(ind1=ind1, ind2=ind2, initGuess=initGuess,
+                θranges=θranges, λranges=λranges, consistent=consistent)
+        
+    samples_all_pars = zeros(num_pars, num_points)
+    samples_all_pars[[ind1, ind2], :] .= boundarySamples
+
+    for i in 1:num_points
+        variablemapping2d!(@view(samples_all_pars[:, i]), bivariateΨ_ellipse_unbounded(boundarySamples[:,i], p), θranges, λranges)
+    end
+
+    return samples_all_pars
+end
+
 function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         model::LikelihoodModel, 
                                         num_points::Int,
@@ -61,10 +84,17 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         method::AbstractBivariateMethod,
                                         atol::Real)
     if method isa AnalyticalEllipseMethod
-        boundarySamples = generate_N_equally_spaced_points(
-                                num_points, consistent.data.Γmle, 
-                                consistent.data.θmle, ind1, ind2)
-        
+        boundarySamples_ellipse = generate_N_equally_spaced_points(
+                                    num_points, consistent.data.Γmle, 
+                                    consistent.data.θmle, ind1, ind2)
+
+        boundarySamples = get_λs_bivariate_ellipse_analytical(
+                            boundarySamples_ellipse, 
+                            num_points,
+                            consistent, ind1, ind2, 
+                            model.core.num_pars, initGuess,
+                            θranges, λranges)
+           
     elseif method isa BracketingMethodFix1Axis
         boundarySamples = bivariate_confidenceprofile_fix1axis(
                     bivariate_optimiser, model, 

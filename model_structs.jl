@@ -72,14 +72,14 @@ struct PredictionStruct <: AbstractPredictionStruct
     extrema::Array{Float64}
 end
 
-struct UnivariateConfidenceStructAnalytical <: AbstractUnivariateConfidenceStruct
-    confidence_interval::Vector{<:Float64}
-    interval_points::PointsAndLogLikelihood
+# struct UnivariateConfidenceStructAnalytical <: AbstractUnivariateConfidenceStruct
+#     confidence_interval::Vector{<:Float64}
+#     interval_points::PointsAndLogLikelihood
 
-    # function UnivariateConfidenceStructAnalytical(x,y=PointsAndLogLikelihood(Float64[], Float64[]))
-    #     return new(x,y)
-    # end
-end
+#     # function UnivariateConfidenceStructAnalytical(x,y=PointsAndLogLikelihood(Float64[], Float64[]))
+#     #     return new(x,y)
+#     # end
+# end
 
 struct UnivariateConfidenceStruct <: AbstractUnivariateConfidenceStruct
     confidence_interval::Vector{<:Float64}
@@ -91,14 +91,14 @@ struct UnivariateConfidenceStruct <: AbstractUnivariateConfidenceStruct
     # end
 end
 
-struct BivariateConfidenceStructAnalytical <: AbstractBivariateConfidenceStruct
-    confidence_boundary::Matrix{Float64}
-    internal_points::Matrix{Float64}
+# struct BivariateConfidenceStructAnalytical <: AbstractBivariateConfidenceStruct
+#     confidence_boundary::Matrix{Float64}
+#     internal_points::Matrix{Float64}
 
-    function BivariateConfidenceStructAnalytical(x,y=Matrix{Float64}(undef,0,0))
-        return new(x,y)
-    end
-end
+#     function BivariateConfidenceStructAnalytical(x,y=Matrix{Float64}(undef,0,0))
+#         return new(x,y)
+#     end
+# end
 
 struct BivariateConfidenceStruct <: AbstractBivariateConfidenceStruct
     confidence_boundary::Matrix{Float64}

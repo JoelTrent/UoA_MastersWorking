@@ -22,12 +22,14 @@ function convertθnames_toindices(model::LikelihoodModel,
     return indices
 end
 
-function loglikelihood_shifter(model::LikelihoodModel, 
-                                profile_type::AbstractProfileType)
+"""
+If the `profile_type` is LogLikelihood, then corrects a log-likelihood such that an input log-likelihood (which has value of zero at the mle) will now have a value of model.core.maximisedmle at the mle. Otherwise, a copy of ll is returned.
+"""
+function ll_correction(model::LikelihoodModel, profile_type::AbstractProfileType, ll::Float64)
     if profile_type isa LogLikelihood
-        return model.core.maximisedmle
-    end        
-    return 0.0
+        return ll + model.core.maximisedmle
+    end
+    return ll * 1.0
 end
 
 function get_target_loglikelihood(model::LikelihoodModel, 
@@ -39,7 +41,7 @@ function get_target_loglikelihood(model::LikelihoodModel,
 
     llstar = -quantile(Chisq(df), confidence_level)/2.0
 
-    return llstar + loglikelihood_shifter(model, profile_type)
+    return ll_correction(model, profile_type, llstar)
 end
 
 function get_consistent_tuple(model::LikelihoodModel, 
@@ -52,12 +54,11 @@ function get_consistent_tuple(model::LikelihoodModel,
     if profile_type isa LogLikelihood 
         return (targetll=targetll, num_pars=model.core.num_pars,
                  loglikefunction=model.core.loglikefunction, data=model.core.data)
-    elseif profile_type isa EllipseApprox
+    elseif profile_type isa AbstractEllipseProfileType
         return (targetll=targetll, num_pars=model.core.num_pars, 
                 loglikefunction=ellipse_loglike, 
-                data=(θmle=model.core.θmle, Hmle=model.ellipse_MLE_approx.Hmle))
-    else
-        return (targetll=targetll, data=(θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle))
+                data=(θmle=model.core.θmle, Hmle=model.ellipse_MLE_approx.Hmle),
+                data_analytic=(θmle=model.core.θmle, Γmle=model.ellipse_MLE_approx.Γmle))
     end
 
     return (missing)

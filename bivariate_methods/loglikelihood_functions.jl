@@ -1,13 +1,3 @@
-"""
-If the `profile_type` is LogLikelihood, then corrects a log-likelihood such that an input log-likelihood (which has value of zero at the mle) will now have a value of model.core.maximisedmle at the mle. Otherwise, a copy of ll is returned.
-"""
-function ll_correction(model::LikelihoodModel, profile_type::AbstractProfileType, ll::Float64)
-    if profile_type isa LogLikelihood
-        return ll + model.core.maximisedmle
-    end
-    return ll * 1.0
-end
-
 function bivariateΨ!(Ψ::Real, p)
     θs=zeros(p.consistent.num_pars)
     
@@ -65,17 +55,33 @@ function bivariateΨ_gradient!(Ψ::Vector, p)
 end
 
 function bivariateΨ_ellipse_analytical(Ψ, p)
-    return analytic_ellipse_loglike([p.Ψ_x[1], Ψ], [p.ind1, p.ind2], p.consistent.data) - p.consistent.targetll
+    return analytic_ellipse_loglike([p.Ψ_x[1], Ψ], [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
 end
 
 function bivariateΨ_ellipse_analytical_vectorsearch(Ψ, p)
-    return analytic_ellipse_loglike(p.pointa + Ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data) - p.consistent.targetll
+    return analytic_ellipse_loglike(p.pointa + Ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
 end
 
 function bivariateΨ_ellipse_analytical_continuation(Ψ, p)
-    return analytic_ellipse_loglike(p.pointa + Ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data) - p.targetll
+    return analytic_ellipse_loglike(p.pointa + Ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.targetll
 end
 
 function bivariateΨ_ellipse_analytical_gradient(Ψ::Vector, p)
-    return analytic_ellipse_loglike(Ψ, [p.ind1, p.ind2], p.consistent.data) - p.consistent.targetll
+    return analytic_ellipse_loglike(Ψ, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
+end
+
+function bivariateΨ_ellipse_unbounded(Ψ::Vector, p)
+    θs=zeros(p.consistent.num_pars)
+    θs[p.ind1], θs[p.ind2] = Ψ
+
+    function fun(λ)
+        return ellipse_loglike(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data) 
+    end
+
+    (xopt,_)=optimise_unbounded(fun, p.initGuess)
+    # (xopt,fopt)=optimise_unbounded(fun, p.initGuess)
+    # llb=fopt-p.consistent.targetll
+    # p.λ_opt .= xopt
+    # return llb
+    return xopt
 end

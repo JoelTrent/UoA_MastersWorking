@@ -58,5 +58,13 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
             end
         end
     end
+
+    if biv_opt_is_ellipse_analytical
+        return get_λs_bivariate_ellipse_analytical(boundarySamples, num_points,
+                                                    consistent, ind1, ind2, 
+                                                    model.core.num_pars, initGuess,
+                                                    θranges, λranges)
+    end
+
     return boundarySamples
 end

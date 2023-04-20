@@ -171,6 +171,9 @@ function initial_continuation_solution!(p::NamedTuple,
                                         ellipse_confidence_level::Float64,
                                         target_confidence_ll::Float64,
                                         ellipse_start_point_shift::Float64)
+    
+    check_ellipse_approx_exists!(model)
+    
     # get initial continuation starting solution
     # internal boundary - preferably very small
     ellipse_points = generate_N_equally_spaced_points(num_points, model.ellipse_MLE_approx.Γmle,
@@ -261,11 +264,9 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     uhat   = [0.0,0.0]
 
     if profile_type isa EllipseApproxAnalytical
-        boundarySamples = zeros(2, num_points)
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
                     θranges=θranges, λranges=λranges, consistent=consistent, targetll=0.0)
     else
-        boundarySamples = zeros(model.core.num_pars, num_points)
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
                     θranges=θranges, λranges=λranges, consistent=consistent, targetll=0.0, 
                     λ_opt=zeros(model.core.num_pars-2))

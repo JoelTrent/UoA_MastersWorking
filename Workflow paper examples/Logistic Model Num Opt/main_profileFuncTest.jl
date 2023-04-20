@@ -12,7 +12,7 @@ fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "P
 include(joinpath("..", "..", "JuLikelihood.jl"))
 
 using Distributed
-addprocs(3)
+# addprocs(3)
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere include(joinpath("..", "..", "JuLikelihood.jl"))
 
@@ -102,9 +102,9 @@ model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θ
 # they're missing and call this function on model if so.
 getMLE_ellipse_approximation!(model)
 
-univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
-univariate_confidenceintervals!(model, profile_type=EllipseApprox())
-univariate_confidenceintervals!(model, profile_type=LogLikelihood(), num_points_in_interval=10)
+@time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
+@time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
+@time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 
 univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, [:K], profile_type=EllipseApprox())
@@ -112,13 +112,16 @@ univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.7, use_existi
 univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
 
 
-@time bivariate_confidenceprofiles!(model, 10, profile_type=EllipseApproxAnalytical())
-@time bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
+@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodFix1Axis())
+@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadial(5))
+@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodSimultaneous())
+@time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
+@time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 2, 0.95))
 
 
-get_points_in_interval!(model, 10)
-generate_predictions_univariate!(model, 1.0, profile_types=[LogLikelihood(), EllipseApprox()], use_distributed=true)
-generate_predictions_bivariate!(model, 0.1, profile_types=[LogLikelihood(), EllipseApprox()], use_distributed=true)
+get_points_in_interval!(model, 11)
+generate_predictions_univariate!(model, 1.0, use_distributed=true)
+generate_predictions_bivariate!(model, 0.1, use_distributed=false)
 println()
 
 
