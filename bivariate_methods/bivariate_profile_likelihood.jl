@@ -26,7 +26,9 @@ function set_biv_profiles_row!(model::LikelihoodModel,
 end
 
 function get_bivariate_opt_func(profile_type::AbstractProfileType, method::AbstractBivariateMethod)
-    if method isa BracketingMethodFix1Axis
+    if method isa AnalyticalEllipseMethod
+        return bivariateΨ_ellipse_analytical
+    elseif method isa BracketingMethodFix1Axis
         if profile_type isa EllipseApproxAnalytical
             return bivariateΨ_ellipse_analytical
         elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox
@@ -85,8 +87,10 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         atol::Real)
     if method isa AnalyticalEllipseMethod
         boundarySamples_ellipse = generate_N_equally_spaced_points(
-                                    num_points, consistent.data.Γmle, 
-                                    consistent.data.θmle, ind1, ind2)
+                                    num_points, consistent.data_analytic.Γmle, 
+                                    consistent.data_analytic.θmle, ind1, ind2)
+
+        _, _, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
 
         boundarySamples = get_λs_bivariate_ellipse_analytical(
                             boundarySamples_ellipse, 

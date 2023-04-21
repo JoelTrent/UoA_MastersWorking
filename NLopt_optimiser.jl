@@ -1,4 +1,4 @@
-# Section 7: Unconstrained numerical optimisation 
+# Numerical optimisation 
 function optimise(fun, θ₀, lb, ub;
     dv = false,
     method = dv ? :LD_LBFGS : :LN_BOBYQA,

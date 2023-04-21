@@ -19,6 +19,7 @@ include("transform_bounds.jl")
 include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")
 include("predictions.jl")
+include("plotting_functions.jl")
 
 include("univariate_methods/init_and_array_mapping.jl")
 include("univariate_methods/loglikelihood_functions.jl")

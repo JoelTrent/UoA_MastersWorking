@@ -6,9 +6,7 @@ using Interpolations, Random, Distributions
 using BenchmarkTools
 # gr()
 
-Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
-# include(joinpath("..", "plottingFunctions.jl"))
 include(joinpath("..", "..", "JuLikelihood.jl"))
 
 using Distributed
@@ -42,7 +40,9 @@ end
 # Section 6: Define loglikelihood function
 @everywhere function loglhood(a, data)
     y=ODEmodel(data.t, a)
-    return sum(loglikelihood(data.dist, data.yobs-y))
+    e=0
+    e=sum(loglikelihood(data.dist, data.yobs-y))
+    return e
 end
 
 
@@ -60,6 +60,7 @@ a=[λ, K, C0]
 # true data
 ytrue = ODEmodel(t, a)
 
+Random.seed!(12348)
 # noisy data
 yobs = ytrue + σ*randn(length(t))
 
@@ -69,7 +70,7 @@ data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
 Kmin, Kmax = (50., 150.)
-C0min, C0max = (0.1, 50.)
+C0min, C0max = (0.0, 50.)
 
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
@@ -102,29 +103,43 @@ model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θ
 # they're missing and call this function on model if so.
 getMLE_ellipse_approximation!(model)
 
-@time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
-@time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
+# @time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
+# @time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 @time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 
-univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical())
-univariate_confidenceintervals!(model, [:K], profile_type=EllipseApprox())
-univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.7, use_existing_profiles=true, use_distributed=true)
-univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
+# univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical())
+# univariate_confidenceintervals!(model, [:K], profile_type=EllipseApprox())
+# univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.7, use_existing_profiles=true, use_distributed=true)
+# univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
 
 
-@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodFix1Axis())
-@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadial(5))
-@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodSimultaneous())
-@time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
-@time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 2, 0.95))
+# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodFix1Axis())
+# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadial(5))
+# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodSimultaneous())
+# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.3, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 5, 0.3))
+# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
+# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 2, 0.95))
 
 
-get_points_in_interval!(model, 11)
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.9, method=AnalyticalEllipseMethod())
+
+
+get_points_in_interval!(model, 50, additional_width=0.3)
 generate_predictions_univariate!(model, 1.0, use_distributed=true)
 generate_predictions_bivariate!(model, 0.1, use_distributed=false)
+
+# model.core.θmle .= θG
+
+using Plots
+gr()
+plots = plot_univariate_profiles(model, 0.2, 0.2)
+for i in eachindex(plots); display(plots[i]) end
+
+plots = plot_bivariate_profiles(model, 0.2, 0.2)
+for i in eachindex(plots); display(plots[i]) end
+
+
 println()
-
-
 
 
 

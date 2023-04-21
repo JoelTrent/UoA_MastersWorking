@@ -85,9 +85,12 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 
     if !use_distributed
         for i in 1:nrow(sub_df)
+            boundary_col_indices = model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.boundary_col_indices
+            boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
+
             predict_struct = generate_prediction(model.core.predictfunction,
                 model.core.data,
-                model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points, 
+                model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points[:, boundary_range], 
                                             proportion_to_keep)
 
             model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
@@ -95,9 +98,12 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 
     else
         predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+            boundary_col_indices = model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.boundary_col_indices
+            boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
+
             generate_prediction(model.core.predictfunction, 
                 model.core.data,
-                model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points, 
+                model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points[:, boundary_range], 
                                             proportion_to_keep)
         end
         

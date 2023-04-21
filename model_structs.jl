@@ -65,6 +65,7 @@ end
 struct PointsAndLogLikelihood
     points::Array{Float64}
     ll::Vector{<:Float64}
+    boundary_col_indices::Vector{<:Int64}
 end
 
 struct PredictionStruct <: AbstractPredictionStruct
