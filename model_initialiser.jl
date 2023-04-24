@@ -71,8 +71,13 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     function funmle(θ); return loglikefunction(θ, data) end
     (θmle, maximisedmle) = optimise(funmle, θinitialGuess, θlb, θub)
 
+    ymle=zeros(0,0)
+    if !ismissing(predictfunction)
+        ymle = predictfunction(θmle, data)
+    end
+
     corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, predictfunction, data, θnames, θnameToIndex,
-                                        θlb, θub, θmle, maximisedmle, num_pars)
+                                        θlb, θub, θmle, ymle, maximisedmle, num_pars)
 
 
     # conf_levels_evaluated = DefaultDict{Float64, Bool}(false)

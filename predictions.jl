@@ -3,6 +3,7 @@ function add_prediction_function!(model::LikelihoodModel,
 
     corelikelihoodmodel = model.core
     model.core = @set corelikelihoodmodel.predictfunction = predictfunction
+    model.core = @set corelikelihoodmodel.ymle = predictfunction(θmle, model.core.data)
 
     return nothing
 end

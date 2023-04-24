@@ -22,6 +22,7 @@ struct CoreLikelihoodModel <: AbstractCoreLikelihoodModel
     θlb::Vector{<:Float64}
     θub::Vector{<:Float64}
     θmle::Vector{<:Float64}
+    ymle::Array{Float64}
     maximisedmle::Float64
     num_pars::Int
 end
