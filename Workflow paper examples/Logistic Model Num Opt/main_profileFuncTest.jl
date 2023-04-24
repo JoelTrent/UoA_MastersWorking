@@ -103,9 +103,12 @@ model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θ
 # they're missing and call this function on model if so.
 getMLE_ellipse_approximation!(model)
 
-# @time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
-# @time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
+@time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
+@time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 @time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
+
+@time univariate_confidenceintervals!(model, confidence_level=0.7, profile_type=EllipseApprox())
+@time univariate_confidenceintervals!(model, confidence_level=0.7, profile_type=LogLikelihood())
 
 # univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical())
 # univariate_confidenceintervals!(model, [:K], profile_type=EllipseApprox())
@@ -117,27 +120,34 @@ getMLE_ellipse_approximation!(model)
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadial(5))
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodSimultaneous())
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.3, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 5, 0.3))
-# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
-# @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 2, 0.95))
+@time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.95))
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 2, 0.95))
 
 
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.9, method=AnalyticalEllipseMethod())
+
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 
 
 get_points_in_interval!(model, 50, additional_width=0.3)
-generate_predictions_univariate!(model, 1.0, use_distributed=true)
-generate_predictions_bivariate!(model, 0.1, use_distributed=false)
+generate_predictions_univariate!(model, 1.0, use_distributed=true, profile_types=[EllipseApprox(), LogLikelihood()])
+# generate_predictions_bivariate!(model, 0.1, use_distributed=false)
 
 # model.core.θmle .= θG
 
 using Plots
 gr()
-plots = plot_univariate_profiles(model, 0.2, 0.2)
+plots = plot_univariate_profiles(model, 0.2, 0.2, palette_to_use=:Spectral_8)
+for i in eachindex(plots); display(plots[i]) end
+
+plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_bivariate_profiles(model, 0.2, 0.2)
 for i in eachindex(plots); display(plots[i]) end
 
+plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
+for i in eachindex(plots); display(plots[i]) end
 
 println()
 
