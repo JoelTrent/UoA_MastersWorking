@@ -88,7 +88,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
     if method isa AnalyticalEllipseMethod
         boundarySamples_ellipse = generate_N_equally_spaced_points(
                                     num_points, consistent.data_analytic.Γmle, 
-                                    consistent.data_analytic.θmle, ind1, ind2)
+                                    consistent.data_analytic.θmle, ind1, ind2,
+                                    confidence_level=confidence_level)
 
         _, _, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
 
