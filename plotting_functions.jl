@@ -27,7 +27,7 @@ end
 
 function subset_of_interest(df::DataFrame, 
                             θs_of_interest::Vector{<:Int},
-                            confidence_levels::Vector{<:Float64},
+                            confidence_levels::Union{Float64, Vector{<:Float64}},
                             profile_types::Vector{<:AbstractProfileType};
                             for_predictions::Bool=false)
 
