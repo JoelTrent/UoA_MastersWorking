@@ -10,7 +10,7 @@ end
 
 """
 If a model has multiple predictive variables, it assumes that `model.predictfunction` stores the prediction for each variable in its columns.
-We are going to store values for each variable in the 3rd dimension (row=dim1, col=dim2, )
+We are going to store values for each variable in the 3rd dimension (row=dim1, col=dim2, page/sheet=dim3)
 """
 function generate_prediction(predictfunction::Function,
                                 data,
@@ -18,26 +18,22 @@ function generate_prediction(predictfunction::Function,
                                 proportion_to_keep::Float64)
 
     num_points = size(parameter_points, 2)
-    prediction_one = predictfunction(parameter_points[:,1], data)
     
-    if ndims(prediction_one) > 2
+    if ndims(model.core.ymle) > 2
         error("this function has not been written to handle predictions that are stored in higher than 2 dimensions")
     end
 
-    if ndims(prediction_one) == 2
-        predictions = zeros(size(prediction_one,1), num_points, size(prediction_one,2))
+    if ndims(model.core.ymle) == 2
+        predictions = zeros(size(model.core.ymle,1), num_points, size(model.core.ymle,2))
 
-        predictions[:,1,:] .= prediction_one
-
-        for i in 2:num_points
+        for i in 1:num_points
             predictions[:,i,:] .= predictfunction(parameter_points[:,i], data)
         end
 
     else
-        predictions = zeros(length(prediction_one), num_points)
-        predictions[:,1] .= prediction_one
+        predictions = zeros(length(model.core.ymle), num_points)
 
-        for i in 2:num_points
+        for i in 1:num_points
             predictions[:,i] .= predictfunction(parameter_points[:,i],data)
         end
     end
