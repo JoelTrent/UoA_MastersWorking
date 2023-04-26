@@ -68,9 +68,9 @@ yobs = ytrue + σ*randn(length(t))
 data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
 
 # Bounds on model parameters #################################################################
-λmin, λmax = (0.00, 0.05)
+λmin, λmax = (0.001, 0.05)
 Kmin, Kmax = (50., 150.)
-C0min, C0max = (0.0, 50.)
+C0min, C0max = (0.01, 50.)
 
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
@@ -120,18 +120,18 @@ getMLE_ellipse_approximation!(model)
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadial(5))
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodSimultaneous())
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.3, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 5, 0.3))
-@time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.95))
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 2, 0.95))
+@time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.75, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0))
+@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.5, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 2, 0.0))
 
 
 
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, method=AnalyticalEllipseMethod())
 
 
 get_points_in_interval!(model, 50, additional_width=0.3)
 generate_predictions_univariate!(model, 1.0, use_distributed=true, profile_types=[EllipseApprox(), LogLikelihood()])
-# generate_predictions_bivariate!(model, 0.1, use_distributed=false)
+generate_predictions_bivariate!(model, 1.0, use_distributed=false, profile_types=[LogLikelihood()])
 
 # model.core.θmle .= θG
 
@@ -143,12 +143,20 @@ for i in eachindex(plots); display(plots[i]) end
 plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2)
+plots = plot_bivariate_profiles(model, 0.2, 0.2, θcombinations_to_plot=[[:K,:λ]])
 for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
 for i in eachindex(plots); display(plots[i]) end
 
+plots = plot_predictions_individual(model, collect(model.core.data.t))
+for i in eachindex(plots); display(plots[i]) end
+
+plots = plot_predictions_individual(model, collect(model.core.data.t), 2, ylims=[0,120])
+for i in eachindex(plots); display(plots[i]) end
+
+union_plot = plot_predictions_union(model, collect(model.core.data.t), 2, ylims=[0,120], include_lower_confidence_levels=true)
+display(union_plot)
 println()
 
 
