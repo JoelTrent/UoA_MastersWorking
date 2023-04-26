@@ -135,7 +135,7 @@ struct ContinuationMethod <: AbstractBivariateMethod
     ellipse_start_point_shift::Float64
 
     function ContinuationMethod(x,y,z=rand())
-        (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the interval (0.0,1.0)"))
+        (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the open interval (0.0,1.0)"))
 
         # (0.0 < y && y < 1.0) || throw(DomainError("target_confidence_level must be in the interval (0.0,1.0)"))
 
@@ -143,7 +143,7 @@ struct ContinuationMethod <: AbstractBivariateMethod
 
         y > 0 || throw(DomainError("num_level_sets must be greater than zero"))
 
-        (0.0 < z && z < 1.0) || throw(DomainError("ellipse_start_point_shift must be in the interval (0.0,1.0)"))
+        (0.0 <= z && z <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
 
         return new(x,y,z)
     end
