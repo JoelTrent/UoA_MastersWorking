@@ -164,6 +164,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
     θcombinations_is_unique || (sort!.(θcombinations); sort!(θcombinations); unique!(θcombinations))
+    extrema(length.(θcombinations)) == (2,2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
 
     init_biv_profile_row_exists!(model, θcombinations, profile_type, method)
 
