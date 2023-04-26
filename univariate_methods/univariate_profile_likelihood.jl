@@ -196,12 +196,12 @@ function univariate_confidenceinterval_master(univariate_optimiser::Function,
     return interval_struct
 end
 
-# profile provided θ indices
+# profile provided θ indices / profile all
 """
 atol is the absolute tolerance that decides if f(x) ≈ 0.0. I.e. if the loglikelihood function is approximately at the boundary of interest.
 """
 function univariate_confidenceintervals!(model::LikelihoodModel, 
-                                        θs_to_profile::Vector{<:Int64}; 
+                                        θs_to_profile::Vector{<:Int64}=collect(1:model.core.num_pars); 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         atol::Float64=1e-8,
@@ -336,21 +336,5 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 use_existing_profiles=use_existing_profiles,
                                 θs_is_unique=true, use_distributed=use_distributed,
                                 num_points_in_interval=num_points_in_interval)
-    return nothing
-end
-
-# profile all 
-function univariate_confidenceintervals!(model::LikelihoodModel; 
-                                        confidence_level::Float64=0.95, 
-                                        profile_type::AbstractProfileType=LogLikelihood(),
-                                        atol::Real=1e-8,
-                                        use_existing_profiles::Bool=false,
-                                        use_distributed::Bool=false, 
-                                        num_points_in_interval::Int=0)
-    univariate_confidenceintervals!(model, collect(1:model.core.num_pars), confidence_level=confidence_level,
-                            profile_type=profile_type, atol=atol,
-                            use_existing_profiles=use_existing_profiles,
-                            θs_is_unique=true, use_distributed=use_distributed,
-                            num_points_in_interval=num_points_in_interval)
     return nothing
 end
