@@ -632,8 +632,13 @@ function plot_predictions_individual(model::LikelihoodModel,
                         title=title,
                         titlefontsize=10, 
                         kwargs...)
+    end
 
-        include_MLE && add_yMLE!(prediction_plots[i], t, model.core.ymle)
+    if include_MLE 
+        ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
+        for plt in prediction_plots
+            add_yMLE!(plt, t, ymle)
+        end
     end
 
     return prediction_plots
@@ -703,7 +708,10 @@ function plot_predictions_union(model::LikelihoodModel,
                     titlefontsize=10, 
                     kwargs...)
 
-    include_MLE && add_yMLE!(prediction_plot, t, model.core.ymle)
+    if include_MLE 
+        ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
+        add_yMLE!(prediction_plot, t, ymle)
+    end
 
     return prediction_plot
 end
