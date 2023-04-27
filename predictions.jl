@@ -15,17 +15,18 @@ We are going to store values for each variable in the 3rd dimension (row=dim1, c
 function generate_prediction(predictfunction::Function,
                                 data,
                                 t::Vector,
+                                data_ymle::Array{Float64},
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Float64)
 
     num_points = size(parameter_points, 2)
     
-    if ndims(model.core.ymle) > 2
+    if ndims(data_ymle) > 2
         error("this function has not been written to handle predictions that are stored in higher than 2 dimensions")
     end
 
-    if ndims(model.core.ymle) == 2
-        predictions = zeros(length(t), num_points, size(model.core.ymle, 2))
+    if ndims(data_ymle) == 2
+        predictions = zeros(length(t), num_points, size(data_ymle, 2))
 
         for i in 1:num_points
             predictions[:,i,:] .= predictfunction(parameter_points[:,i], data, t)
@@ -55,17 +56,40 @@ function generate_prediction(predictfunction::Function,
     return predict_struct
 end
 
-# function generate_prediction(model::LikelihoodModel,
-#                                 sub_df,
-#                                 row_i,
-#                                 proportion_to_keep::Float64)
+function generate_prediction_univariate(model::LikelihoodModel,
+                                sub_df,
+                                row_i,
+                                t::Vector,
+                                proportion_to_keep::Float64)
 
-    
-#     boundary_col_indices = model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.boundary_col_indices
-#     boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
+    boundary_col_indices = model.uni_profiles_dict[sub_df[row_i, :row_ind]].interval_points.boundary_col_indices
+    boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
 
-#     return generate_prediction
-# end
+    return generate_prediction(model.core.predictfunction, 
+                model.core.data, t, model.core.ymle,
+                model.uni_profiles_dict[sub_df[row_i, :row_ind]].interval_points.points[:, boundary_range], 
+                                                                proportion_to_keep)
+end
+
+function generate_prediction_bivariate(model::LikelihoodModel,
+                                sub_df,
+                                row_i,
+                                t::Vector,
+                                proportion_to_keep::Float64)
+
+    conf_struct = model.biv_profiles_dict[sub_df[row_i, :row_ind]]
+
+    if !isempty(conf_struct.internal_points)
+        return generate_prediction(model.core.predictfunction, 
+                                    model.core.data, t, model.core.ymle,
+                                    hcat(conf_struct.confidence_boundary, conf_struct.internal_points), 
+                                    proportion_to_keep)
+    end
+    return generate_prediction(model.core.predictfunction, 
+                                model.core.data, t, model.core.ymle,
+                                conf_struct.confidence_boundary, 
+                                proportion_to_keep)
+end
 
 
 """
@@ -97,28 +121,14 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 
     if !use_distributed
         for i in 1:nrow(sub_df)
-            boundary_col_indices = model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.boundary_col_indices
-            boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
-
-            predict_struct = generate_prediction(model.core.predictfunction,
-                model.core.data,
-                t,
-                model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points[:, boundary_range], 
-                                            proportion_to_keep)
+            predict_struct = generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)
 
             model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
         end
 
     else
         predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-            boundary_col_indices = model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.boundary_col_indices
-            boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
-
-            generate_prediction(model.core.predictfunction, 
-                model.core.data,
-                t,
-                model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points[:, boundary_range], 
-                                            proportion_to_keep)
+            generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)
         end
         
         for (i, predict_struct) in enumerate(predictions)
@@ -163,42 +173,16 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
     if !use_distributed
         for i in 1:nrow(sub_df)
 
-            conf_struct = model.biv_profiles_dict[sub_df[i, :row_ind]]
-
-            if !isempty(conf_struct.internal_points)
-                predict_struct = generate_prediction(model.core.predictfunction, 
-                                    model.core.data,
-                                    t,
-                                    hcat(conf_struct.confidence_boundary, conf_struct.internal_points), 
-                                                proportion_to_keep)
-            else
-                predict_struct = generate_prediction(model.core.predictfunction, 
-                                    model.core.data,
-                                    t,
-                                    conf_struct.confidence_boundary, 
-                                                proportion_to_keep)
-            end
+            predict_struct = generate_prediction_bivariate(model, sub_df, i,
+                                                            t, proportion_to_keep)
 
             model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
         end
 
     else
         predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-            conf_struct = model.biv_profiles_dict[sub_df[i, :row_ind]]
-
-            if !isempty(conf_struct.internal_points)
-                generate_prediction(model.core.predictfunction, 
-                                    model.core.data,
-                                    t,
-                                    hcat(conf_struct.confidence_boundary, conf_struct.internal_points), 
-                                                proportion_to_keep)
-            else
-                generate_prediction(model.core.predictfunction, 
-                                    model.core.data,
-                                    t,
-                                    conf_struct.confidence_boundary, 
-                                                proportion_to_keep)
-            end
+            generate_prediction_bivariate(model, sub_df, i,
+                                            t, proportion_to_keep)
         end
         
         for (i, predict_struct) in enumerate(predictions)
