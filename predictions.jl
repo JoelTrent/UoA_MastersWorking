@@ -14,6 +14,7 @@ We are going to store values for each variable in the 3rd dimension (row=dim1, c
 """
 function generate_prediction(predictfunction::Function,
                                 data,
+                                t::Vector,
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Float64)
 
@@ -24,17 +25,17 @@ function generate_prediction(predictfunction::Function,
     end
 
     if ndims(model.core.ymle) == 2
-        predictions = zeros(size(model.core.ymle,1), num_points, size(model.core.ymle,2))
+        predictions = zeros(length(t), num_points, size(model.core.ymle, 2))
 
         for i in 1:num_points
-            predictions[:,i,:] .= predictfunction(parameter_points[:,i], data)
+            predictions[:,i,:] .= predictfunction(parameter_points[:,i], data, t)
         end
 
     else
-        predictions = zeros(length(model.core.ymle), num_points)
+        predictions = zeros(length(t), num_points)
 
         for i in 1:num_points
-            predictions[:,i] .= predictfunction(parameter_points[:,i],data)
+            predictions[:,i] .= predictfunction(parameter_points[:,i], data, t)
         end
     end
     
@@ -54,9 +55,23 @@ function generate_prediction(predictfunction::Function,
     return predict_struct
 end
 
+# function generate_prediction(model::LikelihoodModel,
+#                                 sub_df,
+#                                 row_i,
+#                                 proportion_to_keep::Float64)
+
+    
+#     boundary_col_indices = model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.boundary_col_indices
+#     boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
+
+#     return generate_prediction
+# end
+
+
 """
 """
 function generate_predictions_univariate!(model::LikelihoodModel,
+                                t::Vector,
                                 proportion_to_keep::Float64;
                                 confidence_levels::Vector{<:Float64}=Float64[],
                                 profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
@@ -87,6 +102,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 
             predict_struct = generate_prediction(model.core.predictfunction,
                 model.core.data,
+                t,
                 model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points[:, boundary_range], 
                                             proportion_to_keep)
 
@@ -100,6 +116,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 
             generate_prediction(model.core.predictfunction, 
                 model.core.data,
+                t,
                 model.uni_profiles_dict[sub_df[i, :row_ind]].interval_points.points[:, boundary_range], 
                                             proportion_to_keep)
         end
@@ -115,6 +132,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 end
 
 function generate_predictions_bivariate!(model::LikelihoodModel,
+                                            t::Vector,
                                             proportion_to_keep::Float64;
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
@@ -150,11 +168,13 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
             if !isempty(conf_struct.internal_points)
                 predict_struct = generate_prediction(model.core.predictfunction, 
                                     model.core.data,
+                                    t,
                                     hcat(conf_struct.confidence_boundary, conf_struct.internal_points), 
                                                 proportion_to_keep)
             else
                 predict_struct = generate_prediction(model.core.predictfunction, 
                                     model.core.data,
+                                    t,
                                     conf_struct.confidence_boundary, 
                                                 proportion_to_keep)
             end
@@ -169,11 +189,13 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
             if !isempty(conf_struct.internal_points)
                 generate_prediction(model.core.predictfunction, 
                                     model.core.data,
+                                    t,
                                     hcat(conf_struct.confidence_boundary, conf_struct.internal_points), 
                                                 proportion_to_keep)
             else
                 generate_prediction(model.core.predictfunction, 
                                     model.core.data,
+                                    t,
                                     conf_struct.confidence_boundary, 
                                                 proportion_to_keep)
             end

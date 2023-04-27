@@ -381,6 +381,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
             ylims=[min_vals[2]-ranges[2]*ylim_scaler, 
             max_vals[2]+ranges[2]*ylim_scaler],
             title=string("Profile type: ", row.profile_type, 
+                        "\nMethod: ", row.method,
                         "\nConfidence level: ", row.conf_level),
                         titlefontsize=10, kwargs...)
                     end
