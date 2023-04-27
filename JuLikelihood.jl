@@ -7,9 +7,11 @@ using Combinatorics
 using DataStructures
 using LinearAlgebra
 using EllipseSampling
+using LatinHypercubeSampling
 using DataFrames
 using Accessors
 using Distributed
+using FLoops
 
 include("NLopt_optimiser.jl")
 include("model_structs.jl")
