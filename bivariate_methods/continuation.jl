@@ -6,11 +6,11 @@ end
 
 function normal_vector_i_2d!(gradient_i, index, points)
     if index == 1
-        gradient_i .= [(points[2,end]-points[2,2]), -(points[1,end]-points[1,2])]
+        gradient_i .= [(points[2,2]-points[2,end]), -(points[1,2]-points[1,end])]
     elseif index == size(points, 2)
-        gradient_i .= [(points[2,end-1]-points[2,1]), -(points[1,end-1]-points[1,1])]
+        gradient_i .= [(points[2,1]-points[2,end-1]), -(points[1,1]-points[1,end-1])]
     else
-        gradient_i .= [(points[2,index-1]-points[2,index+1]), -(points[1,index-1]-points[1,index+1])]
+        gradient_i .= [(points[2,index+1]-points[2,index-1]), -(points[1,index+1]-points[1,index-1])]
     end
     return nothing
 end
