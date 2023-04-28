@@ -55,6 +55,9 @@ function continuation_line_search!(p::NamedTuple,
     boundarypoint = [0.0,0.0]
     p = update_targetll!(p, target_confidence_ll)
     
+    normal_scaling = diff([extrema(start_level_set_2D[1,:])...])[1]^2 / diff([extrema(start_level_set_2D[2,:])...])[1]^2
+    # println(normal_scaling)
+
     for i in 1:num_points
         if point_is_on_bounds[i]
             target_level_set_2D[:, i] .= start_level_set_2D[:, i]
@@ -74,6 +77,7 @@ function continuation_line_search!(p::NamedTuple,
             # gradient_i .= -ForwardDiff.gradient(f_gradient, p.pointa)
 
             normal_vector_i_2d!(gradient_i, i, start_level_set_2D)
+            gradient_i[1] = gradient_i[1] * normal_scaling
 
             p.uhat .= (gradient_i / (norm(gradient_i, 2))) 
 
@@ -90,6 +94,12 @@ function continuation_line_search!(p::NamedTuple,
                     # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
                     Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=atol, Roots.Brent(); p=p)
                 end
+
+                # println(Ψ_y1)
+
+                # println("uhat:", p.uhat)
+                # println("pointa:", p.pointa)
+                # println("newpoint:", p.pointa + Ψ_y1*p.uhat)
 
                 boundarypoint .= p.pointa + Ψ_y1*p.uhat
                 target_level_set_2D[:, i] .= boundarypoint
@@ -176,7 +186,12 @@ function initial_continuation_solution!(p::NamedTuple,
     
     # get initial continuation starting solution
     # internal boundary - preferably very small
-    ellipse_points = generate_N_equally_spaced_points(num_points, model.ellipse_MLE_approx.Γmle,
+    # ellipse_points = generate_N_equally_spaced_points(num_points, model.ellipse_MLE_approx.Γmle,
+    #                                                     model.core.θmle, ind1, ind2,
+    #                                                     confidence_level=ellipse_confidence_level, 
+    #                                                     start_point_shift=ellipse_start_point_shift)
+    
+    ellipse_points = generate_N_clustered_points(num_points, model.ellipse_MLE_approx.Γmle,
                                                         model.core.θmle, ind1, ind2,
                                                         confidence_level=ellipse_confidence_level, 
                                                         start_point_shift=ellipse_start_point_shift)
@@ -229,10 +244,6 @@ function initial_continuation_solution!(p::NamedTuple,
 
     # else # case 3
     corrected_ll = ll_correction(model, profile_type, max_ll)
-    println(corrected_ll)
-    println(min_ll)
-    println(target_confidence_ll)
-    println(max_ll)
 
     @warn string("ellipse starting point for continuation intersects the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
     a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, num_points, 
@@ -288,6 +299,8 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                         ellipse_confidence_level, initial_target_ll, 
                                         ellipse_start_point_shift)
 
+    # display(scatter(current_level_set_2D[1,:], current_level_set_2D[2,:], legend=false, markeropacity=0.4))
+
     if initial_ll == initial_target_ll
         return current_level_set_all
     end
@@ -305,6 +318,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                         bivariate_optimiser, bivariate_optimiser_gradient,
                                         model, num_points, ind1, ind2, atol, level_set_ll,
                                         current_level_set_2D, current_level_set_all)
+        # display(scatter(current_level_set_2D[1,:], current_level_set_2D[2,:], legend=false, markeropacity=0.4))
     end
 
     return current_level_set_all
