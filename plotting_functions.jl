@@ -25,92 +25,6 @@ function profile2Dmarkershape(profile_type::AbstractProfileType)
     return :circle
 end
 
-function subset_of_interest(df::DataFrame, 
-                            θs_of_interest::Vector{<:Int},
-                            confidence_levels::Union{Float64, Vector{<:Float64}},
-                            profile_types::Vector{<:AbstractProfileType};
-                            for_predictions::Bool=false)
-
-    row_subset = df.num_points .> 0. 
-    if !isempty(θs_of_interest) 
-        row_subset .= row_subset .&& (df.θindex .∈ Ref(θs_of_interest))
-    end
-    if !isempty(confidence_levels)
-        row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
-    end
-    if !isempty(profile_types)
-        row_subset .= row_subset .&& (df.profile_type .∈ Ref(profile_types))
-    end
-
-    if for_predictions
-        row_subset .= row_subset .&& .!(df.not_evaluated_predictions)
-    end
-
-    return @view(df[row_subset, :])
-end
-
-function subset_of_interest(df::DataFrame, 
-                            θs_of_interest::Vector{Tuple{Int,Int}},
-                            confidence_levels::Union{Float64, Vector{<:Float64}},
-                            profile_types::Vector{<:AbstractProfileType},
-                            methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[];
-                            for_predictions::Bool=false,
-                            include_lower_confidence_levels::Bool=false)
-
-    row_subset = df.num_points .> 0
-    if !isempty(θs_of_interest) 
-        row_subset .= row_subset .&& (df.θindices .∈ Ref(θs_of_interest))
-    end
-    if !isempty(confidence_levels)
-        if include_lower_confidence_levels
-            row_subset .= row_subset .&& (df.conf_level .<= confidence_levels::Float64)
-        else
-            row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
-        end
-    end
-    if !isempty(profile_types)
-        row_subset .= row_subset .&& (df.profile_type .∈ Ref(profile_types))
-    end
-    if !isempty(methods)
-        row_subset .= row_subset .&& (df.method .∈ Ref(methods))
-    end
-
-    if for_predictions
-        row_subset .= row_subset .&& .!(df.not_evaluated_predictions)
-    end
-
-    return @view(df[row_subset, :])
-end
-
-# function subset_of_interest(df::DataFrame, 
-#                             confidence_level::Float64,
-#                             profile_types::Vector{<:AbstractProfileType},
-#                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[];
-#                             for_predictions::Bool=false,
-#                             include_lower_confidence_levels::Bool=false
-#                             )
-
-#     row_subset = df.num_points .> 0
-#     if include_lower_confidence_levels
-#         row_subset .= row_subset .&& (df.conf_level .<= confidence_level)
-#     else
-#         row_subset .= row_subset .&& (df.conf_level .== confidence_level)
-#     end
-
-#     if !isempty(profile_types)
-#         row_subset .= row_subset .&& (df.profile_type .∈ Ref(profile_types))
-#     end
-#     if !isempty(methods)
-#         row_subset .= row_subset .&& (df.method .∈ Ref(methods))
-#     end
-
-#     if for_predictions
-#         row_subset .= row_subset .&& .!(df.not_evaluated_predictions)
-#     end
-
-#     return @view(df[row_subset, :])
-# end
-
 function θs_to_plot_typeconversion(model::LikelihoodModel,
                                     θs_to_plot::Union{Vector{<:Symbol}, Vector{<:Int64}})
     if θs_to_plot isa Vector{<:Symbol}
@@ -164,19 +78,25 @@ function addMLE!(plt, parMLEs; kwargs...)
 end
 
 # Predictions
-function plotprediction!(plt, t, predictions, extrema, linealpha; legend=false, extremacolor=:red, kwargs...)
-    plot!(plt, t, predictions, color=:grey, linealpha=linealpha; legend=legend, kwargs...)
-    plot!(plt, t, extrema, lw=3, color=extremacolor, legend=legend)
+function plotprediction!(plt, t, predictions, extrema, linealpha; extremacolor=:red, kwargs...)
+    plot!(plt, t, predictions, color=:grey, linealpha=linealpha; label=hcat("Predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
+    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["Simultaneous confidence band (≈)" ""])
     return plt
 end
 
 function add_yMLE!(plt, t, yMLE; kwargs...)
-    plot!(plt, t, yMLE, lw=3, color=:turquoise1; kwargs...)
+    plot!(plt, t, yMLE, lw=3, color=:turquoise1, label="MLE"; kwargs...)
+    return plt
+end
+
+
+function add_extrema!(plt, t, extrema; extremacolor=:gold, label=["Sampled band (≈)" ""])
+    plot!(plt, t, extrema, lw=3, color=extremacolor, label=label)
     return plt
 end
 
 function plotprediction_comparison(tt, predictionsFull, confFull, confEstimate, ymle; kwargs...)
-    predictionPlot = plot(tt, predictionsFull[:,:], color=:grey; kwargs...)
+    predictionPlot = plot(tt, predictionsFull, color=:grey; kwargs...)
     predictionPlot = plot!(tt, confFull[1], lw=3, color=:gold)
     predictionPlot = plot!(tt, confFull[2], lw=3, color=:gold)
     predictionPlot = plot!(tt, confEstimate[1], lw=3, linestyle=:dash, color=:red)
@@ -204,7 +124,7 @@ function plot_univariate_profiles(model::LikelihoodModel,
     
     θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
 
-    sub_df = subset_of_interest(model.uni_profiles_df, θs_to_plot, confidence_levels, profile_types)
+    sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_levels, profile_types)
 
     if nrow(sub_df) < 1
         return nothing
@@ -260,7 +180,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
 
     θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
 
-    sub_df = subset_of_interest(model.uni_profiles_df, θs_to_plot, confidence_levels, profile_types)
+    sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_levels, profile_types)
 
     if nrow(sub_df) < 1
         return nothing
@@ -342,7 +262,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
 
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
 
-    sub_df = subset_of_interest(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
+    sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
                                 profile_types, methods)
     
     if nrow(sub_df) < 1
@@ -403,7 +323,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
 
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
 
-    sub_df = subset_of_interest(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
+    sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
                                 profile_types, methods)
 
     if nrow(sub_df) < 1
@@ -583,14 +503,14 @@ function plot_predictions_individual(model::LikelihoodModel,
     
     if profile_dimension == 1
         θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-        sub_df = subset_of_interest(model.uni_profiles_df, θs_to_plot, confidence_levels,
-                                    profile_types; for_predictions=true)
+        sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_levels,
+                                    profile_types; for_prediction_plots=true)
         predictions_dict = model.uni_predictions_dict
         methods=[nothing]
     elseif profile_dimension == 2
         θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
-        sub_df = subset_of_interest(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
-                                    profile_types, methods; for_predictions=true)
+        sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
+                                    profile_types, methods; for_prediction_plots=true)
         predictions_dict = model.biv_predictions_dict
     end
 
@@ -660,6 +580,7 @@ function plot_predictions_union(model::LikelihoodModel,
                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                             # palette_to_use::Symbol=:Paired_6, 
                             # union_within_methods::Bool=false,
+                            compare_to_full_sample_type::Union{Missing, AbstractSampleType}=missing,
                             include_lower_confidence_levels::Bool=false,
                             linealpha=0.4,
                             kwargs...)
@@ -668,12 +589,12 @@ function plot_predictions_union(model::LikelihoodModel,
     
     if profile_dimension == 1
         θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-        sub_df = subset_of_interest(model.uni_profiles_df, θs_to_plot, confidence_level, profile_types; for_predictions=true)
+        sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_level, profile_types; for_prediction_plots=true)
         predictions_dict = model.uni_predictions_dict
         methods=[nothing]
     elseif profile_dimension == 2
         θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
-        sub_df = subset_of_interest(model.biv_profiles_df, θcombinations_to_plot, confidence_level, profile_types, methods; for_predictions=true, include_lower_confidence_levels)
+        sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_level, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
         predictions_dict = model.biv_predictions_dict
     end
 
@@ -708,10 +629,81 @@ function plot_predictions_union(model::LikelihoodModel,
                     titlefontsize=10, 
                     kwargs...)
 
+    if !ismissing(compare_to_full_sample_type)
+        row_subset = desired_df_subset(model.full_samples_df, confidence_level,
+                                        [compare_to_full_sample_type], for_prediction_plots=true,
+                                        include_higher_confidence_levels=true)
+        
+        if nrow(row_subset) > 0
+            if nrow(row_subset) > 1
+                subset_to_use = @view(row_subset[argmin(row_subset.conf_level), :])
+            elseif nrow(row_subset) == 1
+                subset_to_use = @view(row_subset[1,:])
+            end
+
+            if subset_to_use.conf_level == confidence_level
+                sampled_extrema = extrema = model.full_predictions_dict[subset_to_use.row_ind].extrema
+            else
+                ll_level = get_target_loglikelihood(model, confidence_level, 
+                                                    EllipseApproxAnalytical(), model.core.num_pars)
+
+                valid_point = model.full_samples_dict[subset_to_use.row_ind].ll .> ll_level 
+                sampled_extrema = model.full_predictions_dict[subset_to_use.row_ind].extrema[valid_point]
+            end
+
+            add_extrema!(prediction_plot, t, sampled_extrema)
+        end
+    end
+
     if include_MLE 
         ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
         add_yMLE!(prediction_plot, t, ymle)
     end
 
     return prediction_plot
+end
+
+function plot_predictions_sampled(model::LikelihoodModel,
+                                    t::Vector,
+                                    xlabel::String="t",
+                                    ylabel::String="f(t)";
+                                    include_MLE::Bool=true,
+                                    confidence_levels::Vector{<:Float64}=Float64[],
+                                    sample_types::Vector{<:AbstractSampleType}=[LatinHypercubeSamples()],
+                                    linealpha=0.4,
+                                    kwargs...)
+
+    sub_df = desired_df_subset(model.full_samples_df, confidence_levels, sample_types,
+                                for_prediction_plots=true)
+
+    if nrow(sub_df) < 1
+        return nothing
+    end
+
+    prediction_plots = [plot() for _ in 1:nrow(sub_df)]
+
+    for i in 1:nrow(sub_df)
+        row = @view(sub_df[i,:])
+        predictions = model.full_predictions_dict[row.row_ind].predictions
+        extrema = model.full_predictions_dict[row.row_ind].extrema
+        title = string("Sample type: ", row.sample_type,
+                        "\nConfidence level: ", row.conf_level)
+
+        plotprediction!(prediction_plots[i], t, predictions, extrema, linealpha; 
+                        extremacolor=:gold,
+                        xlabel=xlabel, ylabel=ylabel,
+                        # ylims=ylims,
+                        title=title,
+                        titlefontsize=10, 
+                        kwargs...)
+    end
+
+    if include_MLE 
+        ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
+        for plt in prediction_plots
+            add_yMLE!(plt, t, ymle)
+        end
+    end
+
+    return prediction_plots
 end

@@ -1,3 +1,24 @@
+function add_full_samples_rows!(model::LikelihoodModel, 
+                                num_rows_to_add::Int)
+    new_rows = init_full_samples_df(num_rows_to_add, 
+                                    existing_largest_row=nrow(model.full_samples_df))
+
+    model.full_samples_df = vcat(model.full_samples_df, new_rows)
+    return nothing
+end
+
+function set_full_samples_row!(model::LikelihoodModel, 
+                                    not_evaluated_predictions::Bool,
+                                    confidence_level::Float64,
+                                    sample_type::AbstractSampleType,
+                                    num_points::Int)
+    model.full_samples_df[model.num_full_samples, 2:end] .= not_evaluated_predictions,
+                                                            confidence_level,
+                                                            sample_type,
+                                                            num_points
+    return nothing
+end
+
 function valid_points(model::LikelihoodModel, 
                         grid::Base.Iterators.ProductIterator,
                         grid_size::Int,
@@ -26,7 +47,11 @@ function valid_points(model::LikelihoodModel,
         end
     end
 
-    return points, ll_values[valid_point]
+    ll_values = ll_values[valid_point]
+    ll_values .= ll_values .+ get_target_loglikelihood(model, confidence_level,
+                                                        EllipseApproxAnalytical(), num_dims)
+
+    return FullConfidenceStruct(points, ll_values)
 end
 
 function valid_points(model::LikelihoodModel, 
@@ -47,7 +72,11 @@ function valid_points(model::LikelihoodModel,
         end
     end
 
-    return grid[:,valid_point], ll_values[valid_point]
+    ll_values = ll_values[valid_point]
+    ll_values .= ll_values .+ get_target_loglikelihood(model, confidence_level,
+                                                        EllipseApproxAnalytical(), num_dims)
+
+    return FullConfidenceStruct(grid[:,valid_point], ll_values)
 end
 
 function check_if_bounds_supplied(model::LikelihoodModel,
@@ -72,17 +101,21 @@ function uniform_grid(model::LikelihoodModel,
                         points_per_dimension::Union{Int, Vector{Int}},
                         lb::Vector=[],
                         ub::Vector=[];
-                        use_threads=true
-                        )
+                        use_threads=true,
+                        arguments_checked::Bool=false)
 
     num_dims = model.core.num_pars
+
     if points_per_dimension isa Vector{Int}
         num_dims == length(points_per_dimension) || throw(ArgumentError(string("points_per_dimension must be of length ", num_dims)))
+        all(points_per_dimension .> 0) || throw(DomainError("points_per_dimension must be a vector of strictly positive integers"))
     else
+        points_per_dimension > 0 || throw(DomainError("points_per_dimension must be a strictly positive integer"))
         points_per_dimension = fill(points_per_dimension, num_dims)
     end
-
-    lb, ub = check_if_bounds_supplied(model, lb, ub)
+    if !arguments_checked
+        lb, ub = check_if_bounds_supplied(model, lb, ub)
+    end
 
     ranges = LinRange.(lb, ub, points_per_dimension)
     grid = Iterators.product(ranges...)
@@ -96,13 +129,14 @@ function uniform_random(model::LikelihoodModel,
                         num_points::Int,
                         lb::Vector=[],
                         ub::Vector=[];
-                        use_threads::Bool=true
-                        )
+                        use_threads::Bool=true,
+                        arguments_checked::Bool=false)
 
     num_dims = model.core.num_pars
-    num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
-
-    lb, ub = check_if_bounds_supplied(model, lb, ub)
+    if !arguments_checked
+        num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
+        lb, ub = check_if_bounds_supplied(model, lb, ub)
+    end
 
     grid = zeros(num_dims, num_points)
 
@@ -117,17 +151,18 @@ end
 
 # LatinHypercubeSampling
 function LHS(model::LikelihoodModel,
-    confidence_level::Float64,
-    num_points::Int,
-    lb::Vector=[],
-    ub::Vector=[];
-    use_threads::Bool=true,
-    kwargs...)
+            confidence_level::Float64,
+            num_points::Int,
+            lb::Vector=[],
+            ub::Vector=[];
+            use_threads::Bool=true,
+            arguments_checked::Bool=false)
     
     num_dims = model.core.num_pars
-    num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
-    
-    lb, ub = check_if_bounds_supplied(model, lb, ub)
+    if !arguments_checked
+        num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
+        lb, ub = check_if_bounds_supplied(model, lb, ub)
+    end
     
     scale_range = [(lb[i], ub[i]) for i in 1:num_dims]
     grid = permutedims(scaleLHC(randomLHC(num_points, num_dims), scale_range))
@@ -137,6 +172,63 @@ function LHS(model::LikelihoodModel,
     return valid_points(model, grid, num_points, confidence_level, num_dims, use_threads)
 end
 
-@time uniform_grid(model, 0.95, 30; use_threads=true)
-@time uniform_random(model, 0.95, 27000; use_threads=true)
-@time LHS(model, 0.95, 27000)
+function full_likelihood_sample(model::LikelihoodModel,
+                                    confidence_level::Float64,
+                                    num_points::Union{Int, Vector{Int}},
+                                    sample_type::AbstractSampleType,
+                                    lb::Vector,
+                                    ub::Vector,
+                                    use_threads::Bool)
+
+    if sample_type isa UniformGridSamples
+        sample_struct = uniform_grid(model, confidence_level, num_points, lb, ub;
+                                        use_threads=use_threads, arguments_checked=true)
+    elseif sample_type isa UniformRandomSamples
+        sample_struct = uniform_random(model, confidence_level, num_points, lb, ub;             
+                                        use_threads=use_threads, arguments_checked=true)
+    elseif sample_type isa LatinHypercubeSamples
+        sample_struct = LHS(model, confidence_level, num_points, lb, ub;
+                            use_threads=use_threads, arguments_checked=true)
+    end
+    return sample_struct
+end
+
+function full_likelihood_sample!(model::LikelihoodModel,
+                                    num_points_to_sample::Union{Int, Vector{Int}};
+                                    confidence_level::Float64=0.95,
+                                    sample_type::AbstractSampleType=LatinHypercubeSamples(),
+                                    lb::Vector=[],
+                                    ub::Vector=[],
+                                    use_threads::Bool=true)
+
+    if num_points_to_sample isa Int
+        num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
+    end
+    lb, ub = check_if_bounds_supplied(model, lb, ub)
+
+    init_full_samples_row_exists!(model, sample_type)
+    # check if sample has already been evaluated
+    model.full_samples_row_exists[sample_type][confidence_level] == 0 || return nothing
+    
+    sample_struct = full_likelihood_sample(model, confidence_level, num_points_to_sample, sample_type, lb, ub, use_threads)
+    num_points_kept = length(sample_struct.ll)
+    
+    if num_points_kept == 0
+        @warn "no sampled points were in the confidence region of the full likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds"
+        return nothing
+    end
+    
+    model.num_full_samples += 1
+    if (model.num_full_samples - nrow(model.full_samples_df)) > 0
+        add_full_samples_rows!(model, 1)
+    end
+    model.full_samples_dict[model.num_full_samples] = sample_struct
+    set_full_samples_row!(model, true, confidence_level, sample_type, num_points_kept)
+
+    return nothing
+end
+
+
+# @time uniform_grid(model, 0.95, 30; use_threads=true)
+# @time uniform_random(model, 0.95, 27000; use_threads=true)
+# @time LHS(model, 0.95, 27000)

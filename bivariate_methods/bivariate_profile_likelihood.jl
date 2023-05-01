@@ -147,7 +147,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
                                         atol::Real=1e-8, 
                                         θcombinations_is_unique::Bool=false,
-                                        use_distributed::Bool=false)
+                                        use_distributed::Bool=false,
+                                        save_internal_points::Bool=false)
                                     
     atol > 0 || throw(DomainError("atol must be a strictly positive integer"))
 

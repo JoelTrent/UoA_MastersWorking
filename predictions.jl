@@ -8,6 +8,15 @@ function add_prediction_function!(model::LikelihoodModel,
     return nothing
 end
 
+function check_prediction_function_exists(model::LikelihoodModel)
+    if ismissing(model.core.predictfunction) 
+        @warn "LikelihoodModel does not contain a function for evaluating predictions. Please add a prediction function using add_prediction_function!"
+        return false
+    end
+
+    return true
+end
+
 """
 If a model has multiple predictive variables, it assumes that `model.predictfunction` stores the prediction for each variable in its columns.
 We are going to store values for each variable in the 3rd dimension (row=dim1, col=dim2, page/sheet=dim3)
@@ -91,7 +100,6 @@ function generate_prediction_bivariate(model::LikelihoodModel,
                                 proportion_to_keep)
 end
 
-
 """
 """
 function generate_predictions_univariate!(model::LikelihoodModel,
@@ -101,19 +109,10 @@ function generate_predictions_univariate!(model::LikelihoodModel,
                                 profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                 use_distributed::Bool=false)
 
+    check_prediction_function_exists(model) || return nothing
+
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-
-    df = model.uni_profiles_df
-    row_subset = df.num_points .> 0
-    row_subset = df.not_evaluated_predictions .&& row_subset
-    if !isempty(confidence_levels)
-        row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
-    end
-    if !isempty(profile_types)
-        row_subset .= row_subset .&& (df.profile_type .∈ Ref(profile_types))
-    end
-
-    sub_df = @view(df[row_subset, :])
+    sub_df = desired_df_subset(model.uni_profiles_df, Int[], confidence_levels, profile_types, for_prediction_generation=true)
 
     if nrow(sub_df) < 1
         return nothing
@@ -149,22 +148,10 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
                                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                             use_distributed::Bool=false)
 
+    check_prediction_function_exists(model) || return nothing
+    
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-
-    df = model.biv_profiles_df
-    row_subset = df.num_points .> 0
-    row_subset = df.not_evaluated_predictions .&& row_subset
-    if !isempty(confidence_levels)
-        row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
-    end
-    if !isempty(profile_types)
-        row_subset .= row_subset .&& (df.profile_type .∈ Ref(profile_types))
-    end
-    if !isempty(methods)
-        row_subset .= row_subset .&& (df.method .∈ Ref(methods))
-    end
-
-    sub_df = @view(df[row_subset, :])
+    sub_df = desired_df_subset(model.biv_profiles_df, Tuple{Int, Int}[], confidence_levels, profile_types, methods, for_prediction_generation=true)
 
     if nrow(sub_df) < 1
         return nothing
@@ -172,7 +159,6 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
 
     if !use_distributed
         for i in 1:nrow(sub_df)
-
             predict_struct = generate_prediction_bivariate(model, sub_df, i,
                                                             t, proportion_to_keep)
 
@@ -192,5 +178,46 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
 
     sub_df[:, :not_evaluated_predictions] .= false
 
+    return nothing
+end
+
+function generate_predictions_full_likelihood!(model::LikelihoodModel,
+                                        t::Vector,
+                                        proportion_to_keep::Float64;
+                                        confidence_levels::Vector{<:Float64}=Float64[],
+                                        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+                                        use_distributed::Bool=false)
+
+    check_prediction_function_exists(model) || return nothing
+    
+    (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
+    sub_df = desired_df_subset(model.full_samples_df, confidence_levels, sample_types, for_prediction_generation=true)
+
+    if nrow(sub_df) < 1
+        return nothing
+    end
+
+    if !use_distributed
+        for i in 1:nrow(sub_df)
+            parameter_points = model.full_samples_dict[sub_df[i, :row_ind]].points
+            predict_struct = generate_prediction(model.core.predictfunction, model.core.data, t, 
+                                                    model.core.ymle, parameter_points, proportion_to_keep)
+
+            model.full_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+        end
+
+    else
+        predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+            parameter_points = model.full_samples_dict[sub_df[i, :row_ind]].points
+            generate_prediction(model.core.predictfunction, model.core.data, t, 
+                                                model.core.ymle, parameter_points, proportion_to_keep)
+        end
+        
+        for (i, predict_struct) in enumerate(predictions)
+            model.full_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+        end
+    end
+
+    sub_df[:, :not_evaluated_predictions] .= false
     return nothing
 end

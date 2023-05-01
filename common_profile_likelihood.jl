@@ -63,3 +63,97 @@ function get_consistent_tuple(model::LikelihoodModel,
 
     return (missing)
 end
+
+function desired_df_subset(df::DataFrame, 
+                            confidence_levels::Union{Float64, Vector{<:Float64}},
+                            sample_types::Vector{<:AbstractSampleType};
+                            for_prediction_generation::Bool=false,
+                            for_prediction_plots::Bool=false,
+                            include_higher_confidence_levels::Bool=false)
+
+    row_subset = df.num_points .> 0
+    if for_prediction_generation
+        row_subset .= row_subset .&& df.not_evaluated_predictions
+    end
+    if for_prediction_plots
+        row_subset .= row_subset .&& .!(df.not_evaluated_predictions)
+    end
+
+    if !isempty(confidence_levels)
+        if include_higher_confidence_levels
+            row_subset .= row_subset .&& (df.conf_level .>= confidence_levels::Float64)
+        else
+            row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
+        end
+    end
+    if !isempty(sample_types)
+        row_subset .= row_subset .&& (df.sample_type .∈ Ref(sample_types))
+    end
+
+    return @view(df[row_subset, :])
+end
+
+function desired_df_subset(df::DataFrame, 
+                            θs_of_interest::Vector{<:Int},
+                            confidence_levels::Union{Float64, Vector{<:Float64}},
+                            profile_types::Vector{<:AbstractProfileType};
+                            for_prediction_generation::Bool=false,
+                            for_prediction_plots::Bool=false)
+
+    row_subset = df.num_points .> 0
+    if for_prediction_generation
+        row_subset .= row_subset .&& df.not_evaluated_predictions
+    end
+    if for_prediction_plots
+        row_subset .= row_subset .&& .!(df.not_evaluated_predictions)
+    end
+
+    if !isempty(θs_of_interest) 
+        row_subset .= row_subset .&& (df.θindex .∈ Ref(θs_of_interest))
+    end
+    if !isempty(confidence_levels)
+        row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
+    end
+    if !isempty(profile_types)
+        row_subset .= row_subset .&& (df.profile_type .∈ Ref(profile_types))
+    end
+
+    return @view(df[row_subset, :])
+end
+
+function desired_df_subset(df::DataFrame, 
+                            θs_of_interest::Vector{Tuple{Int,Int}},
+                            confidence_levels::Union{Float64, Vector{<:Float64}},
+                            profile_types::Vector{<:AbstractProfileType},
+                            methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[];
+                            for_prediction_generation::Bool=false,
+                            for_prediction_plots::Bool=false,
+                            include_lower_confidence_levels::Bool=false)
+
+    row_subset = df.num_points .> 0
+    if for_prediction_generation
+        row_subset .= row_subset .&& df.not_evaluated_predictions
+    end
+    if for_prediction_plots
+        row_subset .= row_subset .&& .!(df.not_evaluated_predictions)
+    end
+
+    if !isempty(θs_of_interest) 
+        row_subset .= row_subset .&& (df.θindices .∈ Ref(θs_of_interest))
+    end
+    if !isempty(confidence_levels)
+        if include_lower_confidence_levels
+            row_subset .= row_subset .&& (df.conf_level .<= confidence_levels::Float64)
+        else
+            row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
+        end
+    end
+    if !isempty(profile_types)
+        row_subset .= row_subset .&& (df.profile_type .∈ Ref(profile_types))
+    end
+    if !isempty(methods)
+        row_subset .= row_subset .&& (df.method .∈ Ref(methods))
+    end
+
+    return @view(df[row_subset, :])
+end

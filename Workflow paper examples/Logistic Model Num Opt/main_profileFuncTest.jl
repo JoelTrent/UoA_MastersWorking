@@ -10,7 +10,7 @@ fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "P
 include(joinpath("..", "..", "JuLikelihood.jl"))
 
 using Distributed
-# addprocs(3)
+addprocs(3)
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere include(joinpath("..", "..", "JuLikelihood.jl"))
 
@@ -98,7 +98,9 @@ ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 confLevel = 0.95
 
 # initialisation. model is a mutable struct that is currently intended to hold all model information
-model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, uni_row_prealloaction_size=3)
+model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, uni_row_prealloaction_size=3);
+
+full_likelihood_sample!(model, 1000000)
 
 # not strictly required - functions that rely on these being computed will check if 
 # they're missing and call this function on model if so.
@@ -107,40 +109,34 @@ getMLE_ellipse_approximation!(model)
 @time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
 @time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 @time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
+get_points_in_interval!(model, 50, additional_width=0.3)
 
-@time univariate_confidenceintervals!(model, confidence_level=0.7, profile_type=EllipseApprox())
-@time univariate_confidenceintervals!(model, confidence_level=0.7, profile_type=LogLikelihood())
-
-# univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical())
-# univariate_confidenceintervals!(model, [:K], profile_type=EllipseApprox())
-# univariate_confidenceintervals!(model, [1,2,3], confidence_level=0.7, use_existing_profiles=true, use_distributed=true)
-# univariate_confidenceintervals!(model, 2, profile_type=EllipseApprox())
-
-
-# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodFix1Axis())
-# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadial(5))
-# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, profile_type=EllipseApproxAnalytical(), method=BracketingMethodSimultaneous())
-# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.3, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 5, 0.3))
 @time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.75, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0))
-@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.5, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 2, 0.0))
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.2, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0))
+@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 1, 0.0),)
 
 
 
 @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, method=AnalyticalEllipseMethod())
 
 
-get_points_in_interval!(model, 50, additional_width=0.3)
 
 prediction_locations = collect(LinRange(t[1], t[end], 30))
-
 generate_predictions_univariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[EllipseApprox(), LogLikelihood()])
 generate_predictions_bivariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[LogLikelihood()])
-
-# model.core.θmle .= θG
+generate_predictions_full_likelihood!(model, prediction_locations, 0.2, use_distributed=false)
 
 using Plots
 gr()
+
+ellipse_points = generate_N_clustered_points(100, model.ellipse_MLE_approx.Γmle,
+                                                        model.core.θmle, 1, 2,
+                                                        confidence_level=0.1, 
+                                                        start_point_shift=0.0,
+                                                        sqrt_distortion=1.0)
+
+scatter(ellipse_points[1,:], ellipse_points[2,:], legend=false,  markeropacity=0.4)
+
 
 # Profiles ################################################################
 plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
@@ -149,23 +145,26 @@ for i in eachindex(plots); display(plots[i]) end
 plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2, θcombinations_to_plot=[[:K,:λ]])
+plots = plot_bivariate_profiles(model, 0.2, 0.2)
 for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
-for i in eachindex(plots); display(plots[i]) end
+# plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
+# for i in eachindex(plots); display(plots[i]) end
 
-# Predictions ############################################################
-plots = plot_predictions_individual(model, prediction_locations)
-for i in eachindex(plots); display(plots[i]) end
+# # Predictions ############################################################
+# plots = plot_predictions_individual(model, prediction_locations)
+# for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120])
-for i in eachindex(plots); display(plots[i]) end
+# plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120])
+# for i in eachindex(plots); display(plots[i]) end
 
-union_plot = plot_predictions_union(model, prediction_locations, 1, ylims=[0,120])
+# union_plot = plot_predictions_union(model, prediction_locations, 1, ylims=[0,120])
 
-union_plot = plot_predictions_union(model, prediction_locations, 2, ylims=[0,120], include_lower_confidence_levels=true)
+union_plot = plot_predictions_union(model, prediction_locations, 2, ylims=[0,120], include_lower_confidence_levels=true, compare_to_full_sample_type=LatinHypercubeSamples())
 display(union_plot)
+
+plots = plot_predictions_sampled(model, prediction_locations)
+for i in eachindex(plots); display(plots[i]) end
 println()
 
 
