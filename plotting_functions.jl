@@ -669,7 +669,7 @@ function plot_predictions_sampled(model::LikelihoodModel,
                                     ylabel::String="f(t)";
                                     include_MLE::Bool=true,
                                     confidence_levels::Vector{<:Float64}=Float64[],
-                                    sample_types::Vector{<:AbstractSampleType}=[LatinHypercubeSamples()],
+                                    sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                                     linealpha=0.4,
                                     kwargs...)
 

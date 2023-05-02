@@ -7,7 +7,8 @@ function add_biv_profiles_rows!(model::LikelihoodModel,
     return nothing
 end
 
-function set_biv_profiles_row!(model::LikelihoodModel, 
+function set_biv_profiles_row!(model::LikelihoodModel,
+                                    row_ind::Int,
                                     θcombination::Tuple{Int, Int},
                                     not_evaluated_internal_points::Bool,
                                     not_evaluated_predictions::Bool,
@@ -15,13 +16,13 @@ function set_biv_profiles_row!(model::LikelihoodModel,
                                     profile_type::AbstractProfileType,
                                     method::AbstractBivariateMethod,
                                     num_points::Int)
-    model.biv_profiles_df[model.num_biv_profiles, 2:end] .= θcombination, 
-                                                            not_evaluated_internal_points,
-                                                            not_evaluated_predictions,
-                                                            confidence_level,
-                                                            profile_type,
-                                                            method,
-                                                            num_points
+    model.biv_profiles_df[row_ind, 2:end] .= θcombination, 
+                                                not_evaluated_internal_points,
+                                                not_evaluated_predictions,
+                                                confidence_level,
+                                                profile_type,
+                                                method,
+                                                num_points
     return nothing
 end
 
@@ -148,9 +149,11 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         atol::Real=1e-8, 
                                         θcombinations_is_unique::Bool=false,
                                         use_distributed::Bool=false,
-                                        save_internal_points::Bool=false)
+                                        save_internal_points::Bool=false,
+                                        existing_profiles::Symbol=:merge)
                                     
     atol > 0 || throw(DomainError("atol must be a strictly positive integer"))
+    existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
@@ -170,36 +173,74 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     init_biv_profile_row_exists!(model, θcombinations, profile_type, method)
 
-    # check if profile has already been evaluated
     θcombinations_to_keep = trues(length(θcombinations))
+    θcombinations_to_reuse = falses(length(θcombinations))
+    num_to_reuse = 0
+    # check if profile has already been evaluated
     for (i, (ind1, ind2)) in enumerate(θcombinations)
         if model.biv_profile_row_exists[((ind1, ind2), profile_type, method)][confidence_level] != 0
             θcombinations_to_keep[i] = false
+            θcombinations_to_reuse[i] = true
+            num_to_reuse += 1
         end
     end
-    θcombinations = θcombinations[θcombinations_to_keep]
+    if existing_profiles == :ignore
+        θcombinations = θcombinations[θcombinations_to_keep]
+        θcombinations_to_merge = θcombinations_to_reuse[θcombinations_to_keep]
+        num_to_reuse = 0
+    elseif existing_profiles == :merge
+        θcombinations_to_merge = θcombinations_to_reuse
+    elseif existing_profiles == :overwrite
+        θcombinations_to_merge = falses(length(θcombinations))
+    end
+
     len_θcombinations = length(θcombinations)
     length(θcombinations) > 0 || return nothing
 
-    num_rows_required = (len_θcombinations + model.num_biv_profiles) - nrow(model.biv_profiles_df)
+    num_rows_required = ((len_θcombinations-num_to_reuse) + model.num_biv_profiles) - nrow(model.biv_profiles_df)
 
     if num_rows_required > 0
         add_biv_profiles_rows!(model, num_rows_required)
     end
 
-    if !use_distributed
-        for (ind1, ind2) in θcombinations
-            model.num_biv_profiles += 1
-            model.biv_profile_row_exists[((ind1, ind2), profile_type, method)][confidence_level] = model.num_biv_profiles * 1
+    num_new_points = zeros(Int, len_θcombinations) .+ num_points
+    if existing_profiles == :merge
+        pos_new_points = trues(len_θcombinations)
+        for (i, (ind1, ind2)) in enumerate(θcombinations)
+            if θcombinations_to_merge[i]
+                local row_ind = model.biv_profile_row_exists[((ind1, ind2), profile_type, method)][confidence_level]
+                num_new_points[i] = num_new_points[i] - model.biv_profiles_df[row_ind, :num_points]
+                pos_new_points[i] = num_new_points[i] > 0
+            end
+        end
+        θcombinations = θcombinations[pos_new_points]
+        num_new_points = num_new_points[pos_new_points]
+        θcombinations_to_reuse = θcombinations_to_reuse[pos_new_points]
+        θcombinations_to_merge =θcombinations_to_merge[pos_new_points]
+    end
 
-            boundary_struct = bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
+    if !use_distributed
+        for (i, (ind1, ind2)) in enumerate(θcombinations)
+            if θcombinations_to_reuse[i]
+                row_ind = model.biv_profile_row_exists[((ind1, ind2), profile_type, method)][confidence_level]
+            else
+                model.num_biv_profiles += 1
+                row_ind = model.num_biv_profiles * 1
+                model.biv_profile_row_exists[((ind1, ind2), profile_type, method)][confidence_level] = row_ind
+            end
+            
+            boundary_struct = bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i], 
                                                             confidence_level, consistent, 
                                                             ind1, ind2, profile_type,
                                                             method, atol)
 
-            model.biv_profiles_dict[model.num_biv_profiles] = boundary_struct
+            if θcombinations_to_merge[i]
+                model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
+            else
+                model.biv_profiles_dict[row_ind] = boundary_struct
+            end
 
-            set_biv_profiles_row!(model, (ind1, ind2), true, true, confidence_level, profile_type, method, num_points)        
+            set_biv_profiles_row!(model, row_ind, (ind1, ind2), true, true, confidence_level, profile_type, method, num_points)
         end
     else
         profiles_to_add = @distributed (vcat) for (ind1, ind2) in θcombinations
@@ -209,13 +250,22 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                                             method, atol))
         end
 
-        for (inds, boundary_struct) in profiles_to_add
-            model.num_biv_profiles += 1
-            model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level] = model.num_biv_profiles * 1
+        for (i, (inds, boundary_struct)) in enumerate(profiles_to_add)
+            if θcombinations_to_reuse[i]
+                row_ind = model.biv_profile_row_exists[((ind1, ind2), profile_type, method)][confidence_level]
+            else
+                model.num_biv_profiles += 1
+                row_ind = model.num_biv_profiles * 1
+                model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level] = row_ind
+            end
 
-            model.biv_profiles_dict[model.num_biv_profiles] = boundary_struct
+            if θcombinations_to_merge[i]
+                model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
+            else
+                model.biv_profiles_dict[row_ind] = boundary_struct
+            end
 
-            set_biv_profiles_row!(model, inds, true, true, confidence_level, profile_type, method, num_points)        
+            set_biv_profiles_row!(model, row_ind, inds, true, true, confidence_level, profile_type, method, num_points)        
         end
     end
 
@@ -231,14 +281,18 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
                                         atol::Real=1e-8,
                                         θcombinations_is_unique::Bool=false,
-                                        use_distributed::Bool=false)
+                                        use_distributed::Bool=false,
+                                        save_internal_points::Bool=false,
+                                        existing_profiles::Symbol=:merge)
 
     θcombinations = convertθnames_toindices(model, θcombinations_symbols)
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
             method=method, atol=atol, θcombinations_is_unique=θcombinations_is_unique,
-            use_distributed=use_distributed)
+            use_distributed=use_distributed,
+            save_internal_points=save_internal_points,
+            existing_profiles=existing_profiles)
     return nothing
 end
 
@@ -250,7 +304,9 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
                                         atol::Real=1e-8,
-                                        use_distributed::Bool=false)
+                                        use_distributed::Bool=false,
+                                        save_internal_points::Bool=false,
+                                        existing_profiles::Symbol=:merge)
 
     profile_m_random_combinations = max(0, min(profile_m_random_combinations, binomial(model.core.num_pars, 2)))
     profile_m_random_combinations > 0 || throw(DomainError("profile_m_random_combinations must be a strictly positive integer"))
@@ -260,7 +316,9 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
             method=method, atol=atol, θcombinations_is_unique=true, 
-            use_distributed=use_distributed)
+            use_distributed=use_distributed,
+            save_internal_points=save_internal_points,
+            existing_profiles=existing_profiles)
     return nothing
 end
 
@@ -271,14 +329,18 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
                                         atol::Real=1e-8,
-                                        use_distributed::Bool=false)
+                                        use_distributed::Bool=false,
+                                        save_internal_points::Bool=false,
+                                        existing_profiles::Symbol=:merge)
 
     θcombinations = collect(combinations(1:model.core.num_pars, 2))
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
             method=method, atol=atol, θcombinations_is_unique=true,
-            use_distributed=use_distributed)
+            use_distributed=use_distributed,
+            save_internal_points=save_internal_points,
+            existing_profiles=existing_profiles)
     return nothing
 end
 

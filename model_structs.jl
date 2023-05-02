@@ -128,6 +128,10 @@ struct BivariateConfidenceStruct <: AbstractBivariateConfidenceStruct
     end
 end
 
+function Base.merge(a::BivariateConfidenceStruct, b::BivariateConfidenceStruct)
+    return BivariateConfidenceStruct(hcat(a.confidence_boundary, b.confidence_boundary), hcat(a.internal_points, b.internal_points))
+end
+
 struct LogLikelihood <: AbstractProfileType end
 struct EllipseApprox <: AbstractEllipseProfileType end
 struct EllipseApproxAnalytical <: AbstractEllipseProfileType end

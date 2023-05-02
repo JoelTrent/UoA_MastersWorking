@@ -8,14 +8,15 @@ function add_full_samples_rows!(model::LikelihoodModel,
 end
 
 function set_full_samples_row!(model::LikelihoodModel, 
+                                    row_ind::Int,
                                     not_evaluated_predictions::Bool,
                                     confidence_level::Float64,
                                     sample_type::AbstractSampleType,
                                     num_points::Int)
-    model.full_samples_df[model.num_full_samples, 2:end] .= not_evaluated_predictions,
-                                                            confidence_level,
-                                                            sample_type,
-                                                            num_points
+    model.full_samples_df[row_ind, 2:end] .= not_evaluated_predictions,
+                                                confidence_level,
+                                                sample_type,
+                                                num_points
     return nothing
 end
 
@@ -47,11 +48,11 @@ function valid_points(model::LikelihoodModel,
         end
     end
 
-    ll_values = ll_values[valid_point]
-    ll_values .= ll_values .+ get_target_loglikelihood(model, confidence_level,
+    valid_ll_values = ll_values[valid_point]
+    valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
-    return FullConfidenceStruct(points, ll_values)
+    return FullConfidenceStruct(points, valid_ll_values)
 end
 
 function valid_points(model::LikelihoodModel, 
@@ -60,23 +61,24 @@ function valid_points(model::LikelihoodModel,
                         confidence_level::Float64, 
                         num_dims::Int,
                         use_threads::Bool)
+
     valid_point = falses(grid_size)
     ll_values = zeros(grid_size)
     target_ll = get_target_loglikelihood(model, confidence_level, LogLikelihood(), num_dims)
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
-    @floop ex for i in 1:grid_size
+    @floop ex for i in axes(grid,2)
         ll_values[i] = model.core.loglikefunction(grid[:,i], model.core.data)-target_ll
         if ll_values[i] >= 0
             valid_point[i] = true
         end
     end
 
-    ll_values = ll_values[valid_point]
-    ll_values .= ll_values .+ get_target_loglikelihood(model, confidence_level,
+    valid_ll_values = ll_values[valid_point]
+    valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
-    return FullConfidenceStruct(grid[:,valid_point], ll_values)
+    return FullConfidenceStruct(grid[:,valid_point], valid_ll_values)
 end
 
 function check_if_bounds_supplied(model::LikelihoodModel,
@@ -113,9 +115,7 @@ function uniform_grid(model::LikelihoodModel,
         points_per_dimension > 0 || throw(DomainError("points_per_dimension must be a strictly positive integer"))
         points_per_dimension = fill(points_per_dimension, num_dims)
     end
-    if !arguments_checked
-        lb, ub = check_if_bounds_supplied(model, lb, ub)
-    end
+    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, lb, ub)
 
     ranges = LinRange.(lb, ub, points_per_dimension)
     grid = Iterators.product(ranges...)
@@ -135,8 +135,9 @@ function uniform_random(model::LikelihoodModel,
     num_dims = model.core.num_pars
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
-        lb, ub = check_if_bounds_supplied(model, lb, ub)
     end
+    
+    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, lb, ub)
 
     grid = zeros(num_dims, num_points)
 
@@ -199,17 +200,20 @@ function full_likelihood_sample!(model::LikelihoodModel,
                                     sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                     lb::Vector=[],
                                     ub::Vector=[],
-                                    use_threads::Bool=true)
+                                    use_threads::Bool=true,
+                                    existing_profiles::Symbol=:overwrite)
 
     if num_points_to_sample isa Int
         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
     end
+    existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
     lb, ub = check_if_bounds_supplied(model, lb, ub)
 
     init_full_samples_row_exists!(model, sample_type)
     # check if sample has already been evaluated
-    model.full_samples_row_exists[sample_type][confidence_level] == 0 || return nothing
-    
+    requires_overwrite = model.full_samples_row_exists[sample_type][confidence_level] != 0
+    if existing_profiles == :ignore && requires_overwrite; return nothing end
+
     sample_struct = full_likelihood_sample(model, confidence_level, num_points_to_sample, sample_type, lb, ub, use_threads)
     num_points_kept = length(sample_struct.ll)
     
@@ -217,18 +221,20 @@ function full_likelihood_sample!(model::LikelihoodModel,
         @warn "no sampled points were in the confidence region of the full likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds"
         return nothing
     end
-    
-    model.num_full_samples += 1
-    if (model.num_full_samples - nrow(model.full_samples_df)) > 0
-        add_full_samples_rows!(model, 1)
+
+    if requires_overwrite
+        row_ind = model.full_samples_row_exists[sample_type][confidence_level]
+    else
+        model.num_full_samples += 1
+        row_ind = model.num_full_samples * 1
+        if (model.num_full_samples - nrow(model.full_samples_df)) > 0
+            add_full_samples_rows!(model, 1)
+        end
+        model.full_samples_row_exists[sample_type][confidence_level] = row_ind
     end
-    model.full_samples_dict[model.num_full_samples] = sample_struct
-    set_full_samples_row!(model, true, confidence_level, sample_type, num_points_kept)
+
+    model.full_samples_dict[row_ind] = sample_struct
+    set_full_samples_row!(model, row_ind, true, confidence_level, sample_type, num_points_kept)
 
     return nothing
 end
-
-
-# @time uniform_grid(model, 0.95, 30; use_threads=true)
-# @time uniform_random(model, 0.95, 27000; use_threads=true)
-# @time LHS(model, 0.95, 27000)

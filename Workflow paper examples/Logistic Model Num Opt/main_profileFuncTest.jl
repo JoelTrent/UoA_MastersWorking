@@ -37,11 +37,16 @@ end
     return y
 end
 
+@everywhere function solvedmodel(t, a)
+    return (a[2]*a[3]) ./ ((a[2]-a[3]) .* (exp.(-a[1] .* t)) .+ a[3])
+end
+
 # Section 6: Define loglikelihood function
 @everywhere function loglhood(a, data)
-    y=ODEmodel(data.t, a)
+    # y=ODEmodel(data.t, a)
+    y=solvedmodel(data.t, a)
     e=0
-    e=sum(loglikelihood(data.dist, data.yobs-y))
+    e=sum(loglikelihood(data.dist, data.yobs .- y))
     return e
 end
 
@@ -68,9 +73,9 @@ yobs = ytrue + σ*randn(length(t))
 data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
 
 # Bounds on model parameters #################################################################
-λmin, λmax = (0.001, 0.05)
+λmin, λmax = (0.00, 0.05)
 Kmin, Kmax = (50., 150.)
-C0min, C0max = (0.01, 50.)
+C0min, C0max = (0.0, 50.)
 
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
@@ -93,27 +98,28 @@ ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 
 @everywhere likelihoodFunc = loglhood
 # REQUIRED TO SPECIFY WITH DEFAULT OF 3RD ARG DEPENDING ON DATA SO THAT YMLE IS FOUND
-@everywhere function predictFunc(θ, data, t=data.t); ODEmodel(t, θ) end
+# @everywhere function predictFunc(θ, data, t=data.t); ODEmodel(t, θ) end
+@everywhere function predictFunc(θ, data, t=data.t); solvedmodel(t, θ) end
 θnames = [:λ, :K, :C0]
 confLevel = 0.95
 
 # initialisation. model is a mutable struct that is currently intended to hold all model information
 model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, uni_row_prealloaction_size=3);
 
-full_likelihood_sample!(model, 1000000)
+full_likelihood_sample!(model, 100000)
 
 # not strictly required - functions that rely on these being computed will check if 
 # they're missing and call this function on model if so.
 getMLE_ellipse_approximation!(model)
 
-@time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical())
+@time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical(), existing_profiles=:overwrite, num_points_in_interval=0)
 @time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 @time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 get_points_in_interval!(model, 50, additional_width=0.3)
 
-@time bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadial(5))
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.2, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0))
-@time bivariate_confidenceprofiles!(model, 10, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 1, 0.0),)
+@time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(5), existing_profiles=:merge)
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0))
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 1, 0.0))
 
 
 
@@ -123,7 +129,7 @@ get_points_in_interval!(model, 50, additional_width=0.3)
 
 prediction_locations = collect(LinRange(t[1], t[end], 30))
 generate_predictions_univariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[EllipseApprox(), LogLikelihood()])
-generate_predictions_bivariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[LogLikelihood()])
+generate_predictions_bivariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[EllipseApprox(), LogLikelihood()])
 generate_predictions_full_likelihood!(model, prediction_locations, 0.2, use_distributed=false)
 
 using Plots
@@ -155,8 +161,8 @@ for i in eachindex(plots); display(plots[i]) end
 # plots = plot_predictions_individual(model, prediction_locations)
 # for i in eachindex(plots); display(plots[i]) end
 
-# plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120])
-# for i in eachindex(plots); display(plots[i]) end
+plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120], profile_types=[EllipseApprox()])
+for i in eachindex(plots); display(plots[i]) end
 
 # union_plot = plot_predictions_union(model, prediction_locations, 1, ylims=[0,120])
 
