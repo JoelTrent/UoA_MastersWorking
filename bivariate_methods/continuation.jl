@@ -47,6 +47,7 @@ function continuation_line_search!(p::NamedTuple,
     
     start_have_all_pars = !isempty(start_level_set_all) 
     
+    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical_continuation
     target_level_set_2D = zeros(2, num_points)
     target_level_set_all = zeros(model.core.num_pars, num_points)
     
@@ -86,7 +87,7 @@ function continuation_line_search!(p::NamedTuple,
 
             # if bound point and pointa bracket a boundary, search for the boundary
             # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
-            if bivariate_optimiser(v_bar_norm, p) < 0
+            if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
                 Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), atol=atol, Roots.Order8(); p=p)
 
                 # in event Roots.Order8 fails to converge, switch to bracketing method
@@ -109,8 +110,19 @@ function continuation_line_search!(p::NamedTuple,
                 target_level_set_2D[:, i] .= boundpoint
                 target_level_set_all[[ind1, ind2], i] .= boundpoint
             end
-            variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
+            if !biv_opt_is_ellipse_analytical
+                variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
+            end
         end
+    end
+
+    if biv_opt_is_ellipse_analytical
+        local initGuess = zeros(model.core.num_pars-2)
+        boundsmapping2d!(initGuess, model.core.θmle, ind1, ind2)
+        target_level_set_all = get_λs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
+                                                                    p.consistent, ind1, ind2, 
+                                                                    model.core.num_pars, initGuess,
+                                                                    p.θranges, p.λranges, target_level_set_all)
     end
 
     return target_level_set_2D, target_level_set_all
@@ -128,6 +140,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
 
     mle_point = model.core.θmle[[ind1, ind2]]
     
+    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical_continuation
     target_level_set_2D = zeros(2, num_points)
     target_level_set_all = zeros(model.core.num_pars, num_points)
     
@@ -148,7 +161,18 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         boundarypoint .= p.pointa + Ψ_y1*p.uhat
         target_level_set_2D[:, i] .= boundarypoint
         target_level_set_all[[ind1, ind2], i] .= boundarypoint
-        variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
+        if !biv_opt_is_ellipse_analytical
+            variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
+        end
+    end
+
+    if biv_opt_is_ellipse_analytical
+        local initGuess = zeros(model.core.num_pars-2)
+        boundsmapping2d!(initGuess, model.core.θmle, ind1, ind2)
+        target_level_set_all = get_λs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
+                                                                    p.consistent, ind1, ind2, 
+                                                                    model.core.num_pars, initGuess,
+                                                                    p.θranges, p.λranges, target_level_set_all)
     end
 
     return target_level_set_2D, target_level_set_all
@@ -194,7 +218,8 @@ function initial_continuation_solution!(p::NamedTuple,
     ellipse_points = generate_N_clustered_points(num_points, model.ellipse_MLE_approx.Γmle,
                                                         model.core.θmle, ind1, ind2,
                                                         confidence_level=ellipse_confidence_level, 
-                                                        start_point_shift=ellipse_start_point_shift)
+                                                        start_point_shift=ellipse_start_point_shift, 
+                                                        sqrt_distortion=0.01)
 
     for i in 1:num_points
         if model.core.θlb[ind1] > ellipse_points[1,i] || model.core.θub[ind1] < ellipse_points[1,i]
@@ -214,6 +239,7 @@ function initial_continuation_solution!(p::NamedTuple,
     for i in 1:num_points
         p.pointa .= ellipse_points[:,i]
         ellipse_true_lls[i] = bivariate_optimiser(0.0, p)
+        # extract value of p.λ_opt
     end
 
     if profile_type isa LogLikelihood
@@ -267,12 +293,15 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     ellipse_confidence_level::Float64, 
                                                     target_confidence_level::Float64,
                                                     ellipse_start_point_shift::Float64,
-                                                    num_level_sets::Int)
+                                                    num_level_sets::Int,
+                                                    save_internal_points::Bool)
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
     
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
+
+    internal_all = zeros(model.core.num_pars, 0)
 
     if profile_type isa EllipseApproxAnalytical
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
@@ -313,6 +342,10 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                         profile_type, 2) for i in 1:num_level_sets]
 
     for level_set_ll in level_set_lls
+        if save_internal_points
+            internal_all = hcat(internal_all, current_level_set_all[:, .!point_is_on_bounds]) 
+        end
+        
         current_level_set_2D, current_level_set_all = 
             continuation_line_search!(p, point_is_on_bounds, 
                                         bivariate_optimiser, bivariate_optimiser_gradient,
@@ -321,5 +354,5 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         # display(scatter(current_level_set_2D[1,:], current_level_set_2D[2,:], legend=false, markeropacity=0.4))
     end
 
-    return current_level_set_all
+    return current_level_set_all, internal_all
 end

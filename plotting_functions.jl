@@ -16,13 +16,13 @@ function profile1Dlinestyle(profile_type::AbstractProfileType)
     return :solid
 end
 
-function profile2Dmarkershape(profile_type::AbstractProfileType)
+function profile2Dmarkershape(profile_type::AbstractProfileType, on_boundary::Bool)
     if profile_type isa EllipseApproxAnalytical
-        return :diamond
+        return on_boundary ? :diamond : :hexagon
     elseif profile_type isa EllipseApprox
-        return :utriangle
+        return on_boundary ? :utriangle : :dtriangle
     end
-    return :circle
+    return on_boundary ? :circle : :rect
 end
 
 function θs_to_plot_typeconversion(model::LikelihoodModel,
@@ -257,7 +257,8 @@ function plot_bivariate_profiles(model::LikelihoodModel,
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                     palette_to_use::Symbol=:Paired_6, 
-                                    markeralpha=nothing,
+                                    include_internal_points::Bool=true,
+                                    markeralpha=1.0,
                                     kwargs...)
 
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
@@ -289,9 +290,18 @@ function plot_bivariate_profiles(model::LikelihoodModel,
         ranges = max_vals .- min_vals
         
         plot2Dboundary!(profile_plots[i], boundary, 
-                            markershape=:circle, 
+                            markershape=profile2Dmarkershape(row.profile_type, true),
                             markercolor=color_palette[profilecolor(row.profile_type)],
                             markeralpha=markeralpha)
+
+        if include_internal_points && !row.not_evaluated_internal_points
+            plot2Dboundary!(profile_plots[i], 
+                            @view(model.biv_profiles_dict[row.row_ind].internal_points[θindices, :]),
+                            "internal points", 
+                            markershape=profile2Dmarkershape(row.profile_type, false), 
+                            markercolor=color_palette[profilecolor(row.profile_type)],
+                            markeralpha=markeralpha*0.5)
+        end
 
         addMLE!(profile_plots[i], parMLEs; 
             markercolor=color_palette[end],
@@ -390,7 +400,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
 
                         plot2Dboundary!(profile_plots[plot_i], boundary, 
                             label=string(row.profile_type),
-                            markershape=profile2Dmarkershape(row.profile_type), 
+                            markershape=profile2Dmarkershape(row.profile_type, true), 
                             markercolor=color_palette[profilecolor(row.profile_type)],
                             markeralpha=markeralpha)
                     end
@@ -455,7 +465,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
 
                     plot2Dboundary!(profile_plots[plot_i], boundary, 
                         label=string(prof_type),
-                        markershape=profile2Dmarkershape(prof_type), 
+                        markershape=profile2Dmarkershape(prof_type, true), 
                         markercolor=color_palette[profilecolor(prof_type)],
                         markeralpha=markeralpha)
                     

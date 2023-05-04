@@ -53,24 +53,27 @@ function get_bivariate_opt_func(profile_type::AbstractProfileType, method::Abstr
     return missing
 end
 
-function get_λs_bivariate_ellipse_analytical(boundarySamples::Matrix{Float64},
-                                                            num_points::Int,
-                                                            consistent::NamedTuple, 
-                                                            ind1::Int, 
-                                                            ind2::Int, 
-                                                            num_pars::Int,
-                                                            initGuess::Vector{<:Float64}, 
-                                                            θranges::Tuple{T, T, T}, 
-                                                            λranges::Tuple{T, T, T}) where T<:UnitRange
+function get_λs_bivariate_ellipse_analytical!(boundary,
+                                                num_points::Int,
+                                                consistent::NamedTuple, 
+                                                ind1::Int, 
+                                                ind2::Int, 
+                                                num_pars::Int,
+                                                initGuess::Vector{<:Float64}, 
+                                                θranges::Tuple{T, T, T}, 
+                                                λranges::Tuple{T, T, T},
+                                                samples_all_pars::Union{Missing, Matrix{Float64}}=missing) where T<:UnitRange
 
     p=(ind1=ind1, ind2=ind2, initGuess=initGuess,
                 θranges=θranges, λranges=λranges, consistent=consistent)
-        
-    samples_all_pars = zeros(num_pars, num_points)
-    samples_all_pars[[ind1, ind2], :] .= boundarySamples
+    
+    if ismissing(samples_all_pars)
+        samples_all_pars = zeros(num_pars, num_points)
+        samples_all_pars[[ind1, ind2], :] .= boundary
+    end
 
     for i in 1:num_points
-        variablemapping2d!(@view(samples_all_pars[:, i]), bivariateΨ_ellipse_unbounded(boundarySamples[:,i], p), θranges, λranges)
+        variablemapping2d!(@view(samples_all_pars[:, i]), bivariateΨ_ellipse_unbounded(boundary[:,i], p), θranges, λranges)
     end
 
     return samples_all_pars
@@ -85,9 +88,11 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         ind2::Int,
                                         profile_type::AbstractProfileType,
                                         method::AbstractBivariateMethod,
-                                        atol::Real)
+                                        atol::Real,
+                                        save_internal_points::Bool)
+    internal=zeros(model.core.num_pars,0)
     if method isa AnalyticalEllipseMethod
-        boundarySamples_ellipse = generate_N_clustered_points(
+        boundary_ellipse = generate_N_clustered_points(
                                     num_points, consistent.data_analytic.Γmle, 
                                     consistent.data_analytic.θmle, ind1, ind2,
                                     confidence_level=confidence_level,
@@ -95,27 +100,30 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
 
         _, _, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
 
-        boundarySamples = get_λs_bivariate_ellipse_analytical(
-                            boundarySamples_ellipse, 
+        boundary = get_λs_bivariate_ellipse_analytical!(
+                            boundary_ellipse, 
                             num_points,
                             consistent, ind1, ind2, 
                             model.core.num_pars, initGuess,
                             θranges, λranges)
            
     elseif method isa BracketingMethodFix1Axis
-        boundarySamples = bivariate_confidenceprofile_fix1axis(
-                    bivariate_optimiser, model, 
-                    num_points, consistent, ind1, ind2, atol)
+        boundary, internal = bivariate_confidenceprofile_fix1axis(
+                                bivariate_optimiser, model, 
+                                num_points, consistent, ind1, ind2, atol,
+                                save_internal_points)
         
     elseif method isa BracketingMethodSimultaneous
-        boundarySamples = bivariate_confidenceprofile_vectorsearch(
-                    bivariate_optimiser, model, 
-                    num_points, consistent, ind1, ind2, atol)
+        boundary, internal = bivariate_confidenceprofile_vectorsearch(
+                                bivariate_optimiser, model, 
+                                num_points, consistent, ind1, ind2, atol,
+                                save_internal_points)
     elseif method isa BracketingMethodRadial
-        boundarySamples = bivariate_confidenceprofile_vectorsearch(
-                    bivariate_optimiser, model, 
-                    num_points, consistent, ind1, ind2, atol,
-                    num_radial_directions=method.num_radial_directions)
+        boundary, internal = bivariate_confidenceprofile_vectorsearch(
+                                bivariate_optimiser, model, 
+                                num_points, consistent, ind1, ind2, atol,
+                                save_internal_points,
+                                num_radial_directions=method.num_radial_directions)
     elseif method isa ContinuationMethod
         if profile_type isa EllipseApproxAnalytical
             bivariate_optimiser_gradient = bivariateΨ_ellipse_analytical_gradient
@@ -123,16 +131,17 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
             bivariate_optimiser_gradient = bivariateΨ_gradient!
         end
 
-        boundarySamples = bivariate_confidenceprofile_continuation(
-                    bivariate_optimiser, bivariate_optimiser_gradient,
-                    model, num_points, consistent, ind1, ind2, atol, profile_type,
-                    method.ellipse_confidence_level,
-                    confidence_level, 
-                    method.ellipse_start_point_shift,
-                    method.num_level_sets)
+        boundary, internal = bivariate_confidenceprofile_continuation(
+                                bivariate_optimiser, bivariate_optimiser_gradient,
+                                model, num_points, consistent, ind1, ind2, atol, profile_type,
+                                method.ellipse_confidence_level,
+                                confidence_level, 
+                                method.ellipse_start_point_shift,
+                                method.num_level_sets,
+                                save_internal_points)
     end
     
-    return BivariateConfidenceStruct(boundarySamples)
+    return BivariateConfidenceStruct(boundary, internal)
 end
 
 """
@@ -149,7 +158,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         atol::Real=1e-8, 
                                         θcombinations_is_unique::Bool=false,
                                         use_distributed::Bool=false,
-                                        save_internal_points::Bool=false,
+                                        save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge)
                                     
     atol > 0 || throw(DomainError("atol must be a strictly positive integer"))
@@ -232,7 +241,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             boundary_struct = bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i], 
                                                             confidence_level, consistent, 
                                                             ind1, ind2, profile_type,
-                                                            method, atol)
+                                                            method, atol, save_internal_points)
 
             if θcombinations_to_merge[i]
                 model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
@@ -240,14 +249,14 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                 model.biv_profiles_dict[row_ind] = boundary_struct
             end
 
-            set_biv_profiles_row!(model, row_ind, (ind1, ind2), true, true, confidence_level, profile_type, method, num_points)
+            set_biv_profiles_row!(model, row_ind, (ind1, ind2), !save_internal_points, true, confidence_level, profile_type, method, num_points)
         end
     else
         profiles_to_add = @distributed (vcat) for (ind1, ind2) in θcombinations
             ((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
                                                             confidence_level, consistent, 
                                                             ind1, ind2, profile_type,
-                                                            method, atol))
+                                                            method, atol, save_internal_points))
         end
 
         for (i, (inds, boundary_struct)) in enumerate(profiles_to_add)
@@ -265,7 +274,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                 model.biv_profiles_dict[row_ind] = boundary_struct
             end
 
-            set_biv_profiles_row!(model, row_ind, inds, true, true, confidence_level, profile_type, method, num_points)        
+            set_biv_profiles_row!(model, row_ind, inds, !save_internal_points, true, confidence_level, profile_type, method, num_points)        
         end
     end
 
@@ -282,7 +291,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         atol::Real=1e-8,
                                         θcombinations_is_unique::Bool=false,
                                         use_distributed::Bool=false,
-                                        save_internal_points::Bool=false,
+                                        save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge)
 
     θcombinations = convertθnames_toindices(model, θcombinations_symbols)
@@ -305,7 +314,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
                                         atol::Real=1e-8,
                                         use_distributed::Bool=false,
-                                        save_internal_points::Bool=false,
+                                        save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge)
 
     profile_m_random_combinations = max(0, min(profile_m_random_combinations, binomial(model.core.num_pars, 2)))
@@ -330,7 +339,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
                                         atol::Real=1e-8,
                                         use_distributed::Bool=false,
-                                        save_internal_points::Bool=false,
+                                        save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge)
 
     θcombinations = collect(combinations(1:model.core.num_pars, 2))

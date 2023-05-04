@@ -117,9 +117,9 @@ getMLE_ellipse_approximation!(model)
 @time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 get_points_in_interval!(model, 50, additional_width=0.3)
 
-@time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadial(5), existing_profiles=:merge)
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0))
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.01, 1, 0.0))
+@time bivariate_confidenceprofiles!(model, 400, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadial(5), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.5, 2, 0.0), save_internal_points=true, existing_profiles=:overwrite)
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
 
 
 
@@ -151,7 +151,7 @@ for i in eachindex(plots); display(plots[i]) end
 plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2)
+plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true)
 for i in eachindex(plots); display(plots[i]) end
 
 # plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
