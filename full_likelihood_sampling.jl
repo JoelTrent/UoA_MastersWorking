@@ -28,12 +28,12 @@ function valid_points(model::LikelihoodModel,
                         use_threads::Bool)
     valid_point = falses(grid_size)
     ll_values = zeros(grid_size)
-    target_ll = get_target_loglikelihood(model, confidence_level,
+    targetll = get_target_loglikelihood(model, confidence_level,
                                          LogLikelihood(), num_dims)
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
     @floop ex for (i, point) in enumerate(grid)
-        ll_values[i] = model.core.loglikefunction(point, model.core.data)-target_ll
+        ll_values[i] = model.core.loglikefunction(point, model.core.data)-targetll
         if ll_values[i] >= 0
             valid_point[i] = true
         end
@@ -52,7 +52,7 @@ function valid_points(model::LikelihoodModel,
     valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
-    return FullConfidenceStruct(points, valid_ll_values)
+    return SampledConfidenceStruct(points, valid_ll_values)
 end
 
 function valid_points(model::LikelihoodModel, 
@@ -64,11 +64,11 @@ function valid_points(model::LikelihoodModel,
 
     valid_point = falses(grid_size)
     ll_values = zeros(grid_size)
-    target_ll = get_target_loglikelihood(model, confidence_level, LogLikelihood(), num_dims)
+    targetll = get_target_loglikelihood(model, confidence_level, LogLikelihood(), num_dims)
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
     @floop ex for i in axes(grid,2)
-        ll_values[i] = model.core.loglikefunction(grid[:,i], model.core.data)-target_ll
+        ll_values[i] = model.core.loglikefunction(grid[:,i], model.core.data)-targetll
         if ll_values[i] >= 0
             valid_point[i] = true
         end
@@ -78,7 +78,7 @@ function valid_points(model::LikelihoodModel,
     valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
-    return FullConfidenceStruct(grid[:,valid_point], valid_ll_values)
+    return SampledConfidenceStruct(grid[:,valid_point], valid_ll_values)
 end
 
 function check_if_bounds_supplied(model::LikelihoodModel,
@@ -87,12 +87,12 @@ function check_if_bounds_supplied(model::LikelihoodModel,
     if isempty(lb)
         lb = model.core.θlb
     else
-        length(lb) == model.core.num_pars || throw(ArgumentError(string("lb must be of length ", num_dims)))
+        length(lb) == model.core.num_pars || throw(ArgumentError(string("lb must be of length ", model.core.num_pars)))
     end
     if isempty(ub)
         ub = model.core.θub
     else
-        length(ub) == model.core.num_pars  || throw(ArgumentError(string("ub must be of length ", num_dims)))
+        length(ub) == model.core.num_pars  || throw(ArgumentError(string("ub must be of length ", model.core.num_pars)))
     end
     return lb, ub
 end

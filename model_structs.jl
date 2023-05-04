@@ -86,7 +86,7 @@ struct PredictionStruct <: AbstractPredictionStruct
     extrema::Array{Float64}
 end
 
-struct FullConfidenceStruct <: AbstractSampledConfidenceStruct
+struct SampledConfidenceStruct <: AbstractSampledConfidenceStruct
     points::Array{Float64}
     ll::Vector{<:Float64}
 end
@@ -123,7 +123,7 @@ struct BivariateConfidenceStruct <: AbstractBivariateConfidenceStruct
     confidence_boundary::Matrix{Float64}
     internal_points::Matrix{Float64}
 
-    function BivariateConfidenceStruct(x,y=Matrix{Float64}(undef,0,0))
+    function BivariateConfidenceStruct(x,y=zeros(size(x,1),0))
         return new(x,y)
     end
 end
@@ -171,3 +171,7 @@ struct ContinuationMethod <: AbstractBivariateMethod
 end
 
 struct AnalyticalEllipseMethod <: AbstractBivariateMethod end
+
+struct SamplingMethod <: AbstractBivariateMethod
+    sample_type::AbstractSampleType
+end
