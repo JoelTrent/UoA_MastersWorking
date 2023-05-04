@@ -117,8 +117,7 @@ function uniform_grid(model::LikelihoodModel,
                         use_threads=true,
                         arguments_checked::Bool=false)
 
-    num_dims = length(θindexes)
-
+    num_dims = length(θindexes); num_dims > 0 || throw(ArgumentError("θindexes must not be empty"))
     if points_per_dimension isa Vector{Int}
         num_dims == length(points_per_dimension) || throw(ArgumentError(string("points_per_dimension must be of length ", num_dims)))
         all(points_per_dimension .> 0) || throw(DomainError("points_per_dimension must be a vector of strictly positive integers"))
@@ -126,6 +125,7 @@ function uniform_grid(model::LikelihoodModel,
         points_per_dimension > 0 || throw(DomainError("points_per_dimension must be a strictly positive integer"))
         points_per_dimension = fill(points_per_dimension, num_dims)
     end
+
     newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindexes, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindexes=θindexes, newLb=newLb, newUb=newUb, initGuess=initGuess,
@@ -155,7 +155,7 @@ function uniform_random(model::LikelihoodModel,
                         use_threads::Bool=true,
                         arguments_checked::Bool=false)
 
-    num_dims = length(θindexes)
+    num_dims = length(θindexes); num_dims > 0 || throw(ArgumentError("θindexes must not be empty"))
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
@@ -186,11 +186,12 @@ function LHS(model::LikelihoodModel,
             use_threads::Bool=true,
             arguments_checked::Bool=false)
     
-    num_dims = length(θindexes)
+    num_dims = length(θindexes); num_dims > 0 || throw(ArgumentError("θindexes must not be empty"))
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
         lb, ub = check_if_bounds_supplied(model, θindexes, lb, ub)
     end
+
     newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindexes, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindexes=θindexes, newLb=newLb, newUb=newUb, initGuess=initGuess,

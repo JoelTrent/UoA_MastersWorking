@@ -21,6 +21,7 @@ include("transform_bounds.jl")
 include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")
 include("full_likelihood_sampling.jl")
+include("dimensional_likelihood_sampling.jl")
 include("predictions.jl")
 include("plotting_functions.jl")
 
