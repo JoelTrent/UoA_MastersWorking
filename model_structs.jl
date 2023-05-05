@@ -56,23 +56,23 @@ mutable struct LikelihoodModel <: AbstractLikelihoodModel
     # bivariate_intervals
     num_uni_profiles::Int
     num_biv_profiles::Int
-    num_full_samples::Int
+    num_dim_samples::Int
 
     uni_profiles_df::DataFrame
     biv_profiles_df::DataFrame
-    full_samples_df::DataFrame
+    dim_samples_df::DataFrame
 
     uni_profile_row_exists::Dict{Tuple{Int, AbstractProfileType}, DefaultDict{Float64, Int}}
     biv_profile_row_exists::Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}
-    full_samples_row_exists::Dict{AbstractSampleType, DefaultDict{Float64, Int}}
+    dim_samples_row_exists::Dict{AbstractSampleType, DefaultDict{Float64, Int}}
 
     uni_profiles_dict::Dict{Int, AbstractUnivariateConfidenceStruct}
     biv_profiles_dict::Dict{Int, AbstractBivariateConfidenceStruct}
-    full_samples_dict::Dict{Int, AbstractSampledConfidenceStruct}
+    dim_samples_dict::Dict{Int, AbstractSampledConfidenceStruct}
 
     uni_predictions_dict::Dict{Int, AbstractPredictionStruct}
     biv_predictions_dict::Dict{Int, AbstractPredictionStruct}
-    full_predictions_dict::Dict{Int, AbstractPredictionStruct}
+    dim_predictions_dict::Dict{Int, AbstractPredictionStruct}
 end
 
 struct PointsAndLogLikelihood

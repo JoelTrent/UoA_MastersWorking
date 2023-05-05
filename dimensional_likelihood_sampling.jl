@@ -42,10 +42,8 @@ function valid_points(model::LikelihoodModel,
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
     @floop ex for (i, point) in enumerate(grid)
         ll_values[i] = dimensional_optimiser!(point, p, targetll)
-        if ll_values[i] >= 0
-            valid_point[i] = true
-        end
     end
+    valid_point .= ll_values .≥ 0.0
 
     points = zeros(model.core.num_pars, sum(valid_point))
     j=1
@@ -60,7 +58,7 @@ function valid_points(model::LikelihoodModel,
     valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
-    return SampledConfidenceStruct(points, valid_ll_values)
+    return points, valid_ll_values
 end
 
 function valid_points(model::LikelihoodModel, 
@@ -78,16 +76,14 @@ function valid_points(model::LikelihoodModel,
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
     @floop ex for i in axes(grid,2)
         ll_values[i] = dimensional_optimiser!(@view(grid[:,i]), p, targetll)
-        if ll_values[i] >= 0
-            valid_point[i] = true
-        end
     end
+    valid_point .= ll_values .≥ 0.0
 
     valid_ll_values = ll_values[valid_point]
     valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
-    return SampledConfidenceStruct(grid[:,valid_point], valid_ll_values)
+    return grid[:,valid_point], valid_ll_values
 end
 
 function check_if_bounds_supplied(model::LikelihoodModel,
@@ -143,7 +139,85 @@ function uniform_grid(model::LikelihoodModel,
         grid[θindexes, i] .= point
     end
 
-    return valid_points(model, p, grid, grid_size, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, p, grid, grid_size, confidence_level, num_dims, use_threads)
+    return SampledConfidenceStruct(pnts, lls)
+end
+
+function uniform_random_blocks(model::LikelihoodModel,
+                        θindexes::Vector{Int},
+                        confidence_level::Float64,
+                        num_points::Int,
+                        lb::Vector=[],
+                        ub::Vector=[];
+                        block_size=20000,
+                        use_threads::Bool=true,
+                        arguments_checked::Bool=false)
+
+    num_dims = length(θindexes); num_dims > 0 || throw(ArgumentError("θindexes must not be empty"))
+    if !arguments_checked
+        num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
+    end
+    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindexes, num_dims)
+    consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
+    p=(θindexes=θindexes, newLb=newLb, newUb=newUb, initGuess=initGuess,
+        λindexes=λindexes, consistent=consistent)
+    
+    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindexes, lb, ub)
+
+    num_blocks = div(num_points, block_size)
+    remainder = mod(num_points, block_size)
+
+    valid_grid = zeros(model.core.num_pars, 0)
+    valid_ll_values = zeros(0)
+
+    block_sizes = [block_size for _ in 1:num_blocks]
+    if remainder > 0; append!(block_sizes, remainder) end
+    cumulative_sizes = cumsum(block_sizes)
+    preallocate_j = findfirst((cumulative_sizes ./ num_points) .≥ 0.05)
+
+    current_len = 0
+    estimated_size = num_points
+    grid = zeros(model.core.num_pars, block_size)
+    for (i, block) in enumerate(block_sizes)
+
+        if block < block_size; grid = zeros(model.core.num_pars, block) end
+
+        ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_dims) 
+        @floop ex for dim in 1:num_dims
+            grid[θindexes[dim], :] .= rand(Uniform(lb[dim], ub[dim]), block)
+        end
+
+        pnts, lls = valid_points(model, p, grid, block, confidence_level, num_dims, use_threads)
+
+        if i ≤ preallocate_j
+            valid_grid = hcat(valid_grid, @view(pnts[:,:]))
+            valid_ll_values = vcat(valid_ll_values, @view(lls[:]))
+            continue
+        end
+        if (preallocate_j + 1) == i
+            # estimate preallocation size
+            current_len = length(valid_ll_values)
+            accept_rate = current_len/cumulative_sizes[preallocate_j]
+            safety_factor = 1.25
+            estimated_size = convert(Int, round(accept_rate * num_points * safety_factor, RoundDown))
+
+            valid_grid = hcat(valid_grid, zeros(model.core.num_pars, estimated_size-current_len))
+            resize!(valid_ll_values, estimated_size)
+        end
+
+        num_to_add = length(lls)
+        if (current_len + num_to_add) ≤ estimated_size
+            rnge = current_len+1:current_len+num_to_add
+            valid_grid[:, rnge] .= pnts
+            valid_ll_values[rnge] .= lls
+            current_len += num_to_add
+        else
+            # do something here
+            continue
+        end
+    end
+
+    return SampledConfidenceStruct(valid_grid[:,1:current_len], valid_ll_values[1:current_len])
 end
 
 function uniform_random(model::LikelihoodModel,
@@ -173,7 +247,8 @@ function uniform_random(model::LikelihoodModel,
         grid[θindexes[dim], :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
     end
 
-    return valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads)
+    return SampledConfidenceStruct(pnts, lls)
 end
 
 # LatinHypercubeSampling
@@ -204,7 +279,20 @@ function LHS(model::LikelihoodModel,
 
     # grid = permutedims(scaleLHC(LHCoptim(num_points, num_dims, num_gens; kwargs...)[1], scale_range))
     
-    return valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads)
+    return SampledConfidenceStruct(pnts, lls)
+end
+
+function sampling_master(model::LikelihoodModel,
+                            θindexes::Vector{Int},
+                            confidence_level::Float64,
+                            num_points::Int,
+                            lb::Vector=[],
+                            ub::Vector=[];
+                            block_size=10000,
+                            use_threads::Bool=true,
+                            arguments_checked::Bool=false)
+    println()
 end
 
 # function full_likelihood_sample(model::LikelihoodModel,

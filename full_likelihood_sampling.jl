@@ -1,19 +1,21 @@
-function add_full_samples_rows!(model::LikelihoodModel, 
+function add_dim_samples_rows!(model::LikelihoodModel, 
                                 num_rows_to_add::Int)
-    new_rows = init_full_samples_df(num_rows_to_add, 
-                                    existing_largest_row=nrow(model.full_samples_df))
+    new_rows = init_dim_samples_df(num_rows_to_add, 
+                                    existing_largest_row=nrow(model.dim_samples_df))
 
-    model.full_samples_df = vcat(model.full_samples_df, new_rows)
+    model.dim_samples_df = vcat(model.dim_samples_df, new_rows)
     return nothing
 end
 
-function set_full_samples_row!(model::LikelihoodModel, 
+function set_dim_samples_row!(model::LikelihoodModel, 
                                     row_ind::Int,
+                                    θindices::Vector{Int},
                                     not_evaluated_predictions::Bool,
                                     confidence_level::Float64,
                                     sample_type::AbstractSampleType,
                                     num_points::Int)
-    model.full_samples_df[row_ind, 2:end] .= not_evaluated_predictions,
+    model.dim_samples_df[row_ind, 2:end] .= θindices,
+                                                not_evaluated_predictions,
                                                 confidence_level,
                                                 sample_type,
                                                 num_points
@@ -52,7 +54,7 @@ function valid_points(model::LikelihoodModel,
     valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
-    return SampledConfidenceStruct(points, valid_ll_values)
+    return points, valid_ll_values
 end
 
 function valid_points(model::LikelihoodModel, 
@@ -78,7 +80,7 @@ function valid_points(model::LikelihoodModel,
     valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
-    return SampledConfidenceStruct(grid[:,valid_point], valid_ll_values)
+    return grid[:,valid_point], valid_ll_values
 end
 
 function check_if_bounds_supplied(model::LikelihoodModel,
@@ -121,7 +123,8 @@ function uniform_grid(model::LikelihoodModel,
     grid = Iterators.product(ranges...)
     grid_size = prod(points_per_dimension)
 
-    return valid_points(model, grid, grid_size, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, grid, grid_size, confidence_level, num_dims, use_threads)
+    return SampledConfidenceStruct(pnts, lls)
 end
 
 function uniform_random(model::LikelihoodModel,
@@ -146,7 +149,8 @@ function uniform_random(model::LikelihoodModel,
         grid[dim, :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
     end
 
-    return valid_points(model, grid, num_points, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, grid, num_points, confidence_level, num_dims, use_threads)
+    return SampledConfidenceStruct(pnts, lls)
 end
 
 
@@ -170,7 +174,8 @@ function LHS(model::LikelihoodModel,
 
     # grid = permutedims(scaleLHC(LHCoptim(num_points, num_dims, num_gens; kwargs...)[1], scale_range))
     
-    return valid_points(model, grid, num_points, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, grid, num_points, confidence_level, num_dims, use_threads)
+    return SampledConfidenceStruct(pnts, lls)
 end
 
 function full_likelihood_sample(model::LikelihoodModel,
@@ -209,9 +214,9 @@ function full_likelihood_sample!(model::LikelihoodModel,
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
     lb, ub = check_if_bounds_supplied(model, lb, ub)
 
-    init_full_samples_row_exists!(model, sample_type)
+    init_dim_samples_row_exists!(model, sample_type)
     # check if sample has already been evaluated
-    requires_overwrite = model.full_samples_row_exists[sample_type][confidence_level] != 0
+    requires_overwrite = model.dim_samples_row_exists[sample_type][confidence_level] != 0
     if existing_profiles == :ignore && requires_overwrite; return nothing end
 
     sample_struct = full_likelihood_sample(model, confidence_level, num_points_to_sample, sample_type, lb, ub, use_threads)
@@ -223,18 +228,18 @@ function full_likelihood_sample!(model::LikelihoodModel,
     end
 
     if requires_overwrite
-        row_ind = model.full_samples_row_exists[sample_type][confidence_level]
+        row_ind = model.dim_samples_row_exists[sample_type][confidence_level]
     else
-        model.num_full_samples += 1
-        row_ind = model.num_full_samples * 1
-        if (model.num_full_samples - nrow(model.full_samples_df)) > 0
-            add_full_samples_rows!(model, 1)
+        model.num_dim_samples += 1
+        row_ind = model.num_dim_samples * 1
+        if (model.num_dim_samples - nrow(model.dim_samples_df)) > 0
+            add_dim_samples_rows!(model, 1)
         end
-        model.full_samples_row_exists[sample_type][confidence_level] = row_ind
+        model.dim_samples_row_exists[sample_type][confidence_level] = row_ind
     end
 
-    model.full_samples_dict[row_ind] = sample_struct
-    set_full_samples_row!(model, row_ind, true, confidence_level, sample_type, num_points_kept)
+    model.dim_samples_dict[row_ind] = sample_struct
+    set_dim_samples_row!(model, row_ind, collect(1:model.core.num_pars), true, confidence_level, sample_type, num_points_kept)
 
     return nothing
 end

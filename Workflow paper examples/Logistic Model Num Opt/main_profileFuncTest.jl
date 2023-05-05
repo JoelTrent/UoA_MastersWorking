@@ -10,7 +10,7 @@ fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "P
 include(joinpath("..", "..", "JuLikelihood.jl"))
 
 using Distributed
-addprocs(3)
+# addprocs(3)
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere include(joinpath("..", "..", "JuLikelihood.jl"))
 
@@ -75,7 +75,7 @@ data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
 Kmin, Kmax = (50., 150.)
-C0min, C0max = (0.0, 50.)
+C0min, C0max = (-2, 50.)
 
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
@@ -106,62 +106,67 @@ confLevel = 0.95
 # initialisation. model is a mutable struct that is currently intended to hold all model information
 model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, uni_row_prealloaction_size=3);
 
-full_likelihood_sample!(model, 100000)
+full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
 # not strictly required - functions that rely on these being computed will check if 
 # they're missing and call this function on model if so.
 getMLE_ellipse_approximation!(model)
 
-@time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical(), existing_profiles=:overwrite, num_points_in_interval=0)
-@time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
-@time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
-get_points_in_interval!(model, 50, additional_width=0.3)
+# @time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical(), existing_profiles=:overwrite, num_points_in_interval=0)
+# @time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
+# @time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
+# get_points_in_interval!(model, 50, additional_width=0.3)
 
-@time bivariate_confidenceprofiles!(model, 400, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadial(5), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.5, 2, 0.0), save_internal_points=true, existing_profiles=:overwrite)
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
-
-
-
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.1, method=AnalyticalEllipseMethod())
-
+@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 3, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
 
-prediction_locations = collect(LinRange(t[1], t[end], 30))
-generate_predictions_univariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[EllipseApprox(), LogLikelihood()])
-generate_predictions_bivariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[EllipseApprox(), LogLikelihood()])
-generate_predictions_full_likelihood!(model, prediction_locations, 0.2, use_distributed=false)
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
+
+
+
+prediction_locations = collect(LinRange(t[1], t[end], 50))
+# generate_predictions_univariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[EllipseApprox(), LogLikelihood()])
+generate_predictions_bivariate!(model, prediction_locations, 0.1, use_distributed=false, profile_types=[LogLikelihood()])
+generate_predictions_dim_samples!(model, prediction_locations, 0.1, use_distributed=false)
 
 using Plots
 gr()
 
-ellipse_points = generate_N_clustered_points(100, model.ellipse_MLE_approx.Γmle,
-                                                        model.core.θmle, 1, 2,
-                                                        confidence_level=0.1, 
-                                                        start_point_shift=0.0,
-                                                        sqrt_distortion=1.0)
+# ellipse_points = generate_N_clustered_points(100, model.ellipse_MLE_approx.Γmle,
+#                                                         model.core.θmle, 1, 2,
+#                                                         confidence_level=0.1, 
+#                                                         start_point_shift=0.0,
+#                                                         sqrt_distortion=1.0)
 
-scatter(ellipse_points[1,:], ellipse_points[2,:], legend=false,  markeropacity=0.4)
+# scatter(ellipse_points[1,:], ellipse_points[2,:], legend=false,  markeropacity=0.4)
 
 
 # Profiles ################################################################
-plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
-for i in eachindex(plots); display(plots[i]) end
-
-plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
-for i in eachindex(plots); display(plots[i]) end
-
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true)
-for i in eachindex(plots); display(plots[i]) end
-
-# plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
+# plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
 # for i in eachindex(plots); display(plots[i]) end
+
+# plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
+# for i in eachindex(plots); display(plots[i]) end
+
+plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+for i in eachindex(plots); display(plots[i]) end
+
+plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
+for i in eachindex(plots); display(plots[i]) end
+
+plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=true)
+for i in eachindex(plots); display(plots[i]) end
 
 # # Predictions ############################################################
 # plots = plot_predictions_individual(model, prediction_locations)
 # for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120], profile_types=[EllipseApprox()])
+plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120], profile_types=[LogLikelihood()])
 for i in eachindex(plots); display(plots[i]) end
 
 # union_plot = plot_predictions_union(model, prediction_locations, 1, ylims=[0,120])
@@ -169,7 +174,7 @@ for i in eachindex(plots); display(plots[i]) end
 union_plot = plot_predictions_union(model, prediction_locations, 2, ylims=[0,120], include_lower_confidence_levels=true, compare_to_full_sample_type=LatinHypercubeSamples())
 display(union_plot)
 
-plots = plot_predictions_sampled(model, prediction_locations)
+plots = plot_predictions_sampled(model, prediction_locations,confidence_level=0.7)
 for i in eachindex(plots); display(plots[i]) end
 println()
 

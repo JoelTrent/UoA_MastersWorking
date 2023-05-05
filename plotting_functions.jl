@@ -61,7 +61,7 @@ end
 
 # 2D
 function plot2Dboundary!(plt, parBoundarySamples, label="boundary"; kwargs...)
-    scatter!(plt, parBoundarySamples[1,:], parBoundarySamples[2,:], 
+    plot!(plt, parBoundarySamples[1,:], parBoundarySamples[2,:], 
                             markersize=3,
                             msw=0, ms=5,
                             label=label;
@@ -292,15 +292,19 @@ function plot_bivariate_profiles(model::LikelihoodModel,
         plot2Dboundary!(profile_plots[i], boundary, 
                             markershape=profile2Dmarkershape(row.profile_type, true),
                             markercolor=color_palette[profilecolor(row.profile_type)],
-                            markeralpha=markeralpha)
+                            linecolor=color_palette[profilecolor(row.profile_type)],
+                            markeralpha=markeralpha,
+                            linealpha=markeralpha)
 
         if include_internal_points && !row.not_evaluated_internal_points
             plot2Dboundary!(profile_plots[i], 
                             @view(model.biv_profiles_dict[row.row_ind].internal_points[θindices, :]),
                             "internal points", 
                             markershape=profile2Dmarkershape(row.profile_type, false), 
-                            markercolor=color_palette[profilecolor(row.profile_type)],
-                            markeralpha=markeralpha*0.5)
+                            markercolor=color_palette[profilecolor(row.profile_type)], 
+                            linecolor=color_palette[profilecolor(row.profile_type)],
+                            markeralpha=markeralpha*0.5,
+                            linealpha=markeralpha*0.5)
         end
 
         addMLE!(profile_plots[i], parMLEs; 
@@ -402,7 +406,9 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                             label=string(row.profile_type),
                             markershape=profile2Dmarkershape(row.profile_type, true), 
                             markercolor=color_palette[profilecolor(row.profile_type)],
-                            markeralpha=markeralpha)
+                            linecolor=color_palette[profilecolor(row.profile_type)],
+                            markeralpha=markeralpha,
+                            linealpha=markeralpha)
                     end
 
                     ranges = max_vals .- min_vals
@@ -467,7 +473,9 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                         label=string(prof_type),
                         markershape=profile2Dmarkershape(prof_type, true), 
                         markercolor=color_palette[profilecolor(prof_type)],
-                        markeralpha=markeralpha)
+                        linecolor=color_palette[profilecolor(row.profile_type)],
+                        markeralpha=markeralpha,
+                        linealpha=markeralpha)
                     
                     i += 1
                 end
@@ -640,7 +648,7 @@ function plot_predictions_union(model::LikelihoodModel,
                     kwargs...)
 
     if !ismissing(compare_to_full_sample_type)
-        row_subset = desired_df_subset(model.full_samples_df, confidence_level,
+        row_subset = desired_df_subset(model.dim_samples_df, confidence_level,
                                         [compare_to_full_sample_type], for_prediction_plots=true,
                                         include_higher_confidence_levels=true)
         
@@ -652,13 +660,13 @@ function plot_predictions_union(model::LikelihoodModel,
             end
 
             if subset_to_use.conf_level == confidence_level
-                sampled_extrema = extrema = model.full_predictions_dict[subset_to_use.row_ind].extrema
+                sampled_extrema = extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema
             else
                 ll_level = get_target_loglikelihood(model, confidence_level, 
                                                     EllipseApproxAnalytical(), model.core.num_pars)
 
-                valid_point = model.full_samples_dict[subset_to_use.row_ind].ll .> ll_level 
-                sampled_extrema = model.full_predictions_dict[subset_to_use.row_ind].extrema[valid_point]
+                valid_point = model.dim_samples_dict[subset_to_use.row_ind].ll .> ll_level 
+                sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema[valid_point]
             end
 
             add_extrema!(prediction_plot, t, sampled_extrema)
@@ -683,7 +691,7 @@ function plot_predictions_sampled(model::LikelihoodModel,
                                     linealpha=0.4,
                                     kwargs...)
 
-    sub_df = desired_df_subset(model.full_samples_df, confidence_levels, sample_types,
+    sub_df = desired_df_subset(model.dim_samples_df, confidence_levels, sample_types,
                                 for_prediction_plots=true)
 
     if nrow(sub_df) < 1
@@ -694,8 +702,8 @@ function plot_predictions_sampled(model::LikelihoodModel,
 
     for i in 1:nrow(sub_df)
         row = @view(sub_df[i,:])
-        predictions = model.full_predictions_dict[row.row_ind].predictions
-        extrema = model.full_predictions_dict[row.row_ind].extrema
+        predictions = model.dim_predictions_dict[row.row_ind].predictions
+        extrema = model.dim_predictions_dict[row.row_ind].extrema
         title = string("Sample type: ", row.sample_type,
                         "\nConfidence level: ", row.conf_level)
 

@@ -181,7 +181,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
     return nothing
 end
 
-function generate_predictions_full_likelihood!(model::LikelihoodModel,
+function generate_predictions_dim_samples!(model::LikelihoodModel,
                                         t::Vector,
                                         proportion_to_keep::Float64;
                                         confidence_levels::Vector{<:Float64}=Float64[],
@@ -191,7 +191,7 @@ function generate_predictions_full_likelihood!(model::LikelihoodModel,
     check_prediction_function_exists(model) || return nothing
     
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-    sub_df = desired_df_subset(model.full_samples_df, confidence_levels, sample_types, for_prediction_generation=true)
+    sub_df = desired_df_subset(model.dim_samples_df, confidence_levels, sample_types, for_prediction_generation=true)
 
     if nrow(sub_df) < 1
         return nothing
@@ -199,22 +199,22 @@ function generate_predictions_full_likelihood!(model::LikelihoodModel,
 
     if !use_distributed
         for i in 1:nrow(sub_df)
-            parameter_points = model.full_samples_dict[sub_df[i, :row_ind]].points
+            parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
             predict_struct = generate_prediction(model.core.predictfunction, model.core.data, t, 
                                                     model.core.ymle, parameter_points, proportion_to_keep)
 
-            model.full_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+            model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
         end
 
     else
         predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-            parameter_points = model.full_samples_dict[sub_df[i, :row_ind]].points
+            parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
             generate_prediction(model.core.predictfunction, model.core.data, t, 
                                                 model.core.ymle, parameter_points, proportion_to_keep)
         end
         
         for (i, predict_struct) in enumerate(predictions)
-            model.full_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+            model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
         end
     end
 

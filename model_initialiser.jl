@@ -21,10 +21,10 @@ function init_biv_profile_row_exists!(model::LikelihoodModel,
     return nothing
 end
 
-function init_full_samples_row_exists!(model::LikelihoodModel, 
+function init_dim_samples_row_exists!(model::LikelihoodModel, 
                                         sample_type::AbstractSampleType)
-    if !haskey(model.full_samples_row_exists, (sample_type))
-        model.full_samples_row_exists[sample_type] = DefaultDict{Float64, Int}(0)
+    if !haskey(model.dim_samples_row_exists, (sample_type))
+        model.dim_samples_row_exists[sample_type] = DefaultDict{Float64, Int}(0)
     end
     return nothing
 end
@@ -59,16 +59,17 @@ function init_biv_profiles_df(num_rows; existing_largest_row=0)
     return biv_profiles_df
 end
 
-function init_full_samples_df(num_rows; existing_largest_row=0)
+function init_dim_samples_df(num_rows; existing_largest_row=0)
    
-    full_samples_df = DataFrame()
-    full_samples_df.row_ind = collect(1:num_rows) .+ existing_largest_row
-    full_samples_df.not_evaluated_predictions = trues(num_rows)
-    full_samples_df.conf_level = zeros(num_rows)
-    full_samples_df.sample_type = Vector{AbstractSampleType}(undef, num_rows)
-    full_samples_df.num_points = zeros(Int, num_rows)
+    dim_samples_df = DataFrame()
+    dim_samples_df.row_ind = collect(1:num_rows) .+ existing_largest_row
+    dim_samples_df.θ_indices = [[] for _ in 1:num_rows]
+    dim_samples_df.not_evaluated_predictions = trues(num_rows)
+    dim_samples_df.conf_level = zeros(num_rows)
+    dim_samples_df.sample_type = Vector{AbstractSampleType}(undef, num_rows)
+    dim_samples_df.num_points = zeros(Int, num_rows)
 
-    return full_samples_df
+    return dim_samples_df
 end
 
 """
@@ -82,7 +83,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θub::Vector{<:Float64};
     uni_row_prealloaction_size=NaN,
     biv_row_preallocation_size=NaN,
-    full_row_preallocation_size=NaN)
+    dim_row_preallocation_size=NaN)
 
     # Initialise CoreLikelihoodModel, finding the MLE solution
     θnameToIndex = Dict{Symbol,Int}(name=>i for (i, name) in enumerate(θnames))
@@ -107,7 +108,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
 
     num_uni_profiles = 0
     num_biv_profiles = 0
-    num_full_samples = 0
+    num_dim_samples = 0
 
     uni_profiles_df = isnan(uni_row_prealloaction_size) ? init_uni_profiles_df(num_pars) : init_uni_profiles_df(uni_row_prealloaction_size)
     # if zero, is invalid row
@@ -121,24 +122,24 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
     biv_profiles_dict = Dict{Int, AbstractBivariateConfidenceStruct}()
 
-    full_samples_row_exists = Dict{AbstractSampleType, DefaultDict{Float64, Int}}()
-    full_samples_df = isnan(full_row_preallocation_size) ? init_full_samples_df(1) : init_full_samples_df(full_row_preallocation_size)
-    full_samples_dict = Dict{Int, AbstractSampledConfidenceStruct}()
+    dim_samples_row_exists = Dict{AbstractSampleType, DefaultDict{Float64, Int}}()
+    dim_samples_df = isnan(dim_row_preallocation_size) ? init_dim_samples_df(1) : init_dim_samples_df(dim_row_preallocation_size)
+    dim_samples_dict = Dict{Int, AbstractSampledConfidenceStruct}()
 
     uni_predictions_dict = Dict{Int, AbstractPredictionStruct}()
     biv_predictions_dict = Dict{Int, AbstractPredictionStruct}()
-    full_predictions_dict = Dict{Int, AbstractPredictionStruct}()
+    dim_predictions_dict = Dict{Int, AbstractPredictionStruct}()
 
 
     likelihoodmodel = LikelihoodModel(corelikelihoodmodel,
                                     missing, 
-                                    num_uni_profiles, num_biv_profiles, num_full_samples,
-                                    uni_profiles_df, biv_profiles_df, full_samples_df,
+                                    num_uni_profiles, num_biv_profiles, num_dim_samples,
+                                    uni_profiles_df, biv_profiles_df, dim_samples_df,
                                     uni_profile_row_exists, biv_profile_row_exists,
-                                    full_samples_row_exists,
-                                    uni_profiles_dict, biv_profiles_dict, full_samples_dict,
+                                    dim_samples_row_exists,
+                                    uni_profiles_dict, biv_profiles_dict, dim_samples_dict,
                                     uni_predictions_dict, biv_predictions_dict,
-                                    full_predictions_dict)
+                                    dim_predictions_dict)
 
     return likelihoodmodel
 end
@@ -152,9 +153,13 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θinitialGuess::Vector{<:Float64},
     θlb::Vector{<:Float64},
     θub::Vector{<:Float64};
-    uni_prealloaction_size=NaN,
-    biv_preallocation_size=NaN)
+    uni_row_prealloaction_size=NaN,
+    biv_row_preallocation_size=NaN,
+    dim_row_preallocation_size=NaN)
 
     return initialiseLikelihoodModel(loglikefunction, missing, data, θnames,
-                                        θinitialGuess, θlb, θub)
+                                        θinitialGuess, θlb, θub,
+                                        uni_row_prealloaction_size=uni_row_prealloaction_size,
+                                        biv_row_preallocation_size=biv_row_preallocation_size,
+                                        dim_row_preallocation_size=dim_row_preallocation_size)
 end
