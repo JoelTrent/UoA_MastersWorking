@@ -71,6 +71,11 @@ function continuation_line_search!(p::NamedTuple,
             target_level_set_all[[ind1, ind2], i] .= start_level_set_all[[ind1, ind2], i]
         else
             p.pointa .= start_level_set_2D[:,i]
+            # if know the optimised values of nuisance parameters at a given start point,
+            # pass them to the optimiser
+            if start_have_all_pars
+                boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
+            end
 
             # calculate gradient at point i; want to go in downhill direction
             # FORWARDDIFF NOT WORKING WITH ANON FUNCTION JUST YET - likely because it is contains a mutating function, i.e. zeros()
@@ -87,16 +92,9 @@ function continuation_line_search!(p::NamedTuple,
             boundpoint .= findpointonbounds(model, p.pointa, p.uhat, ind1, ind2)
             v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
 
-            boundsmapping2d!(p.initGuess, model.core.θmle, ind1, ind2)
-
             # if bound point and pointa bracket a boundary, search for the boundary
             # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
             if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
-                # if know the optimised values of nuisance parameters at a given start point,
-                # pass them to the optimiser
-                if start_have_all_pars
-                    boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
-                end
                 Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), atol=atol, Roots.Order8(); p=p)
 
                 # in event Roots.Order8 fails to converge, switch to bracketing method
