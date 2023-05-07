@@ -58,11 +58,13 @@ function continuation_line_search!(p::NamedTuple,
     target_level_set_all = zeros(model.core.num_pars, num_points)
     
     gradient_i = [0.0,0.0]
+    # normal_i = [0.0,0.0]
+    # tangent_amount=0.3
     boundpoint = [0.0,0.0]
     boundarypoint = [0.0,0.0]
     p = update_targetll!(p, target_confidence_ll)
     
-    normal_scaling = diff([extrema(start_level_set_2D[1,:])...])[1]^2 / diff([extrema(start_level_set_2D[2,:])...])[1]^2
+    # normal_scaling = diff([extrema(start_level_set_2D[1,:])...])[1]^2 / diff([extrema(start_level_set_2D[2,:])...])[1]^2
     # println(normal_scaling)
 
     for i in 1:num_points
@@ -82,12 +84,16 @@ function continuation_line_search!(p::NamedTuple,
             # 
             # gradient_i .= -ForwardDiff.gradient(f_gradient, p.pointa)
 
-            # normal_vector_i_2d!(gradient_i, i, start_level_set_2D)
-            # gradient_i[1] = gradient_i[1] * normal_scaling
+            # normal_vector_i_2d!(normal_i, i, start_level_set_2D)
+            # normal_i[1] = normal_i[1] * normal_scaling
+            # normal_i .= (normal_i ./ (norm(normal_i, 2))) 
 
+            # gradient_i .= tangent_amount*(tangent_between_level_sets[:,i] ./ norm(tangent_between_level_sets[:,i],2)) + (1-tangent_amount)*normal_i
+
+            # println((norm(gradient_i, 2)))
             gradient_i .= tangent_between_level_sets[:,i] .* 1.0
 
-            p.uhat .= (gradient_i / (norm(gradient_i, 2))) 
+            p.uhat .= (gradient_i ./ (norm(gradient_i, 2))) 
 
             boundpoint .= findpointonbounds(model, p.pointa, p.uhat, ind1, ind2)
             v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
@@ -126,7 +132,26 @@ function continuation_line_search!(p::NamedTuple,
                                                                     p.θranges, p.λranges, target_level_set_all)
     end
 
-    tangent_between_level_sets .= target_level_set_2D .- start_level_set_2D
+
+    tangent_between_level_sets .= target_level_set_2D - start_level_set_2D
+    # α = 0.2
+
+    # tangent_between_level_sets[:,1] .= (target_level_set_2D[:,1] - start_level_set_2D[:,1]) + 
+    #                                     α .* ((target_level_set_2D[:,1] - start_level_set_2D[:, end]) + 
+    #                                     (target_level_set_2D[:,1] - start_level_set_2D[:, 2]))
+
+    # tangent_between_level_sets[:,end] .= (target_level_set_2D[:,end] - start_level_set_2D[:,end]) + 
+    #                                     α .* ((target_level_set_2D[:,end] - start_level_set_2D[:, 1]) + 
+    #                                     (target_level_set_2D[:,end] - start_level_set_2D[:, end-1]))
+
+    # for i in 2:(num_points-1)
+    #     tangent_between_level_sets[:,i] .= (target_level_set_2D[:,i] - start_level_set_2D[:,i]) + 
+    #                                     α .* ((target_level_set_2D[:,i] - start_level_set_2D[:, i-1]) + 
+    #                                     (target_level_set_2D[:,i] - start_level_set_2D[:, i+1]))
+    # end
+
+    # tangent_between_level_sets[:, 1] .= @view(target_level_set_2D[:,1]) .- @view(start_level_set_2D[:, end])
+    # tangent_between_level_sets[:, 2:end] .= @view(target_level_set_2D[:,2:end]) .- @view(start_level_set_2D[:, 1:end-1])
 
     return target_level_set_2D, target_level_set_all, tangent_between_level_sets
 end

@@ -473,7 +473,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                         label=string(prof_type),
                         markershape=profile2Dmarkershape(prof_type, true), 
                         markercolor=color_palette[profilecolor(prof_type)],
-                        linecolor=color_palette[profilecolor(row.profile_type)],
+                        linecolor=color_palette[profilecolor(prof_type)],
                         markeralpha=markeralpha,
                         linealpha=markeralpha)
                     
