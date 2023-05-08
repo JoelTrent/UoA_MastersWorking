@@ -72,6 +72,16 @@ function init_dim_samples_df(num_rows; existing_largest_row=0)
     return dim_samples_df
 end
 
+function calculate_θmagnitudes(θlb::Vector{<:Float64},
+                                θub::Vector{<:Float64})
+
+    θmagnitudes = zeros(length(θub))
+    for i in eachindex(θmagnitudes)
+        θmagnitudes[i] = isinf(θub[i]) || isinf(θlb[i]) ? NaN : θub[i] - θlb[i]
+    end
+    return θmagnitudes
+end
+
 """
 """
 function initialiseLikelihoodModel(loglikefunction::Function,
@@ -80,7 +90,8 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θnames::Vector{<:Symbol},
     θinitialGuess::Vector{<:Float64},
     θlb::Vector{<:Float64},
-    θub::Vector{<:Float64};
+    θub::Vector{<:Float64},
+    θmagnitudes::Vector{<:Real}=zeros(0);
     uni_row_prealloaction_size=NaN,
     biv_row_preallocation_size=NaN,
     dim_row_preallocation_size=NaN)
@@ -97,8 +108,12 @@ function initialiseLikelihoodModel(loglikefunction::Function,
         ymle = predictfunction(θmle, data)
     end
 
+    if isempty(θmagnitudes)
+        θmagnitudes = calculate_θmagnitudes(θlb, θub)
+    end
+
     corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, predictfunction, data, θnames, θnameToIndex,
-                                        θlb, θub, θmle, ymle, maximisedmle, num_pars)
+                                        θlb, θub, θmagnitudes, θmle, ymle, maximisedmle, num_pars)
 
 
     # conf_levels_evaluated = DefaultDict{Float64, Bool}(false)
@@ -152,13 +167,14 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θnames::Vector{<:Symbol},
     θinitialGuess::Vector{<:Float64},
     θlb::Vector{<:Float64},
-    θub::Vector{<:Float64};
+    θub::Vector{<:Float64},
+    θmagnitudes::Vector{<:Real}=zeros(0);
     uni_row_prealloaction_size=NaN,
     biv_row_preallocation_size=NaN,
     dim_row_preallocation_size=NaN)
 
     return initialiseLikelihoodModel(loglikefunction, missing, data, θnames,
-                                        θinitialGuess, θlb, θub,
+                                        θinitialGuess, θlb, θub, θmagnitudes,
                                         uni_row_prealloaction_size=uni_row_prealloaction_size,
                                         biv_row_preallocation_size=biv_row_preallocation_size,
                                         dim_row_preallocation_size=dim_row_preallocation_size)

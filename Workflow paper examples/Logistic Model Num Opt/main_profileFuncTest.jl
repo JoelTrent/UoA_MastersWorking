@@ -75,11 +75,12 @@ data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
 # Bounds on model parameters #################################################################
 λmin, λmax = (0.00, 0.05)
 Kmin, Kmax = (50., 150.)
-C0min, C0max = (-2, 50.)
+C0min, C0max = (0.0, 50.)
 
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
 ub = [λmax, Kmax, C0max]
+par_magnitudes = [0.01, 20, 10]
 
 ##############################################################################################
 # Section 9: Find MLE by numerical optimisation, visually compare data and MLE solution
@@ -104,7 +105,7 @@ ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 confLevel = 0.95
 
 # initialisation. model is a mutable struct that is currently intended to hold all model information
-model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, uni_row_prealloaction_size=3);
+model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
 full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
@@ -117,17 +118,19 @@ getMLE_ellipse_approximation!(model)
 # @time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 # get_points_in_interval!(model, 50, additional_width=0.3)
 
-@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
+# @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), existing_profiles=:overwrite, save_internal_points=true)
+# @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
 @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
+# @time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
+# @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
 @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 3, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
 
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
+# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 
 
+plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+for i in eachindex(plots); display(plots[i]) end
 
 prediction_locations = collect(LinRange(t[1], t[end], 50))
 # generate_predictions_univariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[EllipseApprox(), LogLikelihood()])
@@ -153,8 +156,6 @@ gr()
 # plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
 # for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
-for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
 for i in eachindex(plots); display(plots[i]) end

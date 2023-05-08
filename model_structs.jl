@@ -28,6 +28,7 @@ struct CoreLikelihoodModel <: AbstractCoreLikelihoodModel
     θname_to_index::Dict{Symbol, Int}
     θlb::Vector{<:Float64}
     θub::Vector{<:Float64}
+    θmagnitudes::Vector{Real}
     θmle::Vector{<:Float64}
     ymle::Array{Float64}
     maximisedmle::Float64

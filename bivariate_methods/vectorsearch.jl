@@ -81,10 +81,13 @@ end
 
 function find_m_spaced_radialdirections(num_directions::Int)
     radial_dirs = zeros(num_directions)
-    radial_dirs .= rand() * 2.0 / convert(Float64, num_directions) .+ collect(LinRange(1e-12, 2.0, num_directions+1))[1:end-1]
+    radial_dirs .= (rand() * 2.0 / convert(Float64, num_directions)) .+ collect(LinRange(1e-12, 2.0, num_directions+1))[1:end-1]
     return radial_dirs
 end
 
+"""
+Distorts uniformly spaced angles on a circle to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
+"""
 function findNpointpairs_radial!(p::NamedTuple, 
                                     bivariate_optimiser::Function, 
                                     model::LikelihoodModel, 
@@ -105,6 +108,12 @@ function findNpointpairs_radial!(p::NamedTuple,
     count = 0
     internal_count=0
     λ_opt = zeros(model.core.num_pars-2)
+    
+    if isnan(model.core.θmagnitudes[ind1]) || isnan(model.core.θmagnitudes[ind2]) 
+        relative_magnitude = 1.0
+    else
+        relative_magnitude = model.core.θmagnitudes[ind1]/model.core.θmagnitudes[ind2]
+    end
     while count < num_points
         x, y = 0.0, 0.0
         # find an internal point
@@ -116,12 +125,14 @@ function findNpointpairs_radial!(p::NamedTuple,
                 break
             end
         end
-        
+
         radial_dirs = find_m_spaced_radialdirections(num_directions)
 
         count_accepted=0
         for i in 1:num_directions
-            boundpoint = findpointonbounds(model, [x, y], radial_dirs[i], ind1, ind2)
+            dir_vector = [relative_magnitude * cospi(radial_dirs[i]), sinpi(radial_dirs[i]) ]
+            boundpoint = findpointonbounds(model, [x, y], dir_vector, ind1, ind2)
+            # boundpoint = findpointonbounds(model, [x, y], radial_dirs[i], ind1, ind2)
 
             # if bound point is a point outside the boundary, accept the point combination
             p.pointa .= boundpoint

@@ -59,13 +59,18 @@ function continuation_line_search!(p::NamedTuple,
     
     gradient_i = [0.0,0.0]
     # normal_i = [0.0,0.0]
-    # tangent_amount=0.3
+    # tangent_amount=1.0
     boundpoint = [0.0,0.0]
     boundarypoint = [0.0,0.0]
     p = update_targetll!(p, target_confidence_ll)
     
     # normal_scaling = diff([extrema(start_level_set_2D[1,:])...])[1]^2 / diff([extrema(start_level_set_2D[2,:])...])[1]^2
     # println(normal_scaling)
+    if isnan(model.core.θmagnitudes[ind1]) || isnan(model.core.θmagnitudes[ind2]) 
+        normal_scaling = 1.0
+    else
+        normal_scaling = model.core.θmagnitudes[ind1]/model.core.θmagnitudes[ind2]
+    end
 
     for i in 1:num_points
         if point_is_on_bounds[i]
@@ -86,11 +91,9 @@ function continuation_line_search!(p::NamedTuple,
 
             # normal_vector_i_2d!(normal_i, i, start_level_set_2D)
             # normal_i[1] = normal_i[1] * normal_scaling
-            # normal_i .= (normal_i ./ (norm(normal_i, 2))) 
+            # normal_i .= (normal_i ./ norm(normal_i, 2)) 
+            # gradient_i .= tangent_amount*(tangent_between_level_sets[:,i] ./ norm(tangent_between_level_sets[:,i], 2)) + (1-tangent_amount)*normal_i
 
-            # gradient_i .= tangent_amount*(tangent_between_level_sets[:,i] ./ norm(tangent_between_level_sets[:,i],2)) + (1-tangent_amount)*normal_i
-
-            # println((norm(gradient_i, 2)))
             gradient_i .= tangent_between_level_sets[:,i] .* 1.0
 
             p.uhat .= (gradient_i ./ (norm(gradient_i, 2))) 
