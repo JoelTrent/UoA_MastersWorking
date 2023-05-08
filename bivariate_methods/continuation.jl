@@ -325,7 +325,9 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     target_confidence_level::Float64,
                                                     ellipse_start_point_shift::Float64,
                                                     num_level_sets::Int,
-                                                    save_internal_points::Bool)
+                                                    level_set_spacing::Symbol,
+                                                    save_internal_points::Bool,
+                                                    )
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
     
@@ -366,11 +368,18 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     end
 
     initial_confidence_level = cdf(Chisq(2), -initial_ll*2.0)
-
-    conf_level_sets = collect(LinRange(initial_confidence_level, target_confidence_level, num_level_sets+1)[2:end])
-
-    level_set_lls = [get_target_loglikelihood(model, conf_level_sets[i], 
-                        profile_type, 2) for i in 1:num_level_sets]
+    if level_set_spacing == :loglikelihood
+        level_set_lls = collect(LinRange(get_target_loglikelihood(model, initial_confidence_level,
+                                                                profile_type, 2),
+                                        get_target_loglikelihood(model, target_confidence_level,
+                                                                profile_type, 2), 
+                                        num_level_sets+1)[2:end]
+                                )
+    else
+        conf_level_sets = collect(LinRange(initial_confidence_level, target_confidence_level, num_level_sets+1)[2:end])
+        level_set_lls = [get_target_loglikelihood(model, conf_level_sets[i], 
+                            profile_type, 2) for i in 1:num_level_sets]
+    end
 
     tangent_between_level_sets = zeros(0,0)
 

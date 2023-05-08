@@ -138,6 +138,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 confidence_level, 
                                 method.ellipse_start_point_shift,
                                 method.num_level_sets,
+                                method.level_set_spacing,
                                 save_internal_points)
     end
     
