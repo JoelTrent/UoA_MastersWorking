@@ -178,7 +178,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
 
     # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
-    θcombinations_is_unique || (sort!.(θcombinations); sort!(θcombinations); unique!(θcombinations))
+    if !θcombinations_is_unique 
+        sort!.(θcombinations); unique!.(θcombinations)
+        sort!(θcombinations); unique!(θcombinations)
+    end
     extrema(length.(θcombinations)) == (2,2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
 
     init_biv_profile_row_exists!(model, θcombinations, profile_type, method)
@@ -205,7 +208,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     end
 
     len_θcombinations = length(θcombinations)
-    length(θcombinations) > 0 || return nothing
+    len_θcombinations > 0 || return nothing
 
     num_rows_required = ((len_θcombinations-num_to_reuse) + model.num_biv_profiles) - nrow(model.biv_profiles_df)
 

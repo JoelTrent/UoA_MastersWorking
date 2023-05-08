@@ -15,6 +15,7 @@ function set_dim_samples_row!(model::LikelihoodModel,
                                     sample_type::AbstractSampleType,
                                     num_points::Int)
     model.dim_samples_df[row_ind, 2:end] .= θindices,
+                                                length(θindices),
                                                 not_evaluated_predictions,
                                                 confidence_level,
                                                 sample_type,
@@ -101,8 +102,8 @@ end
 
 # Uniform grids
 function uniform_grid(model::LikelihoodModel,
-                        confidence_level::Float64,
                         points_per_dimension::Union{Int, Vector{Int}},
+                        confidence_level::Float64,
                         lb::Vector=[],
                         ub::Vector=[];
                         use_threads=true,
@@ -128,8 +129,8 @@ function uniform_grid(model::LikelihoodModel,
 end
 
 function uniform_random(model::LikelihoodModel,
-                        confidence_level::Float64,
                         num_points::Int,
+                        confidence_level::Float64,
                         lb::Vector=[],
                         ub::Vector=[];
                         use_threads::Bool=true,
@@ -156,8 +157,8 @@ end
 
 # LatinHypercubeSampling
 function LHS(model::LikelihoodModel,
-            confidence_level::Float64,
             num_points::Int,
+            confidence_level::Float64,
             lb::Vector=[],
             ub::Vector=[];
             use_threads::Bool=true,
@@ -179,21 +180,21 @@ function LHS(model::LikelihoodModel,
 end
 
 function full_likelihood_sample(model::LikelihoodModel,
-                                    confidence_level::Float64,
                                     num_points::Union{Int, Vector{Int}},
+                                    confidence_level::Float64,
                                     sample_type::AbstractSampleType,
                                     lb::Vector,
                                     ub::Vector,
                                     use_threads::Bool)
 
     if sample_type isa UniformGridSamples
-        sample_struct = uniform_grid(model, confidence_level, num_points, lb, ub;
+        sample_struct = uniform_grid(model, num_points, confidence_level, lb, ub;
                                         use_threads=use_threads, arguments_checked=true)
     elseif sample_type isa UniformRandomSamples
-        sample_struct = uniform_random(model, confidence_level, num_points, lb, ub;             
+        sample_struct = uniform_random(model, num_points, confidence_level, lb, ub;             
                                         use_threads=use_threads, arguments_checked=true)
     elseif sample_type isa LatinHypercubeSamples
-        sample_struct = LHS(model, confidence_level, num_points, lb, ub;
+        sample_struct = LHS(model, num_points, confidence_level, lb, ub;
                             use_threads=use_threads, arguments_checked=true)
     end
     return sample_struct
@@ -219,7 +220,7 @@ function full_likelihood_sample!(model::LikelihoodModel,
     requires_overwrite = model.dim_samples_row_exists[sample_type][confidence_level] != 0
     if existing_profiles == :ignore && requires_overwrite; return nothing end
 
-    sample_struct = full_likelihood_sample(model, confidence_level, num_points_to_sample, sample_type, lb, ub, use_threads)
+    sample_struct = full_likelihood_sample(model, num_points_to_sample, confidence_level, sample_type, lb, ub, use_threads)
     num_points_kept = length(sample_struct.ll)
     
     if num_points_kept == 0

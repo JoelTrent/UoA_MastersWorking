@@ -28,6 +28,16 @@ function init_dim_samples_row_exists!(model::LikelihoodModel,
     end
     return nothing
 end
+function init_dim_samples_row_exists!(model::LikelihoodModel, 
+                                        θindices::Vector{Vector{Int}},
+                                        sample_type::AbstractSampleType)
+    for θvec in θindices
+        if !haskey(model.dim_samples_row_exists, (θvec, sample_type))
+            model.dim_samples_row_exists[(θvec, sample_type)] = DefaultDict{Float64, Int}(0)
+        end
+    end
+    return nothing
+end
 
 function init_uni_profiles_df(num_rows; existing_largest_row=0)
    
@@ -63,7 +73,8 @@ function init_dim_samples_df(num_rows; existing_largest_row=0)
    
     dim_samples_df = DataFrame()
     dim_samples_df.row_ind = collect(1:num_rows) .+ existing_largest_row
-    dim_samples_df.θ_indices = [[] for _ in 1:num_rows]
+    dim_samples_df.θindices = [Int[] for _ in 1:num_rows]
+    dim_samples_df.dimension = zeros(Int, num_rows)
     dim_samples_df.not_evaluated_predictions = trues(num_rows)
     dim_samples_df.conf_level = zeros(num_rows)
     dim_samples_df.sample_type = Vector{AbstractSampleType}(undef, num_rows)
@@ -137,14 +148,13 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
     biv_profiles_dict = Dict{Int, AbstractBivariateConfidenceStruct}()
 
-    dim_samples_row_exists = Dict{AbstractSampleType, DefaultDict{Float64, Int}}()
+    dim_samples_row_exists = Dict{Union{AbstractSampleType, Tuple{Vector{Int}, AbstractSampleType}}, DefaultDict{Float64, Int}}()
     dim_samples_df = isnan(dim_row_preallocation_size) ? init_dim_samples_df(1) : init_dim_samples_df(dim_row_preallocation_size)
     dim_samples_dict = Dict{Int, AbstractSampledConfidenceStruct}()
 
     uni_predictions_dict = Dict{Int, AbstractPredictionStruct}()
     biv_predictions_dict = Dict{Int, AbstractPredictionStruct}()
     dim_predictions_dict = Dict{Int, AbstractPredictionStruct}()
-
 
     likelihoodmodel = LikelihoodModel(corelikelihoodmodel,
                                     missing, 

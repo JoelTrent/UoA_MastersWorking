@@ -12,10 +12,10 @@ function dimensional_optimiser!(θs, p, targetll)
 end
 
 function init_dimensional_parameters(model::LikelihoodModel, 
-                                        θindexes::Vector{Int},
+                                        θindices::Vector{Int},
                                         num_dims::Int)
 
-    λindexes = setdiff(1:model.core.num_pars, θindexes)
+    λindexes = setdiff(1:model.core.num_pars, θindices)
     newLb     = zeros(model.core.num_pars-num_dims) 
     newUb     = zeros(model.core.num_pars-num_dims)
     initGuess = zeros(model.core.num_pars-num_dims)
@@ -87,33 +87,33 @@ function valid_points(model::LikelihoodModel,
 end
 
 function check_if_bounds_supplied(model::LikelihoodModel,
-                                    θindexes::Vector{Int},
+                                    θindices::Vector{Int},
                                     lb::Vector,
                                     ub::Vector)
     if isempty(lb)
-        lb = model.core.θlb[θindexes]
+        lb = model.core.θlb[θindices]
     else
-        length(lb) == length(θindexes) || throw(ArgumentError(string("lb must be of length ", length(θindexes))))
+        length(lb) == length(θindices) || throw(ArgumentError(string("lb must be of length ", length(θindices))))
     end
     if isempty(ub)
-        ub = model.core.θub[θindexes]
+        ub = model.core.θub[θindices]
     else
-        length(ub) == length(θindexes)  || throw(ArgumentError(string("ub must be of length ", length(θindexes))))
+        length(ub) == length(θindices)  || throw(ArgumentError(string("ub must be of length ", length(θindices))))
     end
     return lb, ub
 end
 
 # Uniform grids
 function uniform_grid(model::LikelihoodModel,
-                        θindexes::Vector{Int},
-                        confidence_level::Float64,
+                        θindices::Vector{Int},
                         points_per_dimension::Union{Int, Vector{Int}},
+                        confidence_level::Float64,
                         lb::Vector=[],
                         ub::Vector=[];
                         use_threads=true,
                         arguments_checked::Bool=false)
 
-    num_dims = length(θindexes); num_dims > 0 || throw(ArgumentError("θindexes must not be empty"))
+    num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
     if points_per_dimension isa Vector{Int}
         num_dims == length(points_per_dimension) || throw(ArgumentError(string("points_per_dimension must be of length ", num_dims)))
         all(points_per_dimension .> 0) || throw(DomainError("points_per_dimension must be a vector of strictly positive integers"))
@@ -122,12 +122,12 @@ function uniform_grid(model::LikelihoodModel,
         points_per_dimension = fill(points_per_dimension, num_dims)
     end
 
-    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindexes, num_dims)
+    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
-    p=(θindexes=θindexes, newLb=newLb, newUb=newUb, initGuess=initGuess,
+    p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         λindexes=λindexes, consistent=consistent)
 
-    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindexes, lb, ub)
+    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
     ranges = LinRange.(lb, ub, points_per_dimension)
     grid_iterator = Iterators.product(ranges...)
@@ -136,7 +136,7 @@ function uniform_grid(model::LikelihoodModel,
     grid = zeros(model.core.num_pars, grid_size)
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
     @floop ex for (i, point) in enumerate(grid_iterator)
-        grid[θindexes, i] .= point
+        grid[θindices, i] .= point
     end
 
     pnts, lls = valid_points(model, p, grid, grid_size, confidence_level, num_dims, use_threads)
@@ -144,25 +144,25 @@ function uniform_grid(model::LikelihoodModel,
 end
 
 function uniform_random_blocks(model::LikelihoodModel,
-                        θindexes::Vector{Int},
-                        confidence_level::Float64,
+                        θindices::Vector{Int},
                         num_points::Int,
+                        confidence_level::Float64,
                         lb::Vector=[],
                         ub::Vector=[];
                         block_size=20000,
                         use_threads::Bool=true,
                         arguments_checked::Bool=false)
 
-    num_dims = length(θindexes); num_dims > 0 || throw(ArgumentError("θindexes must not be empty"))
+    num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
-    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindexes, num_dims)
+    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
-    p=(θindexes=θindexes, newLb=newLb, newUb=newUb, initGuess=initGuess,
+    p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         λindexes=λindexes, consistent=consistent)
     
-    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindexes, lb, ub)
+    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
     num_blocks = div(num_points, block_size)
     remainder = mod(num_points, block_size)
@@ -184,7 +184,7 @@ function uniform_random_blocks(model::LikelihoodModel,
 
         ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_dims) 
         @floop ex for dim in 1:num_dims
-            grid[θindexes[dim], :] .= rand(Uniform(lb[dim], ub[dim]), block)
+            grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), block)
         end
 
         pnts, lls = valid_points(model, p, grid, block, confidence_level, num_dims, use_threads)
@@ -221,30 +221,30 @@ function uniform_random_blocks(model::LikelihoodModel,
 end
 
 function uniform_random(model::LikelihoodModel,
-                        θindexes::Vector{Int},
-                        confidence_level::Float64,
+                        θindices::Vector{Int},
                         num_points::Int,
+                        confidence_level::Float64,
                         lb::Vector=[],
                         ub::Vector=[];
                         use_threads::Bool=true,
                         arguments_checked::Bool=false)
 
-    num_dims = length(θindexes); num_dims > 0 || throw(ArgumentError("θindexes must not be empty"))
+    num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
-    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindexes, num_dims)
+    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
-    p=(θindexes=θindexes, newLb=newLb, newUb=newUb, initGuess=initGuess,
+    p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         λindexes=λindexes, consistent=consistent)
     
-    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindexes, lb, ub)
+    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
     grid = zeros(model.core.num_pars, num_points)
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_dims) 
     @floop ex for dim in 1:num_dims
-        grid[θindexes[dim], :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
+        grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
     end
 
     pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads)
@@ -253,29 +253,29 @@ end
 
 # LatinHypercubeSampling
 function LHS(model::LikelihoodModel,
-            θindexes::Vector{Int},
-            confidence_level::Float64,
+            θindices::Vector{Int},
             num_points::Int,
+            confidence_level::Float64,
             lb::Vector=[],
             ub::Vector=[];
             use_threads::Bool=true,
             arguments_checked::Bool=false)
     
-    num_dims = length(θindexes); num_dims > 0 || throw(ArgumentError("θindexes must not be empty"))
+    num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
-        lb, ub = check_if_bounds_supplied(model, θindexes, lb, ub)
+        lb, ub = check_if_bounds_supplied(model, θindices, lb, ub)
     end
 
-    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindexes, num_dims)
+    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
-    p=(θindexes=θindexes, newLb=newLb, newUb=newUb, initGuess=initGuess,
+    p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         λindexes=λindexes, consistent=consistent)
 
     grid = zeros(model.core.num_pars, num_points)
     
     scale_range = [(lb[i], ub[i]) for i in 1:num_dims]
-    grid[θindexes, :] = permutedims(scaleLHC(randomLHC(num_points, num_dims), scale_range))
+    grid[θindices, :] = permutedims(scaleLHC(randomLHC(num_points, num_dims), scale_range))
 
     # grid = permutedims(scaleLHC(LHCoptim(num_points, num_dims, num_gens; kwargs...)[1], scale_range))
     
@@ -283,80 +283,151 @@ function LHS(model::LikelihoodModel,
     return SampledConfidenceStruct(pnts, lls)
 end
 
-function sampling_master(model::LikelihoodModel,
-                            θindexes::Vector{Int},
-                            confidence_level::Float64,
-                            num_points::Int,
-                            lb::Vector=[],
-                            ub::Vector=[];
-                            block_size=10000,
-                            use_threads::Bool=true,
-                            arguments_checked::Bool=false)
-    println()
+function dimensional_likelihood_sample(model::LikelihoodModel,
+                                    θindices::Vector{Int},
+                                    num_points::Union{Int, Vector{Int}},
+                                    confidence_level::Float64,
+                                    sample_type::AbstractSampleType,
+                                    lb::Vector,
+                                    ub::Vector,
+                                    use_threads::Bool)
+
+    if sample_type isa UniformGridSamples
+        sample_struct = uniform_grid(model, θindices, num_points, confidence_level, lb, ub;
+                                        use_threads=use_threads, arguments_checked=true)
+    elseif sample_type isa UniformRandomSamples
+        sample_struct = uniform_random(model, θindices, num_points, confidence_level, lb, ub;             
+                                        use_threads=use_threads, arguments_checked=true)
+    elseif sample_type isa LatinHypercubeSamples
+        sample_struct = LHS(model, θindices, num_points, confidence_level, lb, ub;
+                            use_threads=use_threads, arguments_checked=true)
+    end
+    return sample_struct
 end
 
-# function full_likelihood_sample(model::LikelihoodModel,
-#                                     confidence_level::Float64,
-#                                     num_points::Union{Int, Vector{Int}},
-#                                     sample_type::AbstractSampleType,
-#                                     lb::Vector,
-#                                     ub::Vector,
-#                                     use_threads::Bool)
+function dimensional_likelihood_sample!(model::LikelihoodModel,
+                                        θindices::Vector{Vector{Int}},
+                                        num_points_to_sample::Union{Int, Vector{Int}};
+                                        confidence_level::Float64=0.95,
+                                        sample_type::AbstractSampleType=LatinHypercubeSamples(),
+                                        lb::Vector=[],
+                                        ub::Vector=[],
+                                        θs_is_unique::Bool=false,
+                                        use_threads::Bool=true,
+                                        use_distributed::Bool=false,
+                                        existing_profiles::Symbol=:overwrite)
 
-#     if sample_type isa UniformGridSamples
-#         sample_struct = uniform_grid(model, confidence_level, num_points, lb, ub;
-#                                         use_threads=use_threads, arguments_checked=true)
-#     elseif sample_type isa UniformRandomSamples
-#         sample_struct = uniform_random(model, confidence_level, num_points, lb, ub;             
-#                                         use_threads=use_threads, arguments_checked=true)
-#     elseif sample_type isa LatinHypercubeSamples
-#         sample_struct = LHS(model, confidence_level, num_points, lb, ub;
-#                             use_threads=use_threads, arguments_checked=true)
-#     end
-#     return sample_struct
-# end
-
-# function full_likelihood_sample!(model::LikelihoodModel,
-#                                     num_points_to_sample::Union{Int, Vector{Int}};
-#                                     confidence_level::Float64=0.95,
-#                                     sample_type::AbstractSampleType=LatinHypercubeSamples(),
-#                                     lb::Vector=[],
-#                                     ub::Vector=[],
-#                                     use_threads::Bool=true,
-#                                     existing_profiles::Symbol=:overwrite)
-
-#     if num_points_to_sample isa Int
-#         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
-#     end
-#     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
-#     lb, ub = check_if_bounds_supplied(model, lb, ub)
-
-#     init_full_samples_row_exists!(model, sample_type)
-#     # check if sample has already been evaluated
-#     requires_overwrite = model.full_samples_row_exists[sample_type][confidence_level] != 0
-#     if existing_profiles == :ignore && requires_overwrite; return nothing end
-
-#     sample_struct = full_likelihood_sample(model, confidence_level, num_points_to_sample, sample_type, lb, ub, use_threads)
-#     num_points_kept = length(sample_struct.ll)
+    if num_points_to_sample isa Int
+        num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
+    end
+    existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+    lb, ub = check_if_bounds_supplied(model, lb, ub)
     
-#     if num_points_kept == 0
-#         @warn "no sampled points were in the confidence region of the full likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds"
-#         return nothing
-#     end
+    if !θs_is_unique 
+        θindices = θindices[.!isempty.(θindices)]
+        sort!.(θindices); unique!.(θindices)
+        sort!(θindices); unique!(θindices)
+    end
+    # check if any of θindices is for the full likelihood - do this outside main for loop
+    for (i, θs) in enumerate(θindices)
+        if length(θs) == model.core.num_pars
+            full_likelihood_sample!(model::LikelihoodModel, num_points_to_sample;
+                                    confidence_level=confidence_level,
+                                    sample_type=sample_type,
+                                    lb=lb, ub=ub, use_threads=use_threads,
+                                    existing_profiles=existing_profiles)
+            θindices = θindices[setdiff(1:length(θindices), i)]
+            break
+        end
+    end
 
-#     if requires_overwrite
-#         row_ind = model.full_samples_row_exists[sample_type][confidence_level]
-#     else
-#         model.num_full_samples += 1
-#         row_ind = model.num_full_samples * 1
-#         if (model.num_full_samples - nrow(model.full_samples_df)) > 0
-#             add_full_samples_rows!(model, 1)
-#         end
-#         model.full_samples_row_exists[sample_type][confidence_level] = row_ind
-#     end
+    init_dim_samples_row_exists!(model, θindices, sample_type)
 
-#     model.full_samples_dict[row_ind] = sample_struct
-#     set_full_samples_row!(model, row_ind, true, confidence_level, sample_type, num_points_kept)
+    θs_to_keep = trues(length(θindices))
+    θs_to_overwrite = falses(length(θindices))
+    num_to_overwrite = 0
+    # check if profile has already been evaluated
+    # in this case we only have :ignore and :overwrite
+    for (i, θs) in enumerate(θindices)
+        if model.dim_samples_row_exists[(θs, sample_type)][confidence_level] != 0
+            θs_to_keep[i] = false
+            θs_to_overwrite[i] = true
+            num_to_overwrite += 1
+        end
+    end
+    if existing_profiles == :ignore
+        θindices = θindices[θs_to_keep]
+        θs_to_overwrite = θs_to_overwrite[θs_to_keep]
+        num_to_overwrite = 0
+    end
+    
+    len_θindices = length(θindices)
+    len_θindices > 0 || return nothing
 
-#     return nothing
-# end
+    num_rows_required = ((len_θindices-num_to_overwrite) + model.num_dim_samples) - nrow(model.dim_samples_df)
+
+    if num_rows_required > 0
+        add_dim_samples_rows!(model, num_rows_required)
+    end
+
+    if !use_distributed
+        for (i, θs) in enumerate(θindices)
+
+            sample_struct = dimensional_likelihood_sample(model, θs, num_points_to_sample,
+                                                            confidence_level, sample_type,
+                                                            lb[θs], ub[θs], use_threads)
+            
+            num_points_kept = length(sample_struct.ll)
+            
+            if num_points_kept == 0
+                @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
+                continue
+            end
+
+            if θs_to_overwrite[i]
+                row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
+            else
+                model.num_dim_samples += 1
+                row_ind = model.num_dim_samples * 1
+                model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
+            end
+
+            model.dim_samples_dict[row_ind] = sample_struct
+            
+            set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
+                                    num_points_kept)
+        end
+
+    else
+        profiles_to_add = @distributed (vcat) for θs in θindices
+            (θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
+                                                confidence_level, sample_type,
+                                                lb[θs], ub[θs], use_threads))
+        end
+
+        for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
+
+            num_points_kept = length(sample_struct.ll)
+            
+            if num_points_kept == 0
+                @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
+                continue
+            end
+
+            if θs_to_overwrite[i]
+                row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
+            else
+                model.num_dim_samples += 1
+                row_ind = model.num_dim_samples * 1
+                model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
+            end
+
+            model.dim_samples_dict[row_ind] = sample_struct
+            
+            set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
+                                    num_points_kept)
+        end
+    end
+
+    return nothing
+end

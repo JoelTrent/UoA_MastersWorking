@@ -65,7 +65,7 @@ mutable struct LikelihoodModel <: AbstractLikelihoodModel
 
     uni_profile_row_exists::Dict{Tuple{Int, AbstractProfileType}, DefaultDict{Float64, Int}}
     biv_profile_row_exists::Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}
-    dim_samples_row_exists::Dict{AbstractSampleType, DefaultDict{Float64, Int}}
+    dim_samples_row_exists::Dict{Union{AbstractSampleType, Tuple{Vector{Int}, AbstractSampleType}}, DefaultDict{Float64, Int}}
 
     uni_profiles_dict::Dict{Int, AbstractUnivariateConfidenceStruct}
     biv_profiles_dict::Dict{Int, AbstractBivariateConfidenceStruct}
