@@ -60,8 +60,10 @@ function addMLEandLLstar!(plt, llstar, parMLE, MLE_color, llstar_color; kwargs..
 end
 
 # 2D
-function plot2Dboundary!(plt, parBoundarySamples, label="boundary"; kwargs...)
-    plot!(plt, parBoundarySamples[1,:], parBoundarySamples[2,:], 
+function plot2Dboundary!(plt, parBoundarySamples, label="boundary"; use_lines=false, kwargs...)
+    
+    plot_func! = use_lines ? plot! : scatter!
+    plot_func!(plt, parBoundarySamples[1,:], parBoundarySamples[2,:], 
                             markersize=3,
                             msw=0, ms=5,
                             label=label;
@@ -290,6 +292,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
         ranges = max_vals .- min_vals
         
         plot2Dboundary!(profile_plots[i], boundary, 
+                            use_lines=row.method isa ContinuationMethod,
                             markershape=profile2Dmarkershape(row.profile_type, true),
                             markercolor=color_palette[profilecolor(row.profile_type)],
                             linecolor=color_palette[profilecolor(row.profile_type)],
@@ -300,6 +303,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
             plot2Dboundary!(profile_plots[i], 
                             @view(model.biv_profiles_dict[row.row_ind].internal_points[θindices, :]),
                             "internal points", 
+                            use_lines=row.method isa ContinuationMethod,
                             markershape=profile2Dmarkershape(row.profile_type, false), 
                             markercolor=color_palette[profilecolor(row.profile_type)], 
                             linecolor=color_palette[profilecolor(row.profile_type)],
