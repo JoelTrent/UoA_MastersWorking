@@ -9,7 +9,7 @@ gr()
 Random.seed!(12348)
 fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
 include(joinpath("..", "plottingFunctions.jl"))
-include(joinpath("..", "..", "ellipseLikelihood.jl"))
+include(joinpath("..", "..", "JuLikelihood.jl"))
 
 # Workflow functions ##########################################################################
 
@@ -110,7 +110,19 @@ display(p1)
 savefig(p1, joinpath(fileDirectory,"mle.pdf"))
 
 # 3D approximation of the likelihood around the MLE solution
-H, Γ = getMLEHessianAndCovariance(funmle, θmle)
+H, Γ = getMLE_hessian_and_covariance(funmle, θmle)
+
+function g2(θmle); ForwardDiff.jacobian(funmle,θmle) end
+# g2(θmle) = ForwardDiff.jacobian(g1,θmle)
+# g3(θmle) = ForwardDiff.jacobian(g2,θmle)
+# g4(θmle) = ForwardDiff.jacobian(g3,θmle)
+
+# g2(θmle)
+# g3(θmle)
+# g4(θmle)
+# g2(θmle)
+# ForwardDiff.hessian(funmle, θmle)
+# ForwardDiff.hessian(g2, θmle)
 
 # Section 10: Depending on MLE we can refine our bounds if required
 # λmin=0.0

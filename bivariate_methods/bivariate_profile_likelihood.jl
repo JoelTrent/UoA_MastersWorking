@@ -324,7 +324,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     profile_m_random_combinations = max(0, min(profile_m_random_combinations, binomial(model.core.num_pars, 2)))
     profile_m_random_combinations > 0 || throw(DomainError("profile_m_random_combinations must be a strictly positive integer"))
 
-    θcombinations = sample(collect(combinations(1:model.core.num_pars, 2)), profile_m_random_combinations, replace=false)
+    θcombinations = sample(collect(combinations(1:model.core.num_pars, 2)),
+                            profile_m_random_combinations, replace=false, ordered=true)
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 

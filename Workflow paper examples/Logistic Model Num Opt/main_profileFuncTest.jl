@@ -81,6 +81,7 @@ C0min, C0max = (0.0, 50.)
 lb = [λmin, Kmin, C0min]
 ub = [λmax, Kmax, C0max]
 par_magnitudes = [0.01, 20, 10]
+par_magnitudes = [1, 1, 1]
 
 ##############################################################################################
 # Section 9: Find MLE by numerical optimisation, visually compare data and MLE solution
@@ -120,7 +121,7 @@ getMLE_ellipse_approximation!(model)
 
 # @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
 @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 3, 0.0), save_internal_points=true, existing_profiles=:overwrite)
@@ -128,6 +129,7 @@ getMLE_ellipse_approximation!(model)
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 
 dimensional_likelihood_sample!(model, [[1], [1,3], [2,3]],  1000)
+# dimensional_likelihood_sample!(model, 2, 2,  10000)
 
 
 prediction_locations = collect(LinRange(t[1], t[end], 50))

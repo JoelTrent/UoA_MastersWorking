@@ -13,7 +13,7 @@ end
 function convertθnames_toindices(model::LikelihoodModel, 
                                     θnames_to_convert::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}})
 
-    indices = [zeros(Int, 2) for _ in 1:length(θnames_to_convert)]
+    indices = [zeros(Int, dim) for dim in length.(θnames_to_convert)]
 
     for (i, names) in enumerate(θnames_to_convert)
         indices[i] .= getindex.(Ref(model.core.θname_to_index), names)
@@ -67,6 +67,7 @@ end
 function desired_df_subset(df::DataFrame, 
                             confidence_levels::Union{Float64, Vector{<:Float64}},
                             sample_types::Vector{<:AbstractSampleType};
+                            sample_dimension::Int=0,
                             for_prediction_generation::Bool=false,
                             for_prediction_plots::Bool=false,
                             include_higher_confidence_levels::Bool=false)
@@ -77,6 +78,9 @@ function desired_df_subset(df::DataFrame,
     end
     if for_prediction_plots
         row_subset .= row_subset .&& .!(df.not_evaluated_predictions)
+    end
+    if sample_dimension > 0
+        row_subset .= row_subset .&& df.dimension .== sample_dimension
     end
 
     if !isempty(confidence_levels)

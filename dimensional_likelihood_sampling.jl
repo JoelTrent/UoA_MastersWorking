@@ -431,3 +431,72 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
 
     return nothing
 end
+
+function dimensional_likelihood_sample!(model::LikelihoodModel,
+    θnames::Vector{Vector{Symbol}},
+    num_points_to_sample::Union{Int, Vector{Int}};
+    confidence_level::Float64=0.95,
+    sample_type::AbstractSampleType=LatinHypercubeSamples(),
+    lb::Vector=[],
+    ub::Vector=[],
+    θs_is_unique::Bool=false,
+    use_threads::Bool=true,
+    use_distributed::Bool=false,
+    existing_profiles::Symbol=:overwrite)
+
+    θindices = convertθnames_toindices(model, θnames)
+
+    dimensional_likelihood_sample!(model, θindices, num_points_to_sample,
+                                    confidence_level=confidence_level, sample_type=sample_type,
+                                    lb=lb, ub=ub, θs_is_unique=θs_is_unique,
+                                    use_threads=use_threads, use_distributed=use_distributed,
+                                    existing_profiles=existing_profiles)
+    return nothing
+end
+
+function dimensional_likelihood_sample!(model::LikelihoodModel,
+    sample_dimension::Int,
+    sample_m_random_combinations::Int,
+    num_points_to_sample::Union{Int, Vector{Int}};
+    confidence_level::Float64=0.95,
+    sample_type::AbstractSampleType=LatinHypercubeSamples(),
+    lb::Vector=[],
+    ub::Vector=[],
+    use_threads::Bool=true,
+    use_distributed::Bool=false,
+    existing_profiles::Symbol=:overwrite)
+
+    sample_m_random_combinations = max(0, min(sample_m_random_combinations, binomial(model.core.num_pars, sample_dimension)))
+    sample_m_random_combinations > 0 || throw(DomainError("sample_m_random_combinations must be a strictly positive integer"))
+
+    θcombinations = sample(collect(combinations(1:model.core.num_pars, sample_dimension)),
+                            sample_m_random_combinations, replace=false, ordered=true)
+
+    dimensional_likelihood_sample!(model, θcombinations, num_points_to_sample,
+                                    confidence_level=confidence_level, sample_type=sample_type,
+                                    lb=lb, ub=ub, θs_is_unique=true,
+                                    use_threads=use_threads, use_distributed=use_distributed,
+                                    existing_profiles=existing_profiles)
+    return nothing
+end
+
+function dimensional_likelihood_sample!(model::LikelihoodModel,
+    sample_dimension::Int,
+    num_points_to_sample::Union{Int, Vector{Int}};
+    confidence_level::Float64=0.95,
+    sample_type::AbstractSampleType=LatinHypercubeSamples(),
+    lb::Vector=[],
+    ub::Vector=[],
+    use_threads::Bool=true,
+    use_distributed::Bool=false,
+    existing_profiles::Symbol=:overwrite)
+
+    θcombinations = collect(combinations(1:model.core.num_pars, sample_dimension))
+
+    dimensional_likelihood_sample!(model, θcombinations, num_points_to_sample,
+                                    confidence_level=confidence_level, sample_type=sample_type,
+                                    lb=lb, ub=ub, θs_is_unique=true,
+                                    use_threads=use_threads, use_distributed=use_distributed,
+                                    existing_profiles=existing_profiles)
+    return nothing
+end

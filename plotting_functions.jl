@@ -510,30 +510,46 @@ function plot_predictions_individual(model::LikelihoodModel,
                             profile_dimension::Int=1,
                             xlabel::String="t",
                             ylabel::String="f(t)";
+                            for_dim_samples::Bool=false,
                             # ylim_scaler::Real=0.2;
                             include_MLE::Bool=true,
-                            θs_to_plot::Vector = Int[],
+                            θs_to_plot::Vector=Int[],
                             θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+                            θindices_to_plot::Vector=Vector{Int}[],
                             confidence_levels::Vector{<:Float64}=Float64[],
                             profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+                            sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                             # palette_to_use::Symbol=:Paired_6, 
                             linealpha=0.4, 
                             kwargs...)
+                            
+    if for_dim_samples
+        if !(1 ≤ profile_dimension && profile_dimension ≤ model.core.num_pars)
+            throw(DomainError(string("profile_dimension must be between 1 and ", 
+                    model.core.num_pars, " (the number of model parameters)")))
+        end
 
-    profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
-    
-    if profile_dimension == 1
-        θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-        sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_levels,
-                                    profile_types; for_prediction_plots=true)
-        predictions_dict = model.uni_predictions_dict
-        methods=[nothing]
-    elseif profile_dimension == 2
-        θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
-        sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
-                                    profile_types, methods; for_prediction_plots=true)
-        predictions_dict = model.biv_predictions_dict
+        θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
+                            convertθnames_toindices(model, θindices_to_plot) :
+                            θindices_to_plot
+        sub_df = desired_df_subset(model.dim_samples_df, confidence_levels, sample_types;
+                                    sample_dimension=profile_dimension, for_prediction_plots=true)
+        predictions_dict = model.dim_predictions_dict
+    else
+        profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
+
+        if profile_dimension == 1
+            θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
+            sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_levels,
+                                        profile_types; for_prediction_plots=true)
+            predictions_dict = model.uni_predictions_dict
+        elseif profile_dimension == 2
+            θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
+            sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
+                                        profile_types, methods; for_prediction_plots=true)
+            predictions_dict = model.biv_predictions_dict
+        end
     end
 
     if nrow(sub_df) < 1
@@ -549,18 +565,24 @@ function plot_predictions_individual(model::LikelihoodModel,
         predictions = predictions_dict[row.row_ind].predictions
         extrema = predictions_dict[row.row_ind].extrema
 
-        if profile_dimension == 1
-            title=string("Profile type: ", row.profile_type, 
+        if for_dim_samples
+            title=string("Sample type: ", row.sample_type, 
                         "\nConfidence level: ", row.conf_level,
-                        "\nTarget parameter: ", model.core.θnames[row.θindex])
+                        "\nTarget parameter(s): ", model.core.θnames[row.θindices])
         else
-            θindices = zeros(Int,2); 
-            for j in 1:2; θindices[j] = row.θindices[j] end
+            if profile_dimension == 1
+                title=string("Profile type: ", row.profile_type, 
+                            "\nConfidence level: ", row.conf_level,
+                            "\nTarget parameter: ", model.core.θnames[row.θindex])
+            else
+                θindices = zeros(Int,2); 
+                for j in 1:2; θindices[j] = row.θindices[j] end
 
-            title=string("Profile type: ", row.profile_type, 
-                        "\nMethod: ", row.method, 
-                        "\nConfidence level: ", row.conf_level,
-                        "\nTarget parameter: ", model.core.θnames[θindices])
+                title=string("Profile type: ", row.profile_type, 
+                            "\nMethod: ", row.method, 
+                            "\nConfidence level: ", row.conf_level,
+                            "\nTarget parameters: ", model.core.θnames[θindices])
+            end
         end
         
         # y_extrema = [minimum(extrema[:,1]), maximum(extrema[:,2])]
@@ -595,11 +617,14 @@ function plot_predictions_union(model::LikelihoodModel,
                             xlabel::String="t",
                             ylabel::String="f(t)",
                             confidence_level::Float64=0.95;
+                            for_dim_samples::Bool=false,
                             include_MLE::Bool=true,
                             θs_to_plot::Vector = Int[],
                             θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+                            θindices_to_plot::Vector=Vector{Int}[],
                             profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+                            sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                             # palette_to_use::Symbol=:Paired_6, 
                             # union_within_methods::Bool=false,
                             compare_to_full_sample_type::Union{Missing, AbstractSampleType}=missing,
@@ -607,17 +632,36 @@ function plot_predictions_union(model::LikelihoodModel,
                             linealpha=0.4,
                             kwargs...)
 
-    profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
-    
-    if profile_dimension == 1
-        θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-        sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_level, profile_types; for_prediction_plots=true)
-        predictions_dict = model.uni_predictions_dict
-        methods=[nothing]
-    elseif profile_dimension == 2
-        θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
-        sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_level, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
-        predictions_dict = model.biv_predictions_dict
+    if for_dim_samples
+        if !(1 ≤ profile_dimension && profile_dimension ≤ model.core.num_pars)
+                throw(DomainError(string("profile_dimension must be between 1 and ", 
+                      model.core.num_pars, " (the number of model parameters)")))
+        end
+
+        θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
+                            convertθnames_toindices(model, θindices_to_plot) :
+                            θindices_to_plot
+        sub_df = desired_df_subset(model.dim_samples_df, confidence_level, sample_types; 
+                                    sample_dimension=profile_dimension, for_prediction_plots=true)
+        predictions_dict = model.dim_predictions_dict
+        title = string("Parameter dimension: " , profile_dimension,
+                        "\nMethod: sampled",
+                        "\nConfidence level: ", confidence_level)
+    else
+        profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
+        if profile_dimension == 1
+            θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
+            sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_level, profile_types; for_prediction_plots=true)
+            predictions_dict = model.uni_predictions_dict
+        elseif profile_dimension == 2
+            θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
+            sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_level, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
+            predictions_dict = model.biv_predictions_dict
+        end
+
+        title = string("Parameter dimension: " , profile_dimension,
+                        "\nMethod: boundary",
+                        "\nConfidence level: ", confidence_level)
     end
 
     if nrow(sub_df) < 1
@@ -647,7 +691,7 @@ function plot_predictions_union(model::LikelihoodModel,
     plotprediction!(prediction_plot, t, predictions_union, extrema_union, linealpha; 
                     xlabel=xlabel, ylabel=ylabel,
                     # ylims=ylims,
-                    title=string("Confidence level: ", confidence_level),
+                    title=title,
                     titlefontsize=10, 
                     kwargs...)
 
