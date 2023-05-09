@@ -314,7 +314,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
                                         ub::Vector=[],
                                         θs_is_unique::Bool=false,
                                         use_threads::Bool=true,
-                                        existing_profiles::Symbol=:overwrite)
+                                        existing_profiles::Symbol=:overwrite,
+                                        show_progress::Bool=model.show_progress)
 
     if num_points_to_sample isa Int
         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
@@ -369,11 +370,16 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
         add_dim_samples_rows!(model, num_rows_required)
     end
 
+    p = Progress(length(θindices); desc="Computing dimensional profile samples: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     profiles_to_add = @distributed (vcat) for θs in θindices
-        (θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
+        out = (θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
                                             confidence_level, sample_type,
                                             lb[θs], ub[θs], use_threads))
+        next!(p)
+        out
     end
+    finish!(p)
 
     for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
         
@@ -409,7 +415,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     ub::Vector=[],
     θs_is_unique::Bool=false,
     use_threads::Bool=true,
-    existing_profiles::Symbol=:overwrite)
+    existing_profiles::Symbol=:overwrite,
+    show_progress::Bool=model.show_progress)
 
     θindices = convertθnames_toindices(model, θnames)
 
@@ -417,7 +424,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub, θs_is_unique=θs_is_unique,
                                     use_threads=use_threads,
-                                    existing_profiles=existing_profiles)
+                                    existing_profiles=existing_profiles,
+                                    show_progress=show_progress)
     return nothing
 end
 
@@ -431,7 +439,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     ub::Vector=[],
     use_threads::Bool=true,
     use_distributed::Bool=false,
-    existing_profiles::Symbol=:overwrite)
+    existing_profiles::Symbol=:overwrite,
+    show_progress::Bool=model.show_progress)
 
     sample_m_random_combinations = max(0, min(sample_m_random_combinations, binomial(model.core.num_pars, sample_dimension)))
     sample_m_random_combinations > 0 || throw(DomainError("sample_m_random_combinations must be a strictly positive integer"))
@@ -442,8 +451,9 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     dimensional_likelihood_sample!(model, θcombinations, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub, θs_is_unique=true,
-                                    use_threads=use_threads, use_distributed=use_distributed,
-                                    existing_profiles=existing_profiles)
+                                    use_threads=use_threads,
+                                    existing_profiles=existing_profiles,
+                                    show_progress=show_progress)
     return nothing
 end
 
@@ -455,7 +465,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     lb::Vector=[],
     ub::Vector=[],
     use_threads::Bool=true,
-    existing_profiles::Symbol=:overwrite)
+    existing_profiles::Symbol=:overwrite,
+    show_progress::Bool=model.show_progress)
 
     θcombinations = collect(combinations(1:model.core.num_pars, sample_dimension))
 
@@ -463,6 +474,7 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub, θs_is_unique=true,
                                     use_threads=use_threads,
-                                    existing_profiles=existing_profiles)
+                                    existing_profiles=existing_profiles,
+                                    show_progress=show_progress)
     return nothing
 end

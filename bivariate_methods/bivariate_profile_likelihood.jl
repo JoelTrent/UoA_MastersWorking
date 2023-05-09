@@ -159,7 +159,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         atol::Real=1e-8, 
                                         θcombinations_is_unique::Bool=false,
                                         save_internal_points::Bool=true,
-                                        existing_profiles::Symbol=:merge)
+                                        existing_profiles::Symbol=:merge,
+                                        show_progress::Bool=model.show_progress)
                                     
     atol > 0 || throw(DomainError("atol must be a strictly positive integer"))
     existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
@@ -231,12 +232,17 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         θcombinations_to_merge = θcombinations_to_merge[pos_new_points]
     end
 
+    p = Progress(length(θcombinations); desc="Computing bivariate profiles: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     profiles_to_add = @distributed (vcat) for (ind1, ind2) in θcombinations
-        ((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
+        out = ((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
                                                         confidence_level, consistent, 
                                                         ind1, ind2, profile_type,
                                                         method, atol, save_internal_points))
+        next!(p)
+        out
     end
+    finish!(p)
 
     for (i, (inds, boundary_struct)) in enumerate(profiles_to_add)
         if θcombinations_to_reuse[i]
@@ -269,7 +275,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         atol::Real=1e-8,
                                         θcombinations_is_unique::Bool=false,
                                         save_internal_points::Bool=true,
-                                        existing_profiles::Symbol=:merge)
+                                        existing_profiles::Symbol=:merge,
+                                        show_progress::Bool=model.show_progress)
 
     θcombinations = convertθnames_toindices(model, θcombinations_symbols)
 
@@ -277,7 +284,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             confidence_level=confidence_level, profile_type=profile_type, 
             method=method, atol=atol, θcombinations_is_unique=θcombinations_is_unique,
             save_internal_points=save_internal_points,
-            existing_profiles=existing_profiles)
+            existing_profiles=existing_profiles,
+            show_progress=show_progress)
     return nothing
 end
 
@@ -290,7 +298,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
                                         atol::Real=1e-8,
                                         save_internal_points::Bool=true,
-                                        existing_profiles::Symbol=:merge)
+                                        existing_profiles::Symbol=:merge,
+                                        show_progress::Bool=model.show_progress)
 
     profile_m_random_combinations = max(0, min(profile_m_random_combinations, binomial(model.core.num_pars, 2)))
     profile_m_random_combinations > 0 || throw(DomainError("profile_m_random_combinations must be a strictly positive integer"))
@@ -302,7 +311,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             confidence_level=confidence_level, profile_type=profile_type, 
             method=method, atol=atol, θcombinations_is_unique=true, 
             save_internal_points=save_internal_points,
-            existing_profiles=existing_profiles)
+            existing_profiles=existing_profiles,
+            show_progress=show_progress)
     return nothing
 end
 
@@ -314,7 +324,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
                                         atol::Real=1e-8,
                                         save_internal_points::Bool=true,
-                                        existing_profiles::Symbol=:merge)
+                                        existing_profiles::Symbol=:merge,
+                                        show_progress::Bool=model.show_progress)
 
     θcombinations = collect(combinations(1:model.core.num_pars, 2))
 
@@ -322,7 +333,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             confidence_level=confidence_level, profile_type=profile_type, 
             method=method, atol=atol, θcombinations_is_unique=true,
             save_internal_points=save_internal_points,
-            existing_profiles=existing_profiles)
+            existing_profiles=existing_profiles,
+            show_progress=show_progress)
     return nothing
 end
 

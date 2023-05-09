@@ -106,7 +106,8 @@ function generate_predictions_univariate!(model::LikelihoodModel,
                                 t::Vector,
                                 proportion_to_keep::Float64;
                                 confidence_levels::Vector{<:Float64}=Float64[],
-                                profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[])
+                                profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
+                                show_progress=model.show_progress)
 
     check_prediction_function_exists(model) || return nothing
 
@@ -117,9 +118,15 @@ function generate_predictions_univariate!(model::LikelihoodModel,
         return nothing
     end
 
+    
+    p = Progress(nrow(sub_df); desc="Generating univariate profile predictions: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-        generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)
+        out = generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)
+        next!(p)
+        out
     end
+    finish!(p)
     
     for (i, predict_struct) in enumerate(predictions)
         model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
@@ -135,7 +142,8 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
                                             proportion_to_keep::Float64;
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
-                                            methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[])
+                                            methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+                                            show_progress=model.show_progress)
 
     check_prediction_function_exists(model) || return nothing
     
@@ -146,10 +154,15 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
         return nothing
     end
 
+    p = Progress(nrow(sub_df); desc="Generating bivariate profile predictions: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-        generate_prediction_bivariate(model, sub_df, i,
+        out = generate_prediction_bivariate(model, sub_df, i,
                                         t, proportion_to_keep)
+        next!(p)
+        out
     end
+    finish!(p)
     
     for (i, predict_struct) in enumerate(predictions)
         model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
@@ -164,7 +177,8 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
                                         t::Vector,
                                         proportion_to_keep::Float64;
                                         confidence_levels::Vector{<:Float64}=Float64[],
-                                        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[])
+                                        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+                                        show_progress=model.show_progress)
 
     check_prediction_function_exists(model) || return nothing
     
@@ -175,11 +189,16 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
         return nothing
     end
 
+    p = Progress(nrow(sub_df); desc="Generating dimensional profile sample predictions: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     predictions = @distributed (vcat) for i in 1:nrow(sub_df)
         parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-        generate_prediction(model.core.predictfunction, model.core.data, t, 
+        out = generate_prediction(model.core.predictfunction, model.core.data, t, 
                                             model.core.ymle, parameter_points, proportion_to_keep)
+        next!(p)
+        out
     end
+    finish!(p)
     
     for (i, predict_struct) in enumerate(predictions)
         model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct

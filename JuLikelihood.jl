@@ -13,6 +13,9 @@ using Accessors
 using Distributed
 using FLoops
 
+using ProgressMeter
+global const PROGRESS__METER__DT = 0.2
+
 include("NLopt_optimiser.jl")
 include("model_structs.jl")
 include("model_initialiser.jl")

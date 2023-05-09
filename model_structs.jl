@@ -74,6 +74,9 @@ mutable struct LikelihoodModel <: AbstractLikelihoodModel
     uni_predictions_dict::Dict{Int, AbstractPredictionStruct}
     biv_predictions_dict::Dict{Int, AbstractPredictionStruct}
     dim_predictions_dict::Dict{Int, AbstractPredictionStruct}
+
+    # misc arguments
+    show_progress::Bool
 end
 
 struct PointsAndLogLikelihood

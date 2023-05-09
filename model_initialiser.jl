@@ -105,7 +105,8 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θmagnitudes::Vector{<:Real}=zeros(0);
     uni_row_prealloaction_size=NaN,
     biv_row_preallocation_size=NaN,
-    dim_row_preallocation_size=NaN)
+    dim_row_preallocation_size=NaN,
+    show_progress=true)
 
     # Initialise CoreLikelihoodModel, finding the MLE solution
     θnameToIndex = Dict{Symbol,Int}(name=>i for (i, name) in enumerate(θnames))
@@ -164,7 +165,8 @@ function initialiseLikelihoodModel(loglikefunction::Function,
                                     dim_samples_row_exists,
                                     uni_profiles_dict, biv_profiles_dict, dim_samples_dict,
                                     uni_predictions_dict, biv_predictions_dict,
-                                    dim_predictions_dict)
+                                    dim_predictions_dict, 
+                                    show_progress)
 
     return likelihoodmodel
 end

@@ -212,7 +212,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         θs_is_unique::Bool=false,
                                         num_points_in_interval::Int=0,
                                         additional_width::Float64=0.0,
-                                        existing_profiles::Symbol=:ignore)
+                                        existing_profiles::Symbol=:ignore,
+                                        show_progress::Bool=model.show_progress)
 
     atol > 0 || throw(DomainError("atol must be a strictly positive integer"))
     num_points_in_interval >= 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
@@ -220,6 +221,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
 
     additional_width = num_points_in_interval > 0 ? additional_width : 0.0
+
+    println(PROGRESS__METER__DT)
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
@@ -263,15 +266,20 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
     not_evaluated_internal_points = num_points_in_interval > 0 ? false : true
 
+    p = Progress(length(θs_to_profile); desc="Computing univariate profiles: ",
+                    dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     profiles_to_add = @distributed (vcat) for θi in θs_to_profile
-        (θi, univariate_confidenceinterval_master(univariate_optimiser, model,
+        out = (θi, univariate_confidenceinterval_master(univariate_optimiser, model,
                                                     consistent, θi, 
                                                     confidence_level, profile_type,
                                                     atol, mle_targetll, ll_shift,
                                                     use_existing_profiles,
                                                     num_points_in_interval,
                                                     additional_width))
+        next!(p)
+        out
     end
+    finish!(p)
 
     for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
         if θs_to_overwrite[i]
@@ -301,7 +309,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         θs_is_unique::Bool=false,
                                         num_points_in_interval::Int=0,
                                         additional_width::Float64=0.0,
-                                        existing_profiles::Symbol=:ignore)
+                                        existing_profiles::Symbol=:ignore,
+                                        show_progress::Bool=model.show_progress)
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
@@ -310,7 +319,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 θs_is_unique=θs_is_unique,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
-                                existing_profiles=existing_profiles)
+                                existing_profiles=existing_profiles,
+                                show_progress=show_progress)
     return nothing
 end
 
@@ -323,7 +333,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         use_existing_profiles::Bool=false,
                                         num_points_in_interval::Int=0,
                                         additional_width::Float64=0.0,
-                                        existing_profiles::Symbol=:ignore)
+                                        existing_profiles::Symbol=:ignore,
+                                        show_progress::Bool=model.show_progress)
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
     profile_m_random_parameters > 0 || throw(DomainError("profile_m_random_parameters must be a strictly positive integer"))
@@ -336,6 +347,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 θs_is_unique=true,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
-                                existing_profiles=existing_profiles)
+                                existing_profiles=existing_profiles,
+                                show_progress=show_progress)
     return nothing
 end
