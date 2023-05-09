@@ -106,8 +106,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
                                 t::Vector,
                                 proportion_to_keep::Float64;
                                 confidence_levels::Vector{<:Float64}=Float64[],
-                                profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
-                                use_distributed::Bool=false)
+                                profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[])
 
     check_prediction_function_exists(model) || return nothing
 
@@ -118,21 +117,12 @@ function generate_predictions_univariate!(model::LikelihoodModel,
         return nothing
     end
 
-    if !use_distributed
-        for i in 1:nrow(sub_df)
-            predict_struct = generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)
-
-            model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-        end
-
-    else
-        predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-            generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)
-        end
-        
-        for (i, predict_struct) in enumerate(predictions)
-            model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-        end
+    predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+        generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)
+    end
+    
+    for (i, predict_struct) in enumerate(predictions)
+        model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
     end
 
     sub_df[:, :not_evaluated_predictions] .= false
@@ -145,8 +135,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
                                             proportion_to_keep::Float64;
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
-                                            methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
-                                            use_distributed::Bool=false)
+                                            methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[])
 
     check_prediction_function_exists(model) || return nothing
     
@@ -157,23 +146,13 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
         return nothing
     end
 
-    if !use_distributed
-        for i in 1:nrow(sub_df)
-            predict_struct = generate_prediction_bivariate(model, sub_df, i,
-                                                            t, proportion_to_keep)
-
-            model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-        end
-
-    else
-        predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-            generate_prediction_bivariate(model, sub_df, i,
-                                            t, proportion_to_keep)
-        end
-        
-        for (i, predict_struct) in enumerate(predictions)
-            model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-        end
+    predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+        generate_prediction_bivariate(model, sub_df, i,
+                                        t, proportion_to_keep)
+    end
+    
+    for (i, predict_struct) in enumerate(predictions)
+        model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
     end
 
     sub_df[:, :not_evaluated_predictions] .= false
@@ -185,8 +164,7 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
                                         t::Vector,
                                         proportion_to_keep::Float64;
                                         confidence_levels::Vector{<:Float64}=Float64[],
-                                        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
-                                        use_distributed::Bool=false)
+                                        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[])
 
     check_prediction_function_exists(model) || return nothing
     
@@ -197,25 +175,14 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
         return nothing
     end
 
-    if !use_distributed
-        for i in 1:nrow(sub_df)
-            parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-            predict_struct = generate_prediction(model.core.predictfunction, model.core.data, t, 
-                                                    model.core.ymle, parameter_points, proportion_to_keep)
-
-            model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-        end
-
-    else
-        predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-            parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-            generate_prediction(model.core.predictfunction, model.core.data, t, 
-                                                model.core.ymle, parameter_points, proportion_to_keep)
-        end
-        
-        for (i, predict_struct) in enumerate(predictions)
-            model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-        end
+    predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+        parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
+        generate_prediction(model.core.predictfunction, model.core.data, t, 
+                                            model.core.ymle, parameter_points, proportion_to_keep)
+    end
+    
+    for (i, predict_struct) in enumerate(predictions)
+        model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
     end
 
     sub_df[:, :not_evaluated_predictions] .= false

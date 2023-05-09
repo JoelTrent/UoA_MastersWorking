@@ -314,7 +314,6 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
                                         ub::Vector=[],
                                         θs_is_unique::Bool=false,
                                         use_threads::Bool=true,
-                                        use_distributed::Bool=false,
                                         existing_profiles::Symbol=:overwrite)
 
     if num_points_to_sample isa Int
@@ -370,63 +369,32 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
         add_dim_samples_rows!(model, num_rows_required)
     end
 
-    if !use_distributed
-        for (i, θs) in enumerate(θindices)
+    profiles_to_add = @distributed (vcat) for θs in θindices
+        (θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
+                                            confidence_level, sample_type,
+                                            lb[θs], ub[θs], use_threads))
+    end
 
-            sample_struct = dimensional_likelihood_sample(model, θs, num_points_to_sample,
-                                                            confidence_level, sample_type,
-                                                            lb[θs], ub[θs], use_threads)
-            
-            num_points_kept = length(sample_struct.ll)
-            
-            if num_points_kept == 0
-                @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
-                continue
-            end
-
-            if θs_to_overwrite[i]
-                row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
-            else
-                model.num_dim_samples += 1
-                row_ind = model.num_dim_samples * 1
-                model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
-            end
-
-            model.dim_samples_dict[row_ind] = sample_struct
-            
-            set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
-                                    num_points_kept)
+    for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
+        
+        num_points_kept = length(sample_struct.ll)
+        if num_points_kept == 0
+            @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
+            continue
         end
 
-    else
-        profiles_to_add = @distributed (vcat) for θs in θindices
-            (θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
-                                                confidence_level, sample_type,
-                                                lb[θs], ub[θs], use_threads))
+        if θs_to_overwrite[i]
+            row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
+        else
+            model.num_dim_samples += 1
+            row_ind = model.num_dim_samples * 1
+            model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
         end
 
-        for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
-
-            num_points_kept = length(sample_struct.ll)
-            
-            if num_points_kept == 0
-                @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
-                continue
-            end
-
-            if θs_to_overwrite[i]
-                row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
-            else
-                model.num_dim_samples += 1
-                row_ind = model.num_dim_samples * 1
-                model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
-            end
-
-            model.dim_samples_dict[row_ind] = sample_struct
-            
-            set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
-                                    num_points_kept)
-        end
+        model.dim_samples_dict[row_ind] = sample_struct
+        
+        set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
+                                num_points_kept)
     end
 
     return nothing
@@ -441,7 +409,6 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     ub::Vector=[],
     θs_is_unique::Bool=false,
     use_threads::Bool=true,
-    use_distributed::Bool=false,
     existing_profiles::Symbol=:overwrite)
 
     θindices = convertθnames_toindices(model, θnames)
@@ -449,7 +416,7 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     dimensional_likelihood_sample!(model, θindices, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub, θs_is_unique=θs_is_unique,
-                                    use_threads=use_threads, use_distributed=use_distributed,
+                                    use_threads=use_threads,
                                     existing_profiles=existing_profiles)
     return nothing
 end
@@ -488,7 +455,6 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     lb::Vector=[],
     ub::Vector=[],
     use_threads::Bool=true,
-    use_distributed::Bool=false,
     existing_profiles::Symbol=:overwrite)
 
     θcombinations = collect(combinations(1:model.core.num_pars, sample_dimension))
@@ -496,7 +462,7 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     dimensional_likelihood_sample!(model, θcombinations, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub, θs_is_unique=true,
-                                    use_threads=use_threads, use_distributed=use_distributed,
+                                    use_threads=use_threads,
                                     existing_profiles=existing_profiles)
     return nothing
 end
