@@ -222,8 +222,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
     additional_width = num_points_in_interval > 0 ? additional_width : 0.0
 
-    println(PROGRESS__METER__DT)
-
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
     end
@@ -269,13 +267,13 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     p = Progress(length(θs_to_profile); desc="Computing univariate profiles: ",
                     dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     profiles_to_add = @distributed (vcat) for θi in θs_to_profile
-        out = (θi, univariate_confidenceinterval_master(univariate_optimiser, model,
+        out = [(θi, univariate_confidenceinterval_master(univariate_optimiser, model,
                                                     consistent, θi, 
                                                     confidence_level, profile_type,
                                                     atol, mle_targetll, ll_shift,
                                                     use_existing_profiles,
                                                     num_points_in_interval,
-                                                    additional_width))
+                                                    additional_width))]
         next!(p)
         out
     end

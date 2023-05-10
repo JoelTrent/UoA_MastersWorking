@@ -235,10 +235,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     p = Progress(length(θcombinations); desc="Computing bivariate profiles: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     profiles_to_add = @distributed (vcat) for (ind1, ind2) in θcombinations
-        out = ((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
+        out = [((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
                                                         confidence_level, consistent, 
                                                         ind1, ind2, profile_type,
-                                                        method, atol, save_internal_points))
+                                                        method, atol, save_internal_points))]
         next!(p)
         out
     end

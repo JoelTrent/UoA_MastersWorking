@@ -122,7 +122,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
     p = Progress(nrow(sub_df); desc="Generating univariate profile predictions: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-        out = generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)
+        out = [generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)]
         next!(p)
         out
     end
@@ -157,8 +157,8 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
     p = Progress(nrow(sub_df); desc="Generating bivariate profile predictions: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-        out = generate_prediction_bivariate(model, sub_df, i,
-                                        t, proportion_to_keep)
+        out = [generate_prediction_bivariate(model, sub_df, i,
+                                        t, proportion_to_keep)]
         next!(p)
         out
     end
@@ -193,8 +193,8 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
     predictions = @distributed (vcat) for i in 1:nrow(sub_df)
         parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-        out = generate_prediction(model.core.predictfunction, model.core.data, t, 
-                                            model.core.ymle, parameter_points, proportion_to_keep)
+        out = [generate_prediction(model.core.predictfunction, model.core.data, t, 
+                                            model.core.ymle, parameter_points, proportion_to_keep)]
         next!(p)
         out
     end
