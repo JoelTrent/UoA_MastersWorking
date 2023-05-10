@@ -60,8 +60,11 @@ function generate_prediction(predictfunction::Function,
     end
 
     keep_i = sample(1:num_points, num_to_keep, replace=false, ordered=true)
-    predict_struct = PredictionStruct(predictions[:, keep_i], extrema)
-
+    if ndims(data_ymle) == 2
+        predict_struct = PredictionStruct(predictions[:, keep_i,:], extrema)
+    else
+        predict_struct = PredictionStruct(predictions[:, keep_i], extrema)
+    end
     return predict_struct
 end
 
