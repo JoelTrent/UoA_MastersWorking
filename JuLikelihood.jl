@@ -14,7 +14,7 @@ using Distributed
 using FLoops
 
 using ProgressMeter
-global const PROGRESS__METER__DT = 0.2
+global const PROGRESS__METER__DT = 1.0
 
 include("NLopt_optimiser.jl")
 include("model_structs.jl")

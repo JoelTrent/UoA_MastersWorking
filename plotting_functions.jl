@@ -80,32 +80,42 @@ function addMLE!(plt, parMLEs; kwargs...)
 end
 
 # Predictions
-function plotprediction!(plt, t, predictions, extrema, linealpha; extremacolor=:red, kwargs...)
+function plotprediction!(plt, t, predictions, extrema, linealpha, layout; extremacolor=:red, kwargs...)
+    if layout > 1
+        for i in 1:(layout-1)
+            plot!(plt[i], t, predictions[:,:,i], color=:grey, linealpha=linealpha; label=hcat("Predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
+            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["SCBs (≈)" ""], legend=false)
+        end
+        plot!(plt[layout], t, predictions[:,:,layout], color=:grey, linealpha=linealpha; label=hcat("Predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
+        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["SCBs (≈)" ""])
+        return plt
+    end    
     plot!(plt, t, predictions, color=:grey, linealpha=linealpha; label=hcat("Predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
-    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["Simultaneous confidence band (≈)" ""])
+    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["SCBs (≈)" ""])
     return plt
 end
 
-function add_yMLE!(plt, t, yMLE; kwargs...)
+function add_yMLE!(plt, t, yMLE, layout; kwargs...)
+    if layout > 1
+        for i in 1:layout
+            plot!(plt[i], t, yMLE[:,i], lw=3, color=:turquoise1, label="MLE"; kwargs...)
+        end
+        return plt
+    end
     plot!(plt, t, yMLE, lw=3, color=:turquoise1, label="MLE"; kwargs...)
     return plt
 end
 
 
-function add_extrema!(plt, t, extrema; extremacolor=:gold, label=["Sampled band (≈)" ""])
+function add_extrema!(plt, t, extrema, layout; extremacolor=:gold, label=["Sampled SCBs (≈)" ""])
+    if layout > 1
+        for i in 1:layout
+            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=label)
+        end
+        return plt
+    end
     plot!(plt, t, extrema, lw=3, color=extremacolor, label=label)
     return plt
-end
-
-function plotprediction_comparison(tt, predictionsFull, confFull, confEstimate, ymle; kwargs...)
-    predictionPlot = plot(tt, predictionsFull, color=:grey; kwargs...)
-    predictionPlot = plot!(tt, confFull[1], lw=3, color=:gold)
-    predictionPlot = plot!(tt, confFull[2], lw=3, color=:gold)
-    predictionPlot = plot!(tt, confEstimate[1], lw=3, linestyle=:dash, color=:red)
-    predictionPlot = plot!(tt, confEstimate[2], lw=3, linestyle=:dash, color=:red)
-    predictionPlot = plot!(tt, ymle, lw=3, color=:turquoise1)
-
-    return predictionPlot
 end
 
 function plot_univariate_profiles(model::LikelihoodModel,
@@ -126,7 +136,7 @@ function plot_univariate_profiles(model::LikelihoodModel,
     
     θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
 
-    sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_levels, profile_types)
+    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels, profile_types)
 
     if nrow(sub_df) < 1
         return nothing
@@ -182,7 +192,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
 
     θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
 
-    sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_levels, profile_types)
+    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels, profile_types)
 
     if nrow(sub_df) < 1
         return nothing
@@ -265,7 +275,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
 
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
 
-    sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
+    sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
                                 profile_types, methods)
     
     if nrow(sub_df) < 1
@@ -321,8 +331,8 @@ function plot_bivariate_profiles(model::LikelihoodModel,
             title=string("Profile type: ", row.profile_type, 
                         "\nMethod: ", row.method,
                         "\nConfidence level: ", row.conf_level),
-                        titlefontsize=10, kwargs...)
-                    end
+            titlefontsize=10, kwargs...)
+    end
 
     return profile_plots
 end
@@ -341,7 +351,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
 
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
 
-    sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
+    sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
                                 profile_types, methods)
 
     if nrow(sub_df) < 1
@@ -507,9 +517,9 @@ end
 function plot_predictions_individual(model::LikelihoodModel,
                             # prediction_type::Symbol=:union,
                             t::Vector,
-                            profile_dimension::Int=1,
+                            profile_dimension::Int=1;
                             xlabel::String="t",
-                            ylabel::String="f(t)";
+                            ylabel::Union{Nothing,String,Vector{String}}=nothing,
                             for_dim_samples::Bool=false,
                             # ylim_scaler::Real=0.2;
                             include_MLE::Bool=true,
@@ -533,7 +543,7 @@ function plot_predictions_individual(model::LikelihoodModel,
         θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
                             convertθnames_toindices(model, θindices_to_plot) :
                             θindices_to_plot
-        sub_df = desired_df_subset(model.dim_samples_df, confidence_levels, sample_types;
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types;
                                     sample_dimension=profile_dimension, for_prediction_plots=true)
         predictions_dict = model.dim_predictions_dict
     else
@@ -541,12 +551,12 @@ function plot_predictions_individual(model::LikelihoodModel,
 
         if profile_dimension == 1
             θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-            sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_levels,
+            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels,
                                         profile_types; for_prediction_plots=true)
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
-            sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_levels,
+            sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
                                         profile_types, methods; for_prediction_plots=true)
             predictions_dict = model.biv_predictions_dict
         end
@@ -557,7 +567,8 @@ function plot_predictions_individual(model::LikelihoodModel,
     end
     
     # color_palette = palette(palette_to_use)
-    prediction_plots = [plot() for _ in 1:nrow(sub_df)]
+    layout = ndims(model.core.ymle) > 1 ? size(model.core.ymle,2) : 1
+    prediction_plots = [plot(layout=layout) for _ in 1:nrow(sub_df)]
 
     for i in 1:nrow(sub_df)
 
@@ -569,11 +580,13 @@ function plot_predictions_individual(model::LikelihoodModel,
             title=string("Sample type: ", row.sample_type, 
                         "\nConfidence level: ", row.conf_level,
                         "\nTarget parameter(s): ", model.core.θnames[row.θindices])
+            title_vspan = 0.15
         else
             if profile_dimension == 1
                 title=string("Profile type: ", row.profile_type, 
                             "\nConfidence level: ", row.conf_level,
                             "\nTarget parameter: ", model.core.θnames[row.θindex])
+                title_vspan = 0.15
             else
                 θindices = zeros(Int,2); 
                 for j in 1:2; θindices[j] = row.θindices[j] end
@@ -582,6 +595,7 @@ function plot_predictions_individual(model::LikelihoodModel,
                             "\nMethod: ", row.method, 
                             "\nConfidence level: ", row.conf_level,
                             "\nTarget parameters: ", model.core.θnames[θindices])
+                title_vspan = 0.2
             end
         end
         
@@ -590,18 +604,32 @@ function plot_predictions_individual(model::LikelihoodModel,
 
         # ylims=[y_extrema[1]-range*ylim_scaler, y_extrema[2]+range*ylim_scaler]
 
-        plotprediction!(prediction_plots[i], t, predictions, extrema, linealpha; 
-                        xlabel=xlabel, ylabel=ylabel,
+        plotprediction!(prediction_plots[i], t, predictions, extrema, linealpha, layout; 
+                        xlabel=xlabel,
                         # ylims=ylims,
-                        title=title,
-                        titlefontsize=10, 
+                        plot_title=title,
+                        plot_titlefontsize=10, 
+                        plot_titlevspan=title_vspan,
                         kwargs...)
+
+        if layout > 1
+            if isnothing(ylabel); ylabel =[string("f", j, "(", xlabel, ")") for j in 1:layout] end
+
+            if ylabel isa String
+                ylabel!(prediction_plots[i], ylabel)
+            else
+                for j in 1:layout; ylabel!(prediction_plots[i][j], ylabel[j]) end
+            end
+        else
+            if isnothing(ylabel); ylabel = string("f(", xlabel, ")") end
+            ylabel!(prediction_plots[i], ylabel)
+        end
     end
 
     if include_MLE 
         ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
         for plt in prediction_plots
-            add_yMLE!(plt, t, ymle)
+            add_yMLE!(plt, t, ymle, layout)
         end
     end
 
@@ -614,9 +642,9 @@ include_lower_confidence_levels is only used for 2d bivariate boundaries
 function plot_predictions_union(model::LikelihoodModel,
                             t::Vector,
                             profile_dimension::Int=1,
-                            xlabel::String="t",
-                            ylabel::String="f(t)",
                             confidence_level::Float64=0.95;
+                            xlabel::String="t",
+                            ylabel::Union{Nothing,String,Vector{String}}=nothing,
                             for_dim_samples::Bool=false,
                             include_MLE::Bool=true,
                             θs_to_plot::Vector = Int[],
@@ -641,7 +669,7 @@ function plot_predictions_union(model::LikelihoodModel,
         θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
                             convertθnames_toindices(model, θindices_to_plot) :
                             θindices_to_plot
-        sub_df = desired_df_subset(model.dim_samples_df, confidence_level, sample_types; 
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, sample_types; 
                                     sample_dimension=profile_dimension, for_prediction_plots=true)
         predictions_dict = model.dim_predictions_dict
         title = string("Parameter dimension: " , profile_dimension,
@@ -651,11 +679,11 @@ function plot_predictions_union(model::LikelihoodModel,
         profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
         if profile_dimension == 1
             θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-            sub_df = desired_df_subset(model.uni_profiles_df, θs_to_plot, confidence_level, profile_types; for_prediction_plots=true)
+            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_level, profile_types; for_prediction_plots=true)
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
-            sub_df = desired_df_subset(model.biv_profiles_df, θcombinations_to_plot, confidence_level, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
+            sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_level, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
             predictions_dict = model.biv_predictions_dict
         end
 
@@ -668,7 +696,8 @@ function plot_predictions_union(model::LikelihoodModel,
         return nothing
     end
 
-    prediction_plot = plot()
+    layout = ndims(model.core.ymle) > 1 ? size(model.core.ymle,2) : 1
+    prediction_plot = plot(layout=layout)
 
     predictions_union = []
     extrema_union = []
@@ -683,20 +712,39 @@ function plot_predictions_union(model::LikelihoodModel,
             extrema_union = extrema .* 1.0
         else
             predictions_union = reduce(hcat, (predictions_union, predictions))
-            extrema_union[:,1] .= min.(extrema_union[:,1], extrema[:,1])
-            extrema_union[:,2] .= max.(extrema_union[:,2], extrema[:,2])
+            if layout > 1
+                extrema_union[:,1,:] .= min.(extrema_union[:,1,:], extrema[:,1,:])
+                extrema_union[:,2,:] .= max.(extrema_union[:,2,:], extrema[:,2,:])
+            else
+                extrema_union[:,1] .= min.(extrema_union[:,1], extrema[:,1])
+                extrema_union[:,2] .= max.(extrema_union[:,2], extrema[:,2])
+            end
         end
     end
 
-    plotprediction!(prediction_plot, t, predictions_union, extrema_union, linealpha; 
-                    xlabel=xlabel, ylabel=ylabel,
+    plotprediction!(prediction_plot, t, predictions_union, extrema_union, linealpha, layout; 
+                    xlabel=xlabel,
                     # ylims=ylims,
-                    title=title,
-                    titlefontsize=10, 
+                    plot_title=title,
+                    plot_titlefontsize=10,
+                    plot_titlevspan=0.15,
                     kwargs...)
 
+    if layout > 1
+        if isnothing(ylabel); ylabel =[string("f", j, "(", xlabel, ")") for j in 1:layout] end
+
+        if ylabel isa String
+            ylabel!(prediction_plots[i], ylabel)
+        else
+            for j in 1:layout; ylabel!(prediction_plot[j], ylabel[j]) end
+        end
+    else
+        if isnothing(ylabel); ylabel = string("f(", xlabel, ")") end
+        ylabel!(prediction_plot, ylabel)
+    end
+
     if !ismissing(compare_to_full_sample_type)
-        row_subset = desired_df_subset(model.dim_samples_df, confidence_level,
+        row_subset = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level,
                                         [compare_to_full_sample_type], for_prediction_plots=true,
                                         include_higher_confidence_levels=true)
         
@@ -708,45 +756,51 @@ function plot_predictions_union(model::LikelihoodModel,
             end
 
             if subset_to_use.conf_level == confidence_level
-                sampled_extrema = extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema
+                sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema
             else
                 ll_level = get_target_loglikelihood(model, confidence_level, 
                                                     EllipseApproxAnalytical(), model.core.num_pars)
 
                 valid_point = model.dim_samples_dict[subset_to_use.row_ind].ll .> ll_level 
-                sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema[valid_point]
+
+                if layout>1
+                    sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema[valid_point,:,:]
+                else
+                    sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema[valid_point,:]
+                end
             end
 
-            add_extrema!(prediction_plot, t, sampled_extrema)
+            add_extrema!(prediction_plot, t, sampled_extrema, layout)
         end
     end
 
     if include_MLE 
         ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
-        add_yMLE!(prediction_plot, t, ymle)
+        add_yMLE!(prediction_plot, t, ymle, layout)
     end
 
     return prediction_plot
 end
 
 function plot_predictions_sampled(model::LikelihoodModel,
-                                    t::Vector,
+                                    t::Vector;
                                     xlabel::String="t",
-                                    ylabel::String="f(t)";
+                                    ylabel::Union{Nothing,String,Vector{String}}=nothing,
                                     include_MLE::Bool=true,
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                                     linealpha=0.4,
                                     kwargs...)
 
-    sub_df = desired_df_subset(model.dim_samples_df, confidence_levels, sample_types,
+    sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types,
                                 for_prediction_plots=true)
 
     if nrow(sub_df) < 1
         return nothing
     end
 
-    prediction_plots = [plot() for _ in 1:nrow(sub_df)]
+    layout = ndims(model.core.ymle) > 1 ? size(model.core.ymle,2) : 1
+    prediction_plots = [plot(layout=layout) for _ in 1:nrow(sub_df)]
 
     for i in 1:nrow(sub_df)
         row = @view(sub_df[i,:])
@@ -755,19 +809,33 @@ function plot_predictions_sampled(model::LikelihoodModel,
         title = string("Sample type: ", row.sample_type,
                         "\nConfidence level: ", row.conf_level)
 
-        plotprediction!(prediction_plots[i], t, predictions, extrema, linealpha; 
+        plotprediction!(prediction_plots[i], t, predictions, extrema, linealpha, layout; 
                         extremacolor=:gold,
-                        xlabel=xlabel, ylabel=ylabel,
+                        xlabel=xlabel,
+                        plot_title=title,
+                        plot_titlefontsize=10,
+                        plot_titlevspan=0.1,
                         # ylims=ylims,
-                        title=title,
-                        titlefontsize=10, 
                         kwargs...)
+
+        if layout > 1
+            if isnothing(ylabel); ylabel =[string("f", j, "(", xlabel, ")") for j in 1:layout] end
+
+            if ylabel isa String
+                ylabel!(prediction_plots[i], ylabel)
+            else
+                for j in 1:layout; ylabel!(prediction_plots[i][j], ylabel[j]) end
+            end
+        else
+            if isnothing(ylabel); ylabel = string("f(", xlabel, ")") end
+            ylabel!(prediction_plots[i], ylabel)
+        end
     end
 
     if include_MLE 
         ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
         for plt in prediction_plots
-            add_yMLE!(plt, t, ymle)
+            add_yMLE!(plt, t, ymle, layout)
         end
     end
 

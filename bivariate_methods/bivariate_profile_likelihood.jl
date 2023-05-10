@@ -232,17 +232,20 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         θcombinations_to_merge = θcombinations_to_merge[pos_new_points]
     end
 
-    p = Progress(length(θcombinations); desc="Computing bivariate profiles: ",
-                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    profiles_to_add = @distributed (vcat) for (ind1, ind2) in θcombinations
-        out = [((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
+    len_θcombinations = length(θcombinations)
+    len_θcombinations > 0 || return nothing
+
+    # p = Progress(length(θcombinations); desc="Computing bivariate profiles: ",
+    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    profiles_to_add = @showprogress PROGRESS__METER__DT "Computing bivariate profiles: " @distributed (vcat) for (ind1, ind2) in θcombinations
+        [((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
                                                         confidence_level, consistent, 
                                                         ind1, ind2, profile_type,
                                                         method, atol, save_internal_points))]
-        next!(p)
-        out
+        # next!(p)
+        # out
     end
-    finish!(p)
+    # finish!(p)
 
     for (i, (inds, boundary_struct)) in enumerate(profiles_to_add)
         if θcombinations_to_reuse[i]

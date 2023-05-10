@@ -1,18 +1,10 @@
 # Section 1: set up packages and parameter values
-# using Plots
-using DifferentialEquations
-# using .Threads 
-using Interpolations, Random, Distributions
 using BenchmarkTools
-# gr()
-
-fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
-include(joinpath("..", "..", "JuLikelihood.jl"))
 
 using Distributed
 # addprocs(3)
 @everywhere using DifferentialEquations, Random, Distributions
-@everywhere include(joinpath("..", "..", "JuLikelihood.jl"))
+@everywhere include(joinpath("..", "JuLikelihood.jl"))
 
 # Workflow functions ##########################################################################
 
@@ -50,7 +42,6 @@ end
     return e
 end
 
-
 # Section 8: Function to be optimised for MLE
 # note this function pulls in the globals, data and σ and would break if used outside of 
 # this file's scope
@@ -81,7 +72,7 @@ C0min, C0max = (0.0, 50.)
 lb = [λmin, Kmin, C0min]
 ub = [λmax, Kmax, C0max]
 par_magnitudes = [0.01, 20, 10]
-par_magnitudes = [1, 1, 1]
+# par_magnitudes = [1, 1, 1]
 
 ##############################################################################################
 # Section 9: Find MLE by numerical optimisation, visually compare data and MLE solution
@@ -116,26 +107,26 @@ getMLE_ellipse_approximation!(model)
 
 # @time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical(), existing_profiles=:overwrite, num_points_in_interval=0)
 # @time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
-# @time univariate_confidenceintervals!(model, profile_type=LogLikelihood())
+@time univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
 # get_points_in_interval!(model, 50, additional_width=0.3)
 
 # @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
-@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 3, 0.0), save_internal_points=true, existing_profiles=:overwrite)
+bivariate_confidenceprofiles!(model, 600, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(0.1, 3, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 
-dimensional_likelihood_sample!(model, [[1], [1,3], [2,3]],  1000)
+dimensional_likelihood_sample!(model, 2, 100000)
 # dimensional_likelihood_sample!(model, 2, 2,  10000)
 
 
 prediction_locations = collect(LinRange(t[1], t[end], 50))
-# generate_predictions_univariate!(model, prediction_locations, 1.0, use_distributed=false, profile_types=[EllipseApprox(), LogLikelihood()])
-generate_predictions_bivariate!(model, prediction_locations, 0.1, use_distributed=false, profile_types=[LogLikelihood()])
-generate_predictions_dim_samples!(model, prediction_locations, 0.1, use_distributed=false)
+generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])
+generate_predictions_bivariate!(model, prediction_locations, 0.1, profile_types=[LogLikelihood()])
+generate_predictions_dim_samples!(model, prediction_locations, 0.1)
 
 using Plots
 gr()
@@ -169,15 +160,18 @@ for i in eachindex(plots); display(plots[i]) end
 # plots = plot_predictions_individual(model, prediction_locations)
 # for i in eachindex(plots); display(plots[i]) end
 
+plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120];for_dim_samples=true)
+for i in eachindex(plots); display(plots[i]) end
+
 plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120], profile_types=[LogLikelihood()])
 for i in eachindex(plots); display(plots[i]) end
 
 # union_plot = plot_predictions_union(model, prediction_locations, 1, ylims=[0,120])
 
-union_plot = plot_predictions_union(model, prediction_locations, 2, ylims=[0,120], include_lower_confidence_levels=true, compare_to_full_sample_type=LatinHypercubeSamples())
+union_plot = plot_predictions_union(model, prediction_locations, 2, ylims=[0,120], for_dim_samples=true, include_lower_confidence_levels=true, compare_to_full_sample_type=LatinHypercubeSamples())
 display(union_plot)
 
-plots = plot_predictions_sampled(model, prediction_locations,confidence_level=0.7)
+plots = plot_predictions_sampled(model, prediction_locations, confidence_level=0.7)
 for i in eachindex(plots); display(plots[i]) end
 println()
 

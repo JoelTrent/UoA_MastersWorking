@@ -264,20 +264,20 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
     not_evaluated_internal_points = num_points_in_interval > 0 ? false : true
 
-    p = Progress(length(θs_to_profile); desc="Computing univariate profiles: ",
-                    dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    profiles_to_add = @distributed (vcat) for θi in θs_to_profile
-        out = [(θi, univariate_confidenceinterval_master(univariate_optimiser, model,
+    # p = Progress(length(θs_to_profile); desc="Computing univariate profiles: ",
+                    # dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    profiles_to_add = @showprogress dt=PROGRESS__METER__DT "Computing univariate profiles: "  @distributed (vcat) for θi in θs_to_profile
+        [(θi, univariate_confidenceinterval_master(univariate_optimiser, model,
                                                     consistent, θi, 
                                                     confidence_level, profile_type,
                                                     atol, mle_targetll, ll_shift,
                                                     use_existing_profiles,
                                                     num_points_in_interval,
                                                     additional_width))]
-        next!(p)
-        out
+        # next!(p)
+        # out
     end
-    finish!(p)
+    # finish!(p)
 
     for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
         if θs_to_overwrite[i]

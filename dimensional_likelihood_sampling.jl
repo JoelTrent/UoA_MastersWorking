@@ -370,16 +370,16 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
         add_dim_samples_rows!(model, num_rows_required)
     end
 
-    p = Progress(length(θindices); desc="Computing dimensional profile samples: ",
-                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    profiles_to_add = @distributed (vcat) for θs in θindices
-        out = [(θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
+    # p = Progress(length(θindices); desc="Computing dimensional profile samples: ",
+    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    profiles_to_add = @showprogress PROGRESS__METER__DT "Computing dimensional profile samples: " @distributed (vcat) for θs in θindices
+        [(θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
                                             confidence_level, sample_type,
                                             lb[θs], ub[θs], use_threads))]
-        next!(p)
-        out
+        # next!(p)
+        # out
     end
-    finish!(p)
+    # finish!(p)
 
     for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
         

@@ -115,21 +115,21 @@ function generate_predictions_univariate!(model::LikelihoodModel,
     check_prediction_function_exists(model) || return nothing
 
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-    sub_df = desired_df_subset(model.uni_profiles_df, Int[], confidence_levels, profile_types, for_prediction_generation=true)
+    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], confidence_levels, profile_types, for_prediction_generation=true)
 
     if nrow(sub_df) < 1
         return nothing
     end
 
     
-    p = Progress(nrow(sub_df); desc="Generating univariate profile predictions: ",
-                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-        out = [generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)]
-        next!(p)
-        out
+    # p = Progress(nrow(sub_df); desc="Generating univariate profile predictions: ",
+    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    predictions = @showprogress PROGRESS__METER__DT "Generating univariate profile predictions: " @distributed (vcat) for i in 1:nrow(sub_df)
+        [generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)]
+        # next!(p)
+        # out
     end
-    finish!(p)
+    # finish!(p)
     
     for (i, predict_struct) in enumerate(predictions)
         model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
@@ -151,21 +151,21 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
     check_prediction_function_exists(model) || return nothing
     
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-    sub_df = desired_df_subset(model.biv_profiles_df, Tuple{Int, Int}[], confidence_levels, profile_types, methods, for_prediction_generation=true)
+    sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, Tuple{Int, Int}[], confidence_levels, profile_types, methods, for_prediction_generation=true)
 
     if nrow(sub_df) < 1
         return nothing
     end
 
-    p = Progress(nrow(sub_df); desc="Generating bivariate profile predictions: ",
-                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-        out = [generate_prediction_bivariate(model, sub_df, i,
+    # p = Progress(nrow(sub_df); desc="Generating bivariate profile predictions: ",
+    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    predictions = @showprogress PROGRESS__METER__DT "Generating bivariate profile predictions: " @distributed (vcat) for i in 1:nrow(sub_df)
+        [generate_prediction_bivariate(model, sub_df, i,
                                         t, proportion_to_keep)]
-        next!(p)
-        out
+        # next!(p)
+        # out
     end
-    finish!(p)
+    # finish!(p)
     
     for (i, predict_struct) in enumerate(predictions)
         model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
@@ -186,22 +186,22 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
     check_prediction_function_exists(model) || return nothing
     
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-    sub_df = desired_df_subset(model.dim_samples_df, confidence_levels, sample_types, for_prediction_generation=true)
+    sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types, for_prediction_generation=true)
 
     if nrow(sub_df) < 1
         return nothing
     end
 
-    p = Progress(nrow(sub_df); desc="Generating dimensional profile sample predictions: ",
-                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+    # p = Progress(nrow(sub_df); desc="Generating dimensional profile sample predictions: ",
+    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    predictions = @showprogress PROGRESS__METER__DT "Generating dimensional profile sample predictions: "  @distributed (vcat) for i in 1:nrow(sub_df)
         parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-        out = [generate_prediction(model.core.predictfunction, model.core.data, t, 
+        [generate_prediction(model.core.predictfunction, model.core.data, t, 
                                             model.core.ymle, parameter_points, proportion_to_keep)]
-        next!(p)
-        out
+        # next!(p)
+        # out
     end
-    finish!(p)
+    # finish!(p)
     
     for (i, predict_struct) in enumerate(predictions)
         model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
