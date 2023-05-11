@@ -36,7 +36,7 @@ function get_bivariate_opt_func(profile_type::AbstractProfileType, method::Abstr
             return bivariateΨ!
         end
 
-    elseif method isa BracketingMethodRadial || method isa BracketingMethodSimultaneous
+    elseif method isa BracketingMethodRadialRandom || method isa BracketingMethodRadialMLE || method isa BracketingMethodSimultaneous
         if profile_type isa EllipseApproxAnalytical
             return bivariateΨ_ellipse_analytical_vectorsearch
         elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox
@@ -118,12 +118,19 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2, atol,
                                 save_internal_points)
-    elseif method isa BracketingMethodRadial
+    elseif method isa BracketingMethodRadialRandom
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2, atol,
                                 save_internal_points,
                                 num_radial_directions=method.num_radial_directions)
+    elseif method isa BracketingMethodRadialMLE
+        boundary, internal = bivariate_confidenceprofile_vectorsearch(
+                                bivariate_optimiser, model, 
+                                num_points, consistent, ind1, ind2, atol,
+                                save_internal_points,
+                                ellipse_confidence_level=method.ellipse_confidence_level,
+                                ellipse_start_point_shift=method.ellipse_start_point_shift)
     elseif method isa ContinuationMethod
         if profile_type isa EllipseApproxAnalytical
             bivariate_optimiser_gradient = bivariateΨ_ellipse_analytical_gradient

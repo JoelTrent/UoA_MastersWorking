@@ -292,7 +292,7 @@ function initial_continuation_solution!(p::NamedTuple,
     elseif max_ll < target_confidence_ll # case 2
         corrected_ll = ll_correction(model, profile_type, target_confidence_ll)
 
-        @warn string("ellipse starting point for continuation contains the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
+        @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," contains the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
         a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
                                                     num_points, ind1, ind2, atol,
                                                     corrected_ll, ellipse_points)
@@ -302,7 +302,7 @@ function initial_continuation_solution!(p::NamedTuple,
     # else # case 3
     corrected_ll = ll_correction(model, profile_type, max_ll)
 
-    @warn string("ellipse starting point for continuation intersects the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
+    @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," intersects the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
     a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, num_points, 
                                                 ind1, ind2, atol, corrected_ll, ellipse_points)
     return a, b, max_ll, point_is_on_bounds

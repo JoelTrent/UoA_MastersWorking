@@ -1,4 +1,4 @@
-# functions for the BracketingMethodRadial and BracketingMethodSimultaneous methods
+# functions for the BracketingMethodRadialRandom, BracketingMethodRadialMLE and BracketingMethodSimultaneous methods
 
 function generatepoint(model::LikelihoodModel, ind1::Int, ind2::Int)
     return rand(Uniform(model.core.θlb[ind1], model.core.θub[ind1])), rand(Uniform(model.core.θlb[ind2], model.core.θub[ind2]))
@@ -88,7 +88,7 @@ end
 """
 Distorts uniformly spaced angles on a circle to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
 """
-function findNpointpairs_radial!(p::NamedTuple, 
+function findNpointpairs_radialrandom!(p::NamedTuple, 
                                     bivariate_optimiser::Function, 
                                     model::LikelihoodModel, 
                                     num_points::Int, 
@@ -168,6 +168,49 @@ function findNpointpairs_radial!(p::NamedTuple,
     return internal, internal_all, external
 end
 
+function findNpointpairs_radialMLE!(p::NamedTuple, 
+                                    bivariate_optimiser::Function, 
+                                    model::LikelihoodModel, 
+                                    num_points::Int, 
+                                    ind1::Int, 
+                                    ind2::Int,
+                                    ellipse_confidence_level::Float64,
+                                    ellipse_start_point_shift::Float64)
+
+    mle_point = model.core.θmle[[ind1, ind2]]
+    internal = zeros(2,num_points) .= mle_point
+    external = zeros(2,num_points)
+    bound_is_boundary = falses(num_points)
+    # warn if bound prevents reaching boundary
+    bound_warning=true
+
+    check_ellipse_approx_exists!(model)
+    ellipse_points = generate_N_clustered_points(num_points, model.ellipse_MLE_approx.Γmle,
+                                                        model.core.θmle, ind1, ind2,
+                                                        confidence_level=ellipse_confidence_level, 
+                                                        start_point_shift=ellipse_start_point_shift, 
+                                                        sqrt_distortion=0.01)
+
+    bound_ind=0
+    for i in 1:num_points
+        dir_vector = ellipse_points[:,i] .- mle_point
+        external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
+
+        p.pointa .= external[:,i]
+        if !(bivariate_optimiser(0.0, p) < 0)
+            bound_is_boundary[i] == true
+
+            if bound_warning
+                @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
+                bound_warning=false
+            end
+        end
+    end
+
+    internal_all = zeros(model.core.num_pars, 0)
+    return internal, internal_all, external, bound_is_boundary
+end
+
 function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function, 
                                                     model::LikelihoodModel, 
                                                     num_points::Int, 
@@ -176,7 +219,9 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     ind2::Int,
                                                     atol::Float64,
                                                     save_internal_points::Bool;
-                                                    num_radial_directions::Int=0)
+                                                    num_radial_directions::Int=0,
+                                                    ellipse_confidence_level::Float64=-1.0,
+                                                    ellipse_start_point_shift::Float64=0.0)
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
 
@@ -194,25 +239,38 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                     θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
     end
 
-    if num_radial_directions == 0
-        internal, internal_all, external = findNpointpairs_simultaneous!(p, bivariate_optimiser, model, num_points, ind1, ind2,
-                                                                                        save_internal_points, biv_opt_is_ellipse_analytical)
+    if ellipse_confidence_level !== -1.0
+        internal, internal_all, external, bound_is_boundary = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
+                                                                                            ellipse_confidence_level, ellipse_start_point_shift)
+
     else
-        internal, internal_all, external = findNpointpairs_radial!(p, bivariate_optimiser, model, num_points, 
+        if num_radial_directions == 0
+            internal, internal_all, external = findNpointpairs_simultaneous!(p, bivariate_optimiser, model, num_points, ind1, ind2,
+                                                                                save_internal_points, biv_opt_is_ellipse_analytical)
+        else
+            internal, internal_all, external = findNpointpairs_radialrandom!(p, bivariate_optimiser, model, num_points, 
                                                                                 num_radial_directions, ind1, ind2,
                                                                                 save_internal_points, biv_opt_is_ellipse_analytical)
+        end
+        bound_is_boundary = falses(num_points)
     end
 
     for i in 1:num_points
-        p.pointa .= internal[:,i]
-        v_bar = external[:,i] - internal[:,i]
+        if bound_is_boundary[i]
+            p.pointa .= external[:,i]
+            bivariate_optimiser(0, p)
+            boundary[[ind1, ind2], i] .= external[:,i]
+        else
+            p.pointa .= internal[:,i]
+            v_bar = external[:,i] - internal[:,i]
 
-        v_bar_norm = norm(v_bar, 2)
-        p.uhat .= v_bar / v_bar_norm
+            v_bar_norm = norm(v_bar, 2)
+            p.uhat .= v_bar / v_bar_norm
 
-        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=atol, Roots.Brent(); p=p)
-        
-        boundary[[ind1, ind2], i] .= p.pointa + Ψ_y1*p.uhat
+            Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=atol, Roots.Brent(); p=p)
+            
+            boundary[[ind1, ind2], i] .= p.pointa + Ψ_y1*p.uhat
+        end
         if !biv_opt_is_ellipse_analytical
             variablemapping2d!(@view(boundary[:, i]), p.λ_opt, θranges, λranges)
         end

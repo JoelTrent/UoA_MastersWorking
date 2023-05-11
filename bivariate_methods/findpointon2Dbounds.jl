@@ -4,7 +4,8 @@ function findpointonbounds(model::LikelihoodModel,
                             cosDir::Float64, 
                             sinDir::Float64, 
                             ind1::Int, 
-                            ind2::Int)
+                            ind2::Int,
+                            returnboundindex::Bool=false)
 
     # by construction 0 < direction_πradians < 2, i.e. direction_radians ∈ [1e-10, 2 - 1e-10]
     quadrant = convert(Int, div(direction_πradians, 0.5, RoundUp))
@@ -29,9 +30,16 @@ function findpointonbounds(model::LikelihoodModel,
     if r_pos == 1
         boundpoint[1] = xlim
         boundpoint[2] = internalpoint[2] + r * sinDir
+        bound_ind = ind1 * 1
     else
         boundpoint[1] = internalpoint[1] + r * cosDir
         boundpoint[2] = ylim
+        bound_ind = ind2 * 1
+    end
+
+    if returnboundindex
+        upper_or_lower = (r_pos==1 && quadrant ∈ [1,4]) || quadrant ∈ [1,2]  ? "upper" : "lower"
+        return boundpoint, bound_ind, upper_or_lower
     end
 
     return boundpoint
@@ -41,7 +49,8 @@ function findpointonbounds(model::LikelihoodModel,
                             internalpoint::Vector{<:Float64}, 
                             direction2D::Vector{Float64}, 
                             ind1::Int, 
-                            ind2::Int)
+                            ind2::Int,
+                            returnboundindex::Bool=false)
 
     direction_πradians = atan(direction2D[2], direction2D[1]) / pi
 
@@ -50,17 +59,18 @@ function findpointonbounds(model::LikelihoodModel,
         direction_πradians = 2 + direction_πradians
     end
 
-    return findpointonbounds(model, internalpoint, direction_πradians, direction2D[1], direction2D[2], ind1, ind2)
+    return findpointonbounds(model, internalpoint, direction_πradians, direction2D[1], direction2D[2], ind1, ind2, returnboundindex)
 end
 
 function findpointonbounds(model::LikelihoodModel, 
                             internalpoint::Vector{<:Float64}, 
                             direction_πradians::Float64, 
                             ind1::Int, 
-                            ind2::Int)
+                            ind2::Int,
+                            returnboundindex::Bool=false)
 
     cosDir = cospi(direction_πradians)
     sinDir = sinpi(direction_πradians)
 
-    return findpointonbounds(model, internalpoint, direction_πradians, cosDir, sinDir, ind1, ind2)
+    return findpointonbounds(model, internalpoint, direction_πradians, cosDir, sinDir, ind1, ind2, returnboundindex)
 end

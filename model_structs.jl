@@ -140,9 +140,19 @@ struct LogLikelihood <: AbstractProfileType end
 struct EllipseApprox <: AbstractEllipseProfileType end
 struct EllipseApproxAnalytical <: AbstractEllipseProfileType end
 
-struct BracketingMethodRadial <: AbstractBivariateMethod
+struct BracketingMethodRadialRandom <: AbstractBivariateMethod
     num_radial_directions::Int
-    BracketingMethodRadial(x) = x < 1 ? error("num_radial_directions must be greater than zero") : new(x)
+    BracketingMethodRadialRandom(x) = x < 1 ? throw(DomainError("num_radial_directions must be greater than zero")) : new(x)
+end
+
+struct BracketingMethodRadialMLE <: AbstractBivariateMethod
+    ellipse_confidence_level::Float64
+    ellipse_start_point_shift::Float64
+    function BracketingMethodRadialMLE(x,y=rand()) 
+        (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the open interval (0.0,1.0)"))
+        (0.0 <= y && y <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
+        return new(x,y)
+    end
 end
 
 struct BracketingMethodSimultaneous <: AbstractBivariateMethod end
@@ -153,21 +163,22 @@ struct BracketingMethodFix1Axis <: AbstractBivariateMethod end
 `num_level_sets` the number of level sets used to get to the highest confidence level set specified in target_confidence_levels. `num_level_sets` ≥ length(target_confidence_levels)
 """
 struct ContinuationMethod <: AbstractBivariateMethod 
+    num_level_sets::Int
     ellipse_confidence_level::Float64
     # target_confidence_level::Float64
     # target_confidence_levels::Union{Float64, Vector{<:Float64}}
-    num_level_sets::Int
     ellipse_start_point_shift::Float64
     level_set_spacing::Symbol
 
     function ContinuationMethod(x,y,z=rand(),spacing=:loglikelihood)
-        (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the open interval (0.0,1.0)"))
+        x > 0 || throw(DomainError("num_level_sets must be greater than zero"))
+
+        (0.0 < y && y < 1.0) || throw(DomainError("ellipse_confidence_level must be in the open interval (0.0,1.0)"))
 
         # (0.0 < y && y < 1.0) || throw(DomainError("target_confidence_level must be in the interval (0.0,1.0)"))
 
         # if y isa Float64
 
-        y > 0 || throw(DomainError("num_level_sets must be greater than zero"))
 
         (0.0 <= z && z <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
         spacing ∈ [:confidence, :loglikelihood] || throw(ArgumentError("level_set_spacing must be either :confidence or :loglikelihood"))

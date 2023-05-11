@@ -76,8 +76,8 @@ par_magnitudes = [1,1,1,1]
 
 model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
-full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
-full_likelihood_sample!(model, 1000000, sample_type=UniformRandomSamples())
+full_likelihood_sample!(model, 100000, sample_type=LatinHypercubeSamples())
+full_likelihood_sample!(model, 100000, sample_type=UniformRandomSamples())
 univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
@@ -85,7 +85,7 @@ get_points_in_interval!(model, 100, additional_width=0.3)
 
 bivariate_confidenceprofiles!(model, 200, method=AnalyticalEllipseMethod())
 bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0), save_internal_points=true)
-bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), save_internal_points=true, existing_profiles=:overwrite)
+bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), save_internal_points=true, existing_profiles=:overwrite)
 
 prediction_locations = collect(LinRange(t[1], t[end], 50));
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
