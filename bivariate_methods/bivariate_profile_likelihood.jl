@@ -88,7 +88,6 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         ind2::Int,
                                         profile_type::AbstractProfileType,
                                         method::AbstractBivariateMethod,
-                                        atol::Real,
                                         save_internal_points::Bool)
     internal=zeros(model.core.num_pars,0)
     if method isa AnalyticalEllipseMethod
@@ -110,24 +109,24 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
     elseif method isa BracketingMethodFix1Axis
         boundary, internal = bivariate_confidenceprofile_fix1axis(
                                 bivariate_optimiser, model, 
-                                num_points, consistent, ind1, ind2, atol,
+                                num_points, consistent, ind1, ind2,
                                 save_internal_points)
         
     elseif method isa BracketingMethodSimultaneous
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
-                                num_points, consistent, ind1, ind2, atol,
+                                num_points, consistent, ind1, ind2,
                                 save_internal_points)
     elseif method isa BracketingMethodRadialRandom
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
-                                num_points, consistent, ind1, ind2, atol,
+                                num_points, consistent, ind1, ind2,
                                 save_internal_points,
                                 num_radial_directions=method.num_radial_directions)
     elseif method isa BracketingMethodRadialMLE
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
-                                num_points, consistent, ind1, ind2, atol,
+                                num_points, consistent, ind1, ind2,
                                 save_internal_points,
                                 ellipse_confidence_level=method.ellipse_confidence_level,
                                 ellipse_start_point_shift=method.ellipse_start_point_shift)
@@ -140,7 +139,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
 
         boundary, internal = bivariate_confidenceprofile_continuation(
                                 bivariate_optimiser, bivariate_optimiser_gradient,
-                                model, num_points, consistent, ind1, ind2, atol, profile_type,
+                                model, num_points, consistent, ind1, ind2, profile_type,
                                 method.ellipse_confidence_level,
                                 confidence_level, 
                                 method.ellipse_start_point_shift,
@@ -153,8 +152,6 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
 end
 
 """
-atol is the absolute tolerance that decides if f(x) ≈ 0.0. I.e. if the loglikelihood function is approximately at the boundary of interest.
-
 num_points is the number of points to compute for a given method, that are on the boundary and/or inside the boundary.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
@@ -163,13 +160,11 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
-                                        atol::Real=1e-8, 
                                         θcombinations_is_unique::Bool=false,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         show_progress::Bool=model.show_progress)
                                     
-    atol > 0 || throw(DomainError("atol must be a strictly positive integer"))
     existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
 
     if profile_type isa AbstractEllipseProfileType
@@ -248,7 +243,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         [((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
                                                         confidence_level, consistent, 
                                                         ind1, ind2, profile_type,
-                                                        method, atol, save_internal_points))]
+                                                        method, save_internal_points))]
         # next!(p)
         # out
     end
@@ -282,7 +277,6 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
-                                        atol::Real=1e-8,
                                         θcombinations_is_unique::Bool=false,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
@@ -292,7 +286,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, atol=atol, θcombinations_is_unique=θcombinations_is_unique,
+            method=method, θcombinations_is_unique=θcombinations_is_unique,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             show_progress=show_progress)
@@ -306,7 +300,6 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
-                                        atol::Real=1e-8,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         show_progress::Bool=model.show_progress)
@@ -319,7 +312,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, atol=atol, θcombinations_is_unique=true, 
+            method=method, θcombinations_is_unique=true, 
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             show_progress=show_progress)
@@ -332,7 +325,6 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
-                                        atol::Real=1e-8,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         show_progress::Bool=model.show_progress)
@@ -341,7 +333,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, atol=atol, θcombinations_is_unique=true,
+            method=method, θcombinations_is_unique=true,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             show_progress=show_progress)

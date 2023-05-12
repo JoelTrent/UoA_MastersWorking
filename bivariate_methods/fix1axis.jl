@@ -83,7 +83,6 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                                                 consistent::NamedTuple, 
                                                 ind1::Int, 
                                                 ind2::Int,
-                                                atol::Float64,
                                                 save_internal_points::Bool)
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
@@ -114,7 +113,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
 
             p.Ψ_x[1] = x_vec[k]
 
-            Ψ_y1 = find_zero(bivariate_optimiser, (y_vec[1,k], y_vec[2,k]), atol=atol, Roots.Brent(); p=p)
+            Ψ_y1 = find_zero(bivariate_optimiser, (y_vec[1,k], y_vec[2,k]), Roots.Brent(); p=p)
 
             boundary[i, count] = x_vec[k]
             boundary[j, count] = Ψ_y1

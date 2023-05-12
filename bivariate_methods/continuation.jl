@@ -38,7 +38,6 @@ function continuation_line_search!(p::NamedTuple,
                                     num_points::Int,
                                     ind1::Int, 
                                     ind2::Int,
-                                    atol::Float64,
                                     target_confidence_ll::Float64, 
                                     start_level_set_2D::Matrix{Float64}, 
                                     start_level_set_all::Matrix{Float64}=zeros(0,0),
@@ -104,12 +103,12 @@ function continuation_line_search!(p::NamedTuple,
             # if bound point and pointa bracket a boundary, search for the boundary
             # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
             if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
-                Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), atol=atol, Roots.Order8(); p=p)
+                Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), Roots.Order8(); p=p)
 
                 # in event Roots.Order8 fails to converge, switch to bracketing method
                 if isnan(Ψ_y1) || Ψ_y1 < 0.0
                     # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
-                    Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=atol, Roots.Brent(); p=p)
+                    Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
                 end
 
                 boundarypoint .= p.pointa + Ψ_y1*p.uhat
@@ -165,7 +164,6 @@ function continuation_inwards_radial_search!(p::NamedTuple,
                                                 num_points::Int, 
                                                 ind1::Int, 
                                                 ind2::Int, 
-                                                atol::Float64,
                                                 target_confidence_ll::Float64, 
                                                 start_level_set_2D::Matrix{Float64})
 
@@ -187,7 +185,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         p.uhat .= v_bar / v_bar_norm
 
         # there's a chance that the start_level_set_2D[:, i] is exactly on the boundary of interest, so define the bracket as slightly larger than that point
-        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm*1.2), atol=atol, Roots.Brent(); p=p)
+        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm*1.2), Roots.Brent(); p=p)
         
         boundarypoint .= p.pointa + Ψ_y1*p.uhat
         target_level_set_2D[:, i] .= boundarypoint
@@ -231,7 +229,6 @@ function initial_continuation_solution!(p::NamedTuple,
                                         num_points::Int, 
                                         ind1::Int, 
                                         ind2::Int,
-                                        atol::Float64,
                                         profile_type::AbstractProfileType,
                                         ellipse_confidence_level::Float64,
                                         target_confidence_ll::Float64,
@@ -285,7 +282,7 @@ function initial_continuation_solution!(p::NamedTuple,
         corrected_ll = ll_correction(model, profile_type, min_ll)
         a, b, _ = continuation_line_search!(p, point_is_on_bounds, bivariate_optimiser, 
                                             bivariate_optimiser_gradient, model, 
-                                            num_points, ind1, ind2, atol,
+                                            num_points, ind1, ind2,
                                             corrected_ll, ellipse_points)
         return a, b, min_ll, point_is_on_bounds
 
@@ -294,7 +291,7 @@ function initial_continuation_solution!(p::NamedTuple,
 
         @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," contains the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
         a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
-                                                    num_points, ind1, ind2, atol,
+                                                    num_points, ind1, ind2,
                                                     corrected_ll, ellipse_points)
         return a, b, target_confidence_ll, point_is_on_bounds
     end
@@ -304,7 +301,7 @@ function initial_continuation_solution!(p::NamedTuple,
 
     @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," intersects the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
     a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, num_points, 
-                                                ind1, ind2, atol, corrected_ll, ellipse_points)
+                                                ind1, ind2, corrected_ll, ellipse_points)
     return a, b, max_ll, point_is_on_bounds
 end
 
@@ -319,7 +316,6 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     consistent::NamedTuple, 
                                                     ind1::Int, 
                                                     ind2::Int,
-                                                    atol::Float64,
                                                     profile_type::AbstractProfileType,
                                                     ellipse_confidence_level::Float64, 
                                                     target_confidence_level::Float64,
@@ -357,7 +353,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     # find initial solution
     current_level_set_2D, current_level_set_all, initial_ll, point_is_on_bounds =
         initial_continuation_solution!(p, bivariate_optimiser, bivariate_optimiser_gradient, 
-                                        model, num_points, ind1, ind2, atol, profile_type,
+                                        model, num_points, ind1, ind2, profile_type,
                                         ellipse_confidence_level, initial_target_ll, 
                                         ellipse_start_point_shift)
 
@@ -391,7 +387,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         current_level_set_2D, current_level_set_all, tangent_between_level_sets = 
             continuation_line_search!(p, point_is_on_bounds, 
                                         bivariate_optimiser, bivariate_optimiser_gradient,
-                                        model, num_points, ind1, ind2, atol, level_set_ll,
+                                        model, num_points, ind1, ind2, level_set_ll,
                                         current_level_set_2D, current_level_set_all, tangent_between_level_sets)
         # display(scatter(current_level_set_2D[1,:], current_level_set_2D[2,:], legend=false, markeropacity=0.4))
     end

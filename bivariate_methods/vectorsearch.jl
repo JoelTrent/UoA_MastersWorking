@@ -120,7 +120,7 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
         while true
             x, y = generatepoint(model, ind1, ind2)
             p.pointa .= [x,y]
-            if bivariate_optimiser(0.0, p) >= 0 
+            if bivariate_optimiser(0.0, p) > 0 
                 if save_λs; λ_opt .= p.λ_opt end
                 break
             end
@@ -217,7 +217,6 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     consistent::NamedTuple, 
                                                     ind1::Int, 
                                                     ind2::Int,
-                                                    atol::Float64,
                                                     save_internal_points::Bool;
                                                     num_radial_directions::Int=0,
                                                     ellipse_confidence_level::Float64=-1.0,
@@ -267,7 +266,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar / v_bar_norm
 
-            Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), atol=atol, Roots.Brent(); p=p)
+            Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
             
             boundary[[ind1, ind2], i] .= p.pointa + Ψ_y1*p.uhat
         end
