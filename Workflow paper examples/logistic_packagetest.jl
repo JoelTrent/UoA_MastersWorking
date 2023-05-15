@@ -162,7 +162,7 @@ for i in eachindex(plots); display(plots[i]) end
 # plots = plot_predictions_individual(model, prediction_locations)
 # for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120];for_dim_samples=true)
+plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120]; for_dim_samples=true)
 for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120], profile_types=[LogLikelihood()])
@@ -172,10 +172,6 @@ for i in eachindex(plots); display(plots[i]) end
 
 union_plot = plot_predictions_union(model, prediction_locations, 2, ylims=[0,120], for_dim_samples=true, include_lower_confidence_levels=true, compare_to_full_sample_type=LatinHypercubeSamples())
 display(union_plot)
-
-plots = plot_predictions_sampled(model, prediction_locations, confidence_level=0.7)
-for i in eachindex(plots); display(plots[i]) end
-println()
 
 
 

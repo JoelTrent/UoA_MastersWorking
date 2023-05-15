@@ -1,33 +1,29 @@
 using Distributed
 # addprocs(6)
-@everywhere using DifferentialEquations, Random, Distributions
+@everywhere using DifferentialEquations, Random, Distributions, StaticArrays
 @everywhere include(joinpath("..", "JuLikelihood.jl"))
 
 # Workflow functions ##########################################################################
 # Section 2: Define ODE model
-@everywhere function DE!(dC,C,p,t)
-    α,β=p
-    dC[1]=α*C[1]-C[1]*C[2];
-    dC[2]=β*C[1]*C[2]-C[2];
+@everywhere function lotka_static(C,p,t)
+    dC_1=p[1]*C[1] - C[1]*C[2];
+    dC_2=p[2]*C[1]*C[2] - C[2];
+    SA[dC_1, dC_2]
 end
 
 # Section 3: Solve ODE model
 @everywhere function odesolver(t,α,β,C01,C02)
-    p=(α,β)
-    C0=[C01,C02]
+    p=SA[α,β]
+    C0=SA[C01,C02]
     tspan=(0.0,maximum(t))
-    prob=ODEProblem(DE!,C0,tspan,p)
-    sol=solve(prob,saveat=t,verbose=false);
-    cc1=sol[1,:]
-    cc2=sol[2,:]
-    tt=sol.t[:]
-    return cc1,cc2
+    prob=ODEProblem(lotka_static,C0,tspan,p)
+    sol=solve(prob, AutoTsit5(Rosenbrock23()), saveat=t);
+    return sol[1,:], sol[2,:]
 end
 
 # Section 4: Define function to solve ODE model 
 @everywhere function ODEmodel(t,a)
-    (x,y)=odesolver(t,a[1],a[2],a[3],a[4])
-    return x,y
+    return odesolver(t,a[1],a[2],a[3],a[4])
 end
 
 # Section 6: Define loglikelihood function
@@ -43,13 +39,13 @@ end
 
 # Data setup #################################################################################
 # true parameters
-α = 0.9; β=1.1; x0=0.8; y0=0.3; 
+α=0.9; β=1.1; x0=0.8; y0=0.3; 
 t=LinRange(0,10,21);
 tt=LinRange(0,10,2001)
 σ=0.2
 
 # true data
-(xtrue, ytrue) = ODEmodel(t,[α,β,x0,y0]);
+(xtrue, ytrue) = ODEmodel(t,SA[α,β,x0,y0]);
 
 Random.seed!(12348)
 # noisy data
@@ -84,8 +80,10 @@ univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 get_points_in_interval!(model, 100, additional_width=0.3)
 
 bivariate_confidenceprofiles!(model, 200, method=AnalyticalEllipseMethod())
-bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0), save_internal_points=true)
-bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), save_internal_points=true, existing_profiles=:overwrite)
+bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(), save_internal_points=true)
+bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.1,0.0), save_internal_points=true, existing_profiles=:overwrite)
+
+dimensional_likelihood_sample!(model, 3, 10000)
 
 prediction_locations = collect(LinRange(t[1], t[end], 50));
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
@@ -124,6 +122,12 @@ display(union_plot)
 scatter!(union_plot[1], data.t, data.xobs, label="", legend=false) 
 scatter!(union_plot[2], data.t, data.yobs, label="", legend=false) 
 
+
+union_plot = plot_predictions_union(model, prediction_locations,3, ylims=[0,2.5], for_dim_samples=true, compare_to_full_sample_type=LatinHypercubeSamples())
+display(union_plot)
+
+scatter!(union_plot[1], data.t, data.xobs, label="", legend=false) 
+scatter!(union_plot[2], data.t, data.yobs, label="", legend=false) 
 
 plots = plot_predictions_sampled(model, prediction_locations)
 for i in eachindex(plots); display(plots[i]) end

@@ -1,22 +1,23 @@
 using Distributed
 # addprocs(3)
-@everywhere using DifferentialEquations, Random, Distributions
+@everywhere using DifferentialEquations, Random, Distributions, StaticArrays
 @everywhere include(joinpath("..", "JuLikelihood.jl"))
 
 
 # Workflow functions ##########################################################################
 # Section 2: Define ODE model
-@everywhere function DE!(dC,C,p,t)
+@everywhere function DE!(C,p,t)
     λ,K=p
-    dC[1]=λ*C[1]*(1.0-C[1]/K);
+    dC_1=λ*C[1]*(1.0-C[1]/K);
+    SA[dC_1]
 end
 
 # Section 3: Solve ODE model
 @everywhere function odesolver(t,λ,K,C0)
-    p=(λ,K)
+    p=SA[λ,K]
     tspan=(0.0,maximum(t));
-    prob=ODEProblem(DE!,[C0],tspan,p);
-    sol=solve(prob,saveat=t, verbose=false);
+    prob=ODEProblem(DE!,SA[C0],tspan,p);
+    sol=solve(prob,saveat=t,verbose=false);
     return sol[1,:];
 end
 
@@ -81,8 +82,8 @@ univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 get_points_in_interval!(model, 100, additional_width=0.3)
 
 bivariate_confidenceprofiles!(model, 200, method=AnalyticalEllipseMethod())
-bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 1, 0.0), save_internal_points=true)
-bivariate_confidenceprofiles!(model, 400, profile_type=LogLikelihood(), method=BracketingMethodRadial(3), save_internal_points=true)
+bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(0.1, 0.0), save_internal_points=true)
+bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), save_internal_points=true)
 
 prediction_locations = collect(LinRange(t[1], t[end], 50));
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
