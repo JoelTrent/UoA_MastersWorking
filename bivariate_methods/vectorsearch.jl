@@ -198,11 +198,11 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
 
         p.pointa .= external[:,i]
         if !(bivariate_optimiser(0.0, p) < 0)
-            bound_is_boundary[i] == true
+            bound_is_boundary[i] = true
 
             if bound_warning
                 @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
-                bound_warning=false
+                bound_warning = false
             end
         end
     end
