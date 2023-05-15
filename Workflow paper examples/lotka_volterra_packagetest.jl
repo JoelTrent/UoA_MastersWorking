@@ -123,15 +123,11 @@ scatter!(union_plot[1], data.t, data.xobs, label="", legend=false)
 scatter!(union_plot[2], data.t, data.yobs, label="", legend=false) 
 
 
-union_plot = plot_predictions_union(model, prediction_locations,3, ylims=[0,2.5], for_dim_samples=true, compare_to_full_sample_type=LatinHypercubeSamples())
+union_plot = plot_predictions_union(model, prediction_locations, 3, ylims=[0,2.5], for_dim_samples=true, compare_to_full_sample_type=LatinHypercubeSamples())
 display(union_plot)
 
 scatter!(union_plot[1], data.t, data.xobs, label="", legend=false) 
 scatter!(union_plot[2], data.t, data.yobs, label="", legend=false) 
-
-plots = plot_predictions_sampled(model, prediction_locations)
-for i in eachindex(plots); display(plots[i]) end
-println()
 
 # REMOVE WORKER PROCESSORS WHEN FINISHED #######################################
 rmprocs(workers())

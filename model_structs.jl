@@ -26,11 +26,11 @@ struct CoreLikelihoodModel <: AbstractCoreLikelihoodModel
     data::Union{Tuple, NamedTuple}
     θnames::Vector{<:Symbol}
     θname_to_index::Dict{Symbol, Int}
-    θlb::Vector{<:Float64}
-    θub::Vector{<:Float64}
-    θmagnitudes::Vector{Real}
+    θlb::AbstractVector{<:Real}
+    θub::AbstractVector{<:Real}
+    θmagnitudes::AbstractVector{<:Real}
     θmle::Vector{<:Float64}
-    ymle::Array{Float64}
+    ymle::Array{<:Real}
     maximisedmle::Float64
     num_pars::Int
 end
@@ -86,8 +86,8 @@ struct PointsAndLogLikelihood
 end
 
 struct PredictionStruct <: AbstractPredictionStruct
-    predictions::Array{Float64}
-    extrema::Array{Float64}
+    predictions::Array{Real}
+    extrema::Array{Real}
 end
 
 struct SampledConfidenceStruct <: AbstractSampledConfidenceStruct

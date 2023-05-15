@@ -28,7 +28,7 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
                                 θi::Int,
                                 profile_type::AbstractProfileType,
                                 current_interval_points::PointsAndLogLikelihood,
-                                additional_width::Float64=0.0)
+                                additional_width::Real=0.0)
 
     num_points_in_interval > 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
     additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
@@ -113,7 +113,7 @@ end
 function get_points_in_interval_single_row(model::LikelihoodModel,
                                 uni_row_number::Int,
                                 num_points_in_interval::Int,
-                                additional_width::Float64)
+                                additional_width::Real)
 
     θi = model.uni_profiles_df.θindex[uni_row_number]
     profile_type = model.uni_profiles_df.profile_type[uni_row_number]
@@ -128,7 +128,7 @@ function get_points_in_interval!(model::LikelihoodModel,
                                     num_points_in_interval::Int;
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
-                                    additional_width::Float64=0.0
+                                    additional_width::Real=0.0
                                     )
 
     0 < num_points_in_interval || throw(DomainError("num_points_in_interval must be a strictly positive integer"))

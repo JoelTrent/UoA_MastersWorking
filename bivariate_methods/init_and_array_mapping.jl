@@ -16,7 +16,7 @@ end
 
 # we know index1 < index2 by construction. If index1 and index2 are user provided, enforce this relationship 
 function boundsmapping2d!(newbounds::Vector{<:Float64}, 
-                            bounds::Union{Vector{<:Float64}, SubArray{Float64}}, 
+                            bounds::Union{AbstractVector{<:Real}, SubArray{Real}}, 
                             ind1::Int,
                             ind2::Int)
     newbounds[1:(ind1-1)]    .= @view(bounds[1:(ind1-1)])

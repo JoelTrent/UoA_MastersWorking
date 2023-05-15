@@ -10,7 +10,7 @@ programme may be required instead (however, integer requirement on variables can
 
 ONLY VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES
 """
-function transformbounds(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64},
+function transformbounds(transformfun::Function, lb::AbstractVector{<:Real}, ub::AbstractVector{<:Real},
     independentParameterIndexes::Vector{<:Int}=Int[], dependentParameterIndexes::Vector{<:Int}=Int[])
 
     newlb, newub = zeros(length(lb)), zeros(length(lb))
@@ -19,8 +19,6 @@ function transformbounds(transformfun::Function, lb::Vector{<:Float64}, ub::Vect
         potentialbounds = zeros(2, length(lb))
         potentialbounds[1,:] .= transformfun(lb)
         potentialbounds[2,:] .= transformfun(ub)
-
-        println(minimum(potentialbounds, dims=1))
 
         newlb[:] .= minimum(potentialbounds, dims=1)[:]
         newub[:] .= maximum(potentialbounds, dims=1)[:]

@@ -1,4 +1,4 @@
-using DifferentialEquations, Random, Distributions
+using DifferentialEquations, Random, Distributions, StaticArrays
 include(joinpath("..", "JuLikelihood.jl"))
 
 # ---------------------------------------------
@@ -14,14 +14,14 @@ varnames = Dict("x"=>"n", "y"=>"p")
 # initial guess for optimisation
 xy_initial =  [50, 0.3]# x (i.e. n) and y (i.e. p), starting guesses
 # parameter bounds
-xy_lower_bounds = [0.0001,0.0001]
+xy_lower_bounds = [0.001,0.001]
 xy_upper_bounds = [500,0.999]
 # true parameter
 xy_true = [100,0.2] #x,y, truth. N, p
 N_samples = 10 # measurements of model
 # generate data
 #data = rand(distrib_xy(xy_true),N_samples)
-data = (;samples=[21.9,22.3,12.8,16.4,16.4,20.3,16.2,20.0,19.7,24.4])
+data = (;samples=SA[21.9,22.3,12.8,16.4,16.4,20.3,16.2,20.0,19.7,24.4])
 
 par_magnitudes = [100, 1]
 
@@ -31,7 +31,9 @@ function lnlike_xy(xy, data)
     return sum(logpdf.(distrib_xy(xy), data.samples))
 end
 
-model = initialiseLikelihoodModel(lnlike_xy, data, θnames, xy_initial, xy_lower_bounds, xy_upper_bounds, par_magnitudes);
+function predictFunc_xy(xy, data, t=["n*p"]); [prod(xy)] end
+
+model = initialiseLikelihoodModel(lnlike_xy, predictFunc_xy, data, θnames, xy_initial, xy_lower_bounds, xy_upper_bounds, par_magnitudes);
 
 full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
@@ -80,11 +82,13 @@ function forward_parameter_transformLog(θ)
     return log.(θ)
 end
 
+function predictFunc_XY(xy, data, t=["n*p"]); [prod(exp.(xy))] end
+
 newlb, newub = transformbounds(forward_parameter_transformLog, xy_lower_bounds, xy_upper_bounds, collect(1:2), Int[])
 θnames = [:ln_n, :ln_p]
 par_magnitudes = [2, 1]
 
-model = initialiseLikelihoodModel(lnlike_XY, data, θnames, log.(xy_initial), newlb, newub, par_magnitudes);
+model = initialiseLikelihoodModel(lnlike_XY, predictFunc_XY, data, θnames, log.(xy_initial), newlb, newub, par_magnitudes);
 
 full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
@@ -112,3 +116,26 @@ plot!(hull50, label="0.50")
 
 hull05 = concave_hull([eachcol(points[:, ll .> llstar05])...], 30)
 plot!(hull05, label="0.05")
+
+
+
+
+
+
+
+
+
+
+prediction_locations = ["n*p"]
+generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
+generate_predictions_bivariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
+generate_predictions_dim_samples!(model, prediction_locations, 0.1)
+
+union_plot = plot_predictions_union(model, prediction_locations, 2)
+display(union_plot)
+
+histogram(transpose(model.biv_predictions_dict[1].predictions), legend=false, normalize=:true, bins=30)
+vline!(model.biv_predictions_dict[1].extrema, label="")
+
+using StatsPlots
+density(transpose(model.biv_predictions_dict[1].predictions), legend=false, bandwidth=0.1, trim=true)

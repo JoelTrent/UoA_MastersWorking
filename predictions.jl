@@ -24,9 +24,9 @@ We are going to store values for each variable in the 3rd dimension (row=dim1, c
 function generate_prediction(predictfunction::Function,
                                 data,
                                 t::Vector,
-                                data_ymle::Array{Float64},
+                                data_ymle::AbstractArray{<:Real},
                                 parameter_points::Matrix{Float64},
-                                proportion_to_keep::Float64)
+                                proportion_to_keep::Real)
 
     num_points = size(parameter_points, 2)
     
@@ -69,10 +69,10 @@ function generate_prediction(predictfunction::Function,
 end
 
 function generate_prediction_univariate(model::LikelihoodModel,
-                                sub_df,
-                                row_i,
-                                t::Vector,
-                                proportion_to_keep::Float64)
+                                        sub_df,
+                                        row_i::Int,
+                                        t::Vector,
+                                        proportion_to_keep::Real)
 
     boundary_col_indices = model.uni_profiles_dict[sub_df[row_i, :row_ind]].interval_points.boundary_col_indices
     boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
@@ -84,10 +84,10 @@ function generate_prediction_univariate(model::LikelihoodModel,
 end
 
 function generate_prediction_bivariate(model::LikelihoodModel,
-                                sub_df,
-                                row_i,
-                                t::Vector,
-                                proportion_to_keep::Float64)
+                                        sub_df,
+                                        row_i::Int,
+                                        t::Vector,
+                                        proportion_to_keep::Real)
 
     conf_struct = model.biv_profiles_dict[sub_df[row_i, :row_ind]]
 
@@ -106,11 +106,11 @@ end
 """
 """
 function generate_predictions_univariate!(model::LikelihoodModel,
-                                t::Vector,
-                                proportion_to_keep::Float64;
-                                confidence_levels::Vector{<:Float64}=Float64[],
-                                profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
-                                show_progress=model.show_progress)
+                                            t::Vector,
+                                            proportion_to_keep::Real;
+                                            confidence_levels::Vector{<:Float64}=Float64[],
+                                            profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
+                                            show_progress=model.show_progress)
 
     check_prediction_function_exists(model) || return nothing
 
@@ -142,7 +142,7 @@ end
 
 function generate_predictions_bivariate!(model::LikelihoodModel,
                                             t::Vector,
-                                            proportion_to_keep::Float64;
+                                            proportion_to_keep::Real;
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
@@ -177,11 +177,11 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
 end
 
 function generate_predictions_dim_samples!(model::LikelihoodModel,
-                                        t::Vector,
-                                        proportion_to_keep::Float64;
-                                        confidence_levels::Vector{<:Float64}=Float64[],
-                                        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
-                                        show_progress=model.show_progress)
+                                            t::Vector,
+                                            proportion_to_keep::Real;
+                                            confidence_levels::Vector{<:Float64}=Float64[],
+                                            sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+                                            show_progress=model.show_progress)
 
     check_prediction_function_exists(model) || return nothing
     

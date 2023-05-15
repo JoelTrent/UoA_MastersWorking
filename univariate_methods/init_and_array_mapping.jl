@@ -13,7 +13,7 @@ function variablemapping1d!(θ::Union{Vector, SubArray},
     return θ
 end
 
-function boundsmapping1d!(newbounds::Vector{<:Float64}, bounds::Vector{<:Float64}, index::Int)
+function boundsmapping1d!(newbounds::Vector{<:Float64}, bounds::AbstractVector{<:Real}, index::Int)
     newbounds[1:(index-1)] .= @view(bounds[1:(index-1)])
     newbounds[index:end]   .= @view(bounds[(index+1):end])
     return nothing

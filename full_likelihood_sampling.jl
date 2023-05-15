@@ -85,8 +85,8 @@ function valid_points(model::LikelihoodModel,
 end
 
 function check_if_bounds_supplied(model::LikelihoodModel,
-                                    lb::Vector,
-                                    ub::Vector)
+                                    lb::AbstractVector{<:Real},
+                                    ub::AbstractVector{<:Real})
     if isempty(lb)
         lb = model.core.θlb
     else
@@ -104,8 +104,8 @@ end
 function uniform_grid(model::LikelihoodModel,
                         points_per_dimension::Union{Int, Vector{Int}},
                         confidence_level::Float64,
-                        lb::Vector=[],
-                        ub::Vector=[];
+                        lb::AbstractVector{<:Real}=Float64[],
+                        ub::AbstractVector{<:Real}=Float64[];
                         use_threads=true,
                         arguments_checked::Bool=false)
 
@@ -131,8 +131,8 @@ end
 function uniform_random(model::LikelihoodModel,
                         num_points::Int,
                         confidence_level::Float64,
-                        lb::Vector=[],
-                        ub::Vector=[];
+                        lb::AbstractVector{<:Real}=Float64[],
+                        ub::AbstractVector{<:Real}=Float64[];
                         use_threads::Bool=true,
                         arguments_checked::Bool=false)
 
@@ -159,8 +159,8 @@ end
 function LHS(model::LikelihoodModel,
             num_points::Int,
             confidence_level::Float64,
-            lb::Vector=[],
-            ub::Vector=[];
+            lb::AbstractVector{<:Real}=Float64[],
+            ub::AbstractVector{<:Real}=Float64[];
             use_threads::Bool=true,
             arguments_checked::Bool=false)
     
@@ -183,8 +183,8 @@ function full_likelihood_sample(model::LikelihoodModel,
                                     num_points::Union{Int, Vector{Int}},
                                     confidence_level::Float64,
                                     sample_type::AbstractSampleType,
-                                    lb::Vector,
-                                    ub::Vector,
+                                    lb::AbstractVector{<:Real},
+                                    ub::AbstractVector{<:Real},
                                     use_threads::Bool)
 
     if sample_type isa UniformGridSamples
@@ -204,8 +204,8 @@ function full_likelihood_sample!(model::LikelihoodModel,
                                     num_points_to_sample::Union{Int, Vector{Int}};
                                     confidence_level::Float64=0.95,
                                     sample_type::AbstractSampleType=LatinHypercubeSamples(),
-                                    lb::Vector=[],
-                                    ub::Vector=[],
+                                    lb::AbstractVector{<:Real}=Float64[],
+                                    ub::AbstractVector{<:Real}=Float64[],
                                     use_threads::Bool=true,
                                     existing_profiles::Symbol=:overwrite)
 

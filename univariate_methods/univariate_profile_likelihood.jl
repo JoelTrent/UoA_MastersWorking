@@ -50,7 +50,7 @@ function set_uni_profiles_row!(model::LikelihoodModel,
                                     confidence_level::Float64,
                                     profile_type::AbstractProfileType,
                                     num_points::Int,
-                                    additional_width::Float64)
+                                    additional_width::Real)
     model.uni_profiles_df[row_ind, 2:end] .= θi*1, 
                                             not_evaluated_internal_points,
                                             not_evaluated_predictions,
@@ -83,7 +83,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         mle_targetll::Float64,
                                         ll_shift::Float64,
                                         num_points_in_interval::Int,
-                                        additional_width::Float64; 
+                                        additional_width::Real; 
                                         bracket_l::Vector{<:Float64}=Float64[],
                                         bracket_r::Vector{<:Float64}=Float64[])
 
@@ -178,7 +178,7 @@ function univariate_confidenceinterval_master(univariate_optimiser::Function,
                                         ll_shift::Float64,
                                         use_existing_profiles::Bool,
                                         num_points_in_interval::Int,
-                                        additional_width::Float64)
+                                        additional_width::Real)
     if use_existing_profiles
         bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
                                                         profile_type)                
@@ -206,7 +206,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         use_existing_profiles::Bool=false,
                                         θs_is_unique::Bool=false,
                                         num_points_in_interval::Int=0,
-                                        additional_width::Float64=0.0,
+                                        additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
                                         show_progress::Bool=model.show_progress)
 
@@ -299,7 +299,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         use_existing_profiles::Bool=false,
                                         θs_is_unique::Bool=false,
                                         num_points_in_interval::Int=0,
-                                        additional_width::Float64=0.0,
+                                        additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
                                         show_progress::Bool=model.show_progress)
 
@@ -322,7 +322,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         use_existing_profiles::Bool=false,
                                         num_points_in_interval::Int=0,
-                                        additional_width::Float64=0.0,
+                                        additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
                                         show_progress::Bool=model.show_progress)
 

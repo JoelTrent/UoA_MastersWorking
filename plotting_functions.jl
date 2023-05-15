@@ -118,8 +118,8 @@ function add_extrema!(plt, t, extrema, layout; extremacolor=:gold, label=["Sampl
 end
 
 function plot_univariate_profiles(model::LikelihoodModel,
-                                    xlim_scaler=0.2,
-                                    ylim_scaler=0.2;
+                                    xlim_scaler::Real=0.2,
+                                    ylim_scaler::Real=0.2;
                                     θs_to_plot::Vector=Int[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
@@ -174,8 +174,8 @@ function plot_univariate_profiles(model::LikelihoodModel,
 end
 
 function plot_univariate_profiles_comparison(model::LikelihoodModel, 
-                                    xlim_scaler=0.2,
-                                    ylim_scaler=0.2;
+                                    xlim_scaler::Real=0.2,
+                                    ylim_scaler::Real=0.2;
                                     θs_to_plot::Vector=Int[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=[EllipseApprox(), LogLikelihood()], 
@@ -337,8 +337,8 @@ function plot_bivariate_profiles(model::LikelihoodModel,
 end
 
 function plot_bivariate_profiles_comparison(model::LikelihoodModel,
-                                    xlim_scaler=0.2,
-                                    ylim_scaler=0.2;
+                                    xlim_scaler::Real=0.2,
+                                    ylim_scaler::Real=0.2;
                                     θcombinations_to_plot::Vector=Tuple{Int,Int}[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
