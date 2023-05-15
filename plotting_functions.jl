@@ -106,7 +106,6 @@ function add_yMLE!(plt, t, yMLE, layout; kwargs...)
     return plt
 end
 
-
 function add_extrema!(plt, t, extrema, layout; extremacolor=:gold, label=["Sampled SCBs (≈)" ""])
     if layout > 1
         for i in 1:layout
@@ -603,13 +602,12 @@ function plot_predictions_individual(model::LikelihoodModel,
         # range = diff(y_extrema)[1]
 
         # ylims=[y_extrema[1]-range*ylim_scaler, y_extrema[2]+range*ylim_scaler]
+        title_args = layout==1 ? (title=title, titlefontsize=10, top_margin=(5,:mm)) : (plot_title=title, plot_titlefontsize=10, plot_titlevspan=0.2)
 
         plotprediction!(prediction_plots[i], t, predictions, extrema, linealpha, layout; 
                         xlabel=xlabel,
                         # ylims=ylims,
-                        plot_title=title,
-                        plot_titlefontsize=10, 
-                        plot_titlevspan=title_vspan,
+                        title_args...,
                         kwargs...)
 
         if layout > 1
@@ -722,12 +720,11 @@ function plot_predictions_union(model::LikelihoodModel,
         end
     end
 
+    title_args = layout==1 ? (title=title, titlefontsize=10, top_margin=(5,:mm)) : (plot_title=title, plot_titlefontsize=10, plot_titlevspan=0.15)
+
     plotprediction!(prediction_plot, t, predictions_union, extrema_union, linealpha, layout; 
                     xlabel=xlabel,
-                    # ylims=ylims,
-                    plot_title=title,
-                    plot_titlefontsize=10,
-                    plot_titlevspan=0.15,
+                    title_args...,
                     kwargs...)
 
     if layout > 1
@@ -763,7 +760,7 @@ function plot_predictions_union(model::LikelihoodModel,
 
                 valid_point = model.dim_samples_dict[subset_to_use.row_ind].ll .> ll_level 
 
-                if layout>1
+                if layout > 1
                     sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema[valid_point,:,:]
                 else
                     sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].extrema[valid_point,:]
@@ -780,64 +777,4 @@ function plot_predictions_union(model::LikelihoodModel,
     end
 
     return prediction_plot
-end
-
-function plot_predictions_sampled(model::LikelihoodModel,
-                                    t::Vector;
-                                    xlabel::String="t",
-                                    ylabel::Union{Nothing,String,Vector{String}}=nothing,
-                                    include_MLE::Bool=true,
-                                    confidence_levels::Vector{<:Float64}=Float64[],
-                                    sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
-                                    linealpha=0.4,
-                                    kwargs...)
-
-    sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types,
-                                for_prediction_plots=true)
-
-    if nrow(sub_df) < 1
-        return nothing
-    end
-
-    layout = ndims(model.core.ymle) > 1 ? size(model.core.ymle,2) : 1
-    prediction_plots = [plot(layout=layout) for _ in 1:nrow(sub_df)]
-
-    for i in 1:nrow(sub_df)
-        row = @view(sub_df[i,:])
-        predictions = model.dim_predictions_dict[row.row_ind].predictions
-        extrema = model.dim_predictions_dict[row.row_ind].extrema
-        title = string("Sample type: ", row.sample_type,
-                        "\nConfidence level: ", row.conf_level)
-
-        plotprediction!(prediction_plots[i], t, predictions, extrema, linealpha, layout; 
-                        extremacolor=:gold,
-                        xlabel=xlabel,
-                        plot_title=title,
-                        plot_titlefontsize=10,
-                        plot_titlevspan=0.1,
-                        # ylims=ylims,
-                        kwargs...)
-
-        if layout > 1
-            if isnothing(ylabel); ylabel =[string("f", j, "(", xlabel, ")") for j in 1:layout] end
-
-            if ylabel isa String
-                ylabel!(prediction_plots[i], ylabel)
-            else
-                for j in 1:layout; ylabel!(prediction_plots[i][j], ylabel[j]) end
-            end
-        else
-            if isnothing(ylabel); ylabel = string("f(", xlabel, ")") end
-            ylabel!(prediction_plots[i], ylabel)
-        end
-    end
-
-    if include_MLE 
-        ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
-        for plt in prediction_plots
-            add_yMLE!(plt, t, ymle, layout)
-        end
-    end
-
-    return prediction_plots
 end
