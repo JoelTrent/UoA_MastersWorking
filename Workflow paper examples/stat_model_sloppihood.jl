@@ -60,7 +60,7 @@ using ConcaveHull
 points = model.dim_samples_dict[1].points
 ll = exp.(model.dim_samples_dict[1].ll)
 inds = sample(1:length(ll), min(length(ll), 2000), replace=false, ordered=true)
-scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
+boundary_plot = scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
 
 hull95 = concave_hull([eachcol(points)...], 300)
 plot!(hull95, label="0.95")
@@ -71,7 +71,24 @@ plot!(hull50, label="0.50")
 hull05 = concave_hull([eachcol(points[:, ll .> llstar05])...], 30)
 plot!(hull05, label="0.05")
 
+display(boundary_plot)
 
+
+n = length(hull95.vertices)
+edges = zeros(Int, n, 2)
+for i in 1:n-1; edges[i,:] .= i, i+1 end
+edges[end,:] .= n, 1
+
+nodes = transpose(reduce(hcat, hull95.vertices))
+# nodes[:,1] .= nodes[:,1] ./ sqrt(prod(par_magnitudes))
+# nodes[:,2] .= nodes[:,2] .* sqrt(prod(par_magnitudes))
+
+xy, dist = polylabel(nodes, edges)
+
+centroid_cell = get_centroid_cell(nodes, edges)
+
+scatter!([xy[1]], [xy[2]], label="polylabel")
+scatter!([centroid_cell.x], [centroid_cell.y], label="centroid")
 ###### LOG SPACE #####################################################################################
 ######################################################################################################
 function lnlike_XY(XY, data)
@@ -106,7 +123,7 @@ for i in eachindex(plots); display(plots[i]) end
 points = model.dim_samples_dict[1].points
 ll = exp.(model.dim_samples_dict[1].ll)
 inds = sample(1:length(ll), min(length(ll), 2000), replace=false, ordered=true)
-scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
+boundary_plot = scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
 
 hull95 = concave_hull([eachcol(points)...], 300)
 plot!(hull95, label="0.95")
@@ -116,7 +133,7 @@ plot!(hull50, label="0.50")
 
 hull05 = concave_hull([eachcol(points[:, ll .> llstar05])...], 30)
 plot!(hull05, label="0.05")
-
+display(boundary_plot)
 
 
 
