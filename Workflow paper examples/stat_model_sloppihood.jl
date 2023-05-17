@@ -39,7 +39,7 @@ full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
 univariate_confidenceintervals!(model, [2], profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
 
-bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(2), existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
 gr()
@@ -47,7 +47,7 @@ gr()
 plots = plot_univariate_profiles(model, 0.05, 0.3, palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=false, markeralpha=0.9)
 for i in eachindex(plots); display(plots[i]) end
 
 df=2
@@ -60,7 +60,7 @@ using ConcaveHull
 points = model.dim_samples_dict[1].points
 ll = exp.(model.dim_samples_dict[1].ll)
 inds = sample(1:length(ll), min(length(ll), 2000), replace=false, ordered=true)
-boundary_plot = scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
+boundary_plot = scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(800,800))
 
 hull95 = concave_hull([eachcol(points)...], 300)
 plot!(hull95, label="0.95")
@@ -83,12 +83,37 @@ nodes = transpose(reduce(hcat, hull95.vertices))
 # nodes[:,1] .= nodes[:,1] ./ sqrt(prod(par_magnitudes))
 # nodes[:,2] .= nodes[:,2] .* sqrt(prod(par_magnitudes))
 
-xy, dist = polylabel(nodes, edges)
+xy, dist = polylabel(log.(nodes), edges, 1.0)
+xy=exp.(xy)
+centroid_cell = get_centroid_cell(log.(nodes), edges)
 
-centroid_cell = get_centroid_cell(nodes, edges)
-
+scatter!(hull95, label="hull points", opacity=0.1)
 scatter!([xy[1]], [xy[2]], label="polylabel")
 scatter!([centroid_cell.x], [centroid_cell.y], label="centroid")
+
+
+
+using Meshes
+points = model.biv_profiles_dict[1].confidence_boundary
+hull = concave_hull([eachcol(points)...], 12)
+nodes = transpose(reduce(hcat, hull.vertices))
+
+n=size(nodes,1)
+mesh = SimpleMesh([(nodes[i,1], nodes[i,2]) for i in 1:n], [connect(tuple(1:n...))])
+n_points=30
+internal_points = reduce(hcat,[point.coords for point in collect(sample(mesh, HomogeneousSampling(n_points)))])
+scatter(internal_points[1,:], internal_points[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(800,800))
+
+smesh = mesh |> LambdaMuSmoothing(30,0.5,1.0)
+smesh = mesh |> LaplaceSmoothing(4)
+smesh = mesh |> TaubinSmoothing(30)
+
+
+scatter(nodes[:,1], nodes[:,2], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
+
+smeshvertices = reduce(hcat,[point.coords for point in smesh.vertices])
+scatter(smeshvertices[1,:], smeshvertices[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
+
 ###### LOG SPACE #####################################################################################
 ######################################################################################################
 function lnlike_XY(XY, data)
