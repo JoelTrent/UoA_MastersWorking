@@ -75,7 +75,7 @@ end
 node is a n×2 array of polygon vertices - ideally ordered
 edge is a n×2 array of edges between nodes that make up the polygon
 """
-function polylabel(node, edge=zeros, precision=1.0, debug=false)
+function polylabel(node, edge, precision=1.0; debug=false)
 
     xmin, xmax = extrema(node[:,1])
     ymin, ymax = extrema(node[:,2])
