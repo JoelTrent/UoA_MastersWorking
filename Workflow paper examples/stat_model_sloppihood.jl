@@ -114,6 +114,23 @@ scatter(nodes[:,1], nodes[:,2], label=nothing, mw=0, ms=4, markerstrokewidth=0.0
 smeshvertices = reduce(hcat,[point.coords for point in smesh.vertices])
 scatter(smeshvertices[1,:], smeshvertices[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
 
+
+using Distances, TravelingSalesmanHeuristics
+Dij = pairwise(Euclidean(), points, dims=2)
+path, cost = solve_tsp(Dij)
+
+reordered_points = points[:,path]
+
+n=size(reordered_points,2)
+plot(reordered_points[1,:], reordered_points[2,:])
+scatter(reordered_points[1,:], reordered_points[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
+
+mesh = SimpleMesh([(reordered_points[1,i], reordered_points[2,i]) for i in 1:n], [connect(tuple(1:n...))])
+smesh = mesh |> LaplaceSmoothing(10)
+
+smeshvertices = reduce(hcat,[point.coords for point in smesh.vertices])
+scatter(smeshvertices[1,:], smeshvertices[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
+
 ###### LOG SPACE #####################################################################################
 ######################################################################################################
 function lnlike_XY(XY, data)
