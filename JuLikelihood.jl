@@ -12,6 +12,7 @@ using DataFrames
 using Accessors
 using Distributed
 using FLoops
+using ConcaveHull
 
 using ProgressMeter
 global const PROGRESS__METER__DT = 1.0
@@ -23,8 +24,6 @@ include("combination_relationships.jl")
 include("transform_bounds.jl")
 include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")
-include("full_likelihood_sampling.jl")
-include("dimensional_likelihood_sampling.jl")
 include("predictions.jl")
 include("plotting_functions.jl")
 
@@ -40,3 +39,6 @@ include("bivariate_methods/fix1axis.jl")
 include("bivariate_methods/vectorsearch.jl")
 include("bivariate_methods/continuation.jl")
 include("bivariate_methods/bivariate_profile_likelihood.jl")
+
+include("dimensional_methods/full_likelihood_sampling.jl")
+include("dimensional_methods/dimensional_likelihood_sampling.jl")

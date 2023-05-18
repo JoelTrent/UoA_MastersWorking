@@ -273,7 +273,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     end
     # finish!(p)
 
-    for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
+    @floop for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
         if θs_to_overwrite[i]
             row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
         else

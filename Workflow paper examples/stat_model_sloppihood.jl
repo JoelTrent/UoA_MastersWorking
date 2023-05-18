@@ -37,7 +37,7 @@ model = initialiseLikelihoodModel(lnlike_xy, predictFunc_xy, data, θnames, xy_i
 
 full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
-univariate_confidenceintervals!(model, [2], profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
+univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
 
 bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(2), existing_profiles=:overwrite, save_internal_points=true)
 
@@ -83,13 +83,13 @@ nodes = transpose(reduce(hcat, hull95.vertices))
 # nodes[:,1] .= nodes[:,1] ./ sqrt(prod(par_magnitudes))
 # nodes[:,2] .= nodes[:,2] .* sqrt(prod(par_magnitudes))
 
-xy, dist = polylabel(log.(nodes), edges, 1.0)
-xy=exp.(xy)
-centroid_cell = get_centroid_cell(log.(nodes), edges)
+# xy, dist = polylabel(log.(nodes), edges, 1.0)
+# xy=exp.(xy)
+# centroid_cell = get_centroid_cell(log.(nodes), edges)
 
-scatter!(hull95, label="hull points", opacity=0.1)
-scatter!([xy[1]], [xy[2]], label="polylabel")
-scatter!([centroid_cell.x], [centroid_cell.y], label="centroid")
+# scatter!(hull95, label="hull points", opacity=0.1)
+# scatter!([xy[1]], [xy[2]], label="polylabel")
+# scatter!([centroid_cell.x], [centroid_cell.y], label="centroid")
 
 
 

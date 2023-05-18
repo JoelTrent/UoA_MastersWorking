@@ -1,4 +1,4 @@
-include("JuLikelihood.jl")
+include(joinpath("..","JuLikelihood.jl"))
 
 
 internalpoint = [1.0,2.0]

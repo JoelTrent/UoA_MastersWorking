@@ -1,4 +1,4 @@
-include("JuLikelihood.jl")
+include(joinpath("..","JuLikelihood.jl"))
 
 λmin, λmax = (0.00, 0.05)
 Kmin, Kmax = (50., 150.)
