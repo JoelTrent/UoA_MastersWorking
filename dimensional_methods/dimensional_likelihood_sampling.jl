@@ -88,8 +88,8 @@ end
 
 function check_if_bounds_supplied(model::LikelihoodModel,
                                     θindices::Vector{Int},
-                                    lb::Vector,
-                                    ub::Vector)
+                                    lb::AbstractVector{<:Real},
+                                    ub::AbstractVector{<:Real})
     if isempty(lb)
         lb = model.core.θlb[θindices]
     else
@@ -108,8 +108,8 @@ function uniform_grid(model::LikelihoodModel,
                         θindices::Vector{Int},
                         points_per_dimension::Union{Int, Vector{Int}},
                         confidence_level::Float64,
-                        lb::Vector=[],
-                        ub::Vector=[];
+                        lb::AbstractVector{<:Real}=Float64[],
+                        ub::AbstractVector{<:Real}=Float64[];
                         use_threads=true,
                         arguments_checked::Bool=false)
 
@@ -147,8 +147,8 @@ function uniform_random_blocks(model::LikelihoodModel,
                         θindices::Vector{Int},
                         num_points::Int,
                         confidence_level::Float64,
-                        lb::Vector=[],
-                        ub::Vector=[];
+                        lb::AbstractVector{<:Real}=Float64[],
+                        ub::AbstractVector{<:Real}=Float64[];
                         block_size=20000,
                         use_threads::Bool=true,
                         arguments_checked::Bool=false)
@@ -224,8 +224,8 @@ function uniform_random(model::LikelihoodModel,
                         θindices::Vector{Int},
                         num_points::Int,
                         confidence_level::Float64,
-                        lb::Vector=[],
-                        ub::Vector=[];
+                        lb::AbstractVector{<:Real}=Float64[],
+                        ub::AbstractVector{<:Real}=Float64[];
                         use_threads::Bool=true,
                         arguments_checked::Bool=false)
 
@@ -256,8 +256,8 @@ function LHS(model::LikelihoodModel,
             θindices::Vector{Int},
             num_points::Int,
             confidence_level::Float64,
-            lb::Vector=[],
-            ub::Vector=[];
+            lb::AbstractVector{<:Real}=Float64[],
+            ub::AbstractVector{<:Real}=Float64[];
             use_threads::Bool=true,
             arguments_checked::Bool=false)
     
@@ -288,8 +288,8 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
                                     num_points::Union{Int, Vector{Int}},
                                     confidence_level::Float64,
                                     sample_type::AbstractSampleType,
-                                    lb::Vector,
-                                    ub::Vector,
+                                    lb::AbstractVector{<:Real},
+                                    ub::AbstractVector{<:Real},
                                     use_threads::Bool)
 
     if sample_type isa UniformGridSamples
@@ -310,8 +310,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
                                         num_points_to_sample::Union{Int, Vector{Int}};
                                         confidence_level::Float64=0.95,
                                         sample_type::AbstractSampleType=LatinHypercubeSamples(),
-                                        lb::Vector=[],
-                                        ub::Vector=[],
+                                        lb::AbstractVector{<:Real}=Float64[],
+                                        ub::AbstractVector{<:Real}=Float64[],
                                         θs_is_unique::Bool=false,
                                         use_threads::Bool=true,
                                         existing_profiles::Symbol=:overwrite,
@@ -411,8 +411,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     num_points_to_sample::Union{Int, Vector{Int}};
     confidence_level::Float64=0.95,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
-    lb::Vector=[],
-    ub::Vector=[],
+    lb::AbstractVector{<:Real}=Float64[],
+    ub::AbstractVector{<:Real}=Float64[],
     θs_is_unique::Bool=false,
     use_threads::Bool=true,
     existing_profiles::Symbol=:overwrite,
@@ -435,8 +435,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     num_points_to_sample::Union{Int, Vector{Int}};
     confidence_level::Float64=0.95,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
-    lb::Vector=[],
-    ub::Vector=[],
+    lb::AbstractVector{<:Real}=Float64[],
+    ub::AbstractVector{<:Real}=Float64[],
     use_threads::Bool=true,
     use_distributed::Bool=false,
     existing_profiles::Symbol=:overwrite,
@@ -462,8 +462,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     num_points_to_sample::Union{Int, Vector{Int}};
     confidence_level::Float64=0.95,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
-    lb::Vector=[],
-    ub::Vector=[],
+    lb::AbstractVector{<:Real}=Float64[],
+    ub::AbstractVector{<:Real}=Float64[],
     use_threads::Bool=true,
     existing_profiles::Symbol=:overwrite,
     show_progress::Bool=model.show_progress)

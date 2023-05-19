@@ -121,9 +121,8 @@ bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=Lo
 
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 
-dimensional_likelihood_sample!(model, 2, 100000)
+dimensional_likelihood_sample!(model, 2, 200000)
 # dimensional_likelihood_sample!(model, 2, 2,  10000)
-
 
 prediction_locations = collect(LinRange(t[1], t[end], 50))
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])
@@ -150,6 +149,9 @@ gr()
 # for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+for i in eachindex(plots); display(plots[i]) end
+
+plots = plot_bivariate_profiles(model, 0.2, 0.2, for_dim_samples=true, include_internal_points=true, markeralpha=0.9)
 for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)

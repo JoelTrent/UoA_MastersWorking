@@ -32,6 +32,13 @@ function ll_correction(model::LikelihoodModel, profile_type::AbstractProfileType
     return ll * 1.0
 end
 
+
+"""
+    get_target_loglikelihood(model::LikelihoodModel, 
+                                confidence_level::Float64,
+                                profile_type::AbstractProfileType,
+                                df::Int)
+"""
 function get_target_loglikelihood(model::LikelihoodModel, 
                                     confidence_level::Float64,
                                     profile_type::AbstractProfileType,
