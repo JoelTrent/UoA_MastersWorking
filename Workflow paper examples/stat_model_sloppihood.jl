@@ -39,7 +39,7 @@ full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
 
-bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(2), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
 gr()
@@ -95,14 +95,80 @@ nodes = transpose(reduce(hcat, hull95.vertices))
 
 using Meshes
 points = model.biv_profiles_dict[1].confidence_boundary
-hull = concave_hull([eachcol(points)...], 12)
-nodes = transpose(reduce(hcat, hull.vertices))
+points = minimum_perimeter_polygon(points)[:, 1:end-1]
+n = size(points,2)
+mesh = SimpleMesh([(points[1,i], points[2,i]) for i in 1:n], [connect(tuple(1:n...))])
 
-n=size(nodes,1)
-mesh = SimpleMesh([(nodes[i,1], nodes[i,2]) for i in 1:n], [connect(tuple(1:n...))])
-n_points=30
+using Clustering
+n_points=1000
 internal_points = reduce(hcat,[point.coords for point in collect(sample(mesh, HomogeneousSampling(n_points)))])
+R = kmeans(points, 10)
+nclusters(R)
+counts(R)
+
 scatter(internal_points[1,:], internal_points[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(800,800))
+scatter!(points[1,:], points[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(800,800))
+scatter!(R.centers[1,:], R.centers[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(800,800))
+
+# closeness of each kmean point to centre of shape, by the number of points above and below and to each side of it
+obj = [ sum(abs.([sum(internal_points[1,:] .< R.centers[1,i]) , sum(internal_points[2,:] .< R.centers[2,i]) ]./ n_points .- 0.5))   for i in axes(R.centers, 2)]
+
+# closeness of point to being a star point
+function segment_plot(segment1, segment2; kwargs...)
+    plt=scatter([segment1.vertices[1].coords[1], segment1.vertices[2].coords[1]], [segment1.vertices[1].coords[2], segment1.vertices[2].coords[2]], label="internal", ms=4, markerstrokewidth=0.2, opacity=1.0; kwargs...)
+    scatter!([segment2.vertices[1].coords[1], segment2.vertices[2].coords[1]], [segment2.vertices[1].coords[2], segment2.vertices[2].coords[2]], label="edge", ms=4, markerstrokewidth=0.2, opacity=1.0)
+
+    display(plt)
+end
+
+function star_obj(centers, points)
+    n = size(points,2)
+    obj = zeros(size(centers,2))
+    for ci in axes(centers,2)
+        c_point = centers[:,ci]
+        for vi in 1:n
+            intersects_polygon=false
+            
+            internal_segment = Segment(Point(c_point), Point(points[:,vi]))
+            # println()
+            # println("Vi=", vi)
+            # println(internal_segment)
+
+            # all vertex to vertex edges in the polygon that don't include vertex vi
+            v1s = vcat(collect(1:vi-2), vcat(collect(vi+1:n-1), vi != 1 && vi != n ? [n] : Int[]))
+            v2s = vcat(collect(2:vi-1), vcat(collect(vi+2:n), vi != 1 && vi != n ? [1] : Int[]))
+            # println("v1s:", v1s)
+            # println("v2s:", v2s)
+
+            for ei in eachindex(v1s)
+                edge_segment = Segment(Point(points[:,v1s[ei]]), Point(points[:,v2s[ei]])) 
+                # println(edge_segment)
+                # segment_plot(internal_segment, edge_segment, xlim=[-0.1,4.1], ylim=[-0.1, 6.1])
+                if intersection(internal_segment, edge_segment).type != IntersectionType(0) 
+                    intersects_polygon=true
+                    continue
+                end
+            end
+            if !intersects_polygon
+                obj[ci] +=1
+            end
+        end
+    end
+    return obj
+end
+
+objs = star_obj(R.centers, points)
+star_centers = R.centers[:, findall(maximum(objs) .== objs)]
+
+if size(star_centers, 2) == 1
+    new_center = star_centers
+else
+    new_center = star_centers[:, argmin([ sum(abs.([sum(internal_points[1,:] .< star_centers[1,i]) , sum(internal_points[2,:] .< star_centers[2,i]) ]./ n_points .- 0.5))   for i in axes(star_centers, 2)])]
+end
+
+scatter!([new_center[1,1]], [new_center[2,1]], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(800,800))
+
+
 
 smesh = mesh |> LambdaMuSmoothing(30,0.5,1.0)
 smesh = mesh |> LaplaceSmoothing(4)
@@ -131,53 +197,56 @@ smesh = mesh |> LaplaceSmoothing(10)
 smeshvertices = reduce(hcat,[point.coords for point in smesh.vertices])
 scatter(smeshvertices[1,:], smeshvertices[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
 
+
+
+
+
+
 ###### LOG SPACE #####################################################################################
 ######################################################################################################
-function lnlike_XY(XY, data)
-    return sum(logpdf.(distrib_xy(exp.(XY)), data.samples))
-end
+# function lnlike_XY(XY, data)
+#     return sum(logpdf.(distrib_xy(exp.(XY)), data.samples))
+# end
 
-function forward_parameter_transformLog(θ)
-    return log.(θ)
-end
+# function forward_parameter_transformLog(θ)
+#     return log.(θ)
+# end
 
-function predictFunc_XY(xy, data, t=["n*p"]); [prod(exp.(xy))] end
+# function predictFunc_XY(xy, data, t=["n*p"]); [prod(exp.(xy))] end
 
-newlb, newub = transformbounds(forward_parameter_transformLog, xy_lower_bounds, xy_upper_bounds, collect(1:2), Int[])
-θnames = [:ln_n, :ln_p]
-par_magnitudes = [2, 1]
+# newlb, newub = transformbounds(forward_parameter_transformLog, xy_lower_bounds, xy_upper_bounds, collect(1:2), Int[])
+# θnames = [:ln_n, :ln_p]
+# par_magnitudes = [2, 1]
 
-model = initialiseLikelihoodModel(lnlike_XY, predictFunc_XY, data, θnames, log.(xy_initial), newlb, newub, par_magnitudes);
+# model = initialiseLikelihoodModel(lnlike_XY, predictFunc_XY, data, θnames, log.(xy_initial), newlb, newub, par_magnitudes);
 
-full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
+# full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
-univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=300)
+# univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=300)
 
-bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
+# bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
 
-plots = plot_univariate_profiles(model, 0.05, 0.3, palette_to_use=:Spectral_8)
-for i in eachindex(plots); display(plots[i]) end
+# plots = plot_univariate_profiles(model, 0.05, 0.3, palette_to_use=:Spectral_8)
+# for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
-for i in eachindex(plots); display(plots[i]) end
-
-
-points = model.dim_samples_dict[1].points
-ll = exp.(model.dim_samples_dict[1].ll)
-inds = sample(1:length(ll), min(length(ll), 2000), replace=false, ordered=true)
-boundary_plot = scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
-
-hull95 = concave_hull([eachcol(points)...], 300)
-plot!(hull95, label="0.95")
-
-hull50 = concave_hull([eachcol(points[:, ll .> llstar50])...], 300)
-plot!(hull50, label="0.50")
-
-hull05 = concave_hull([eachcol(points[:, ll .> llstar05])...], 30)
-plot!(hull05, label="0.05")
-display(boundary_plot)
+# plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+# for i in eachindex(plots); display(plots[i]) end
 
 
+# points = model.dim_samples_dict[1].points
+# ll = exp.(model.dim_samples_dict[1].ll)
+# inds = sample(1:length(ll), min(length(ll), 2000), replace=false, ordered=true)
+# boundary_plot = scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
+
+# hull95 = concave_hull([eachcol(points)...], 300)
+# plot!(hull95, label="0.95")
+
+# hull50 = concave_hull([eachcol(points[:, ll .> llstar50])...], 300)
+# plot!(hull50, label="0.50")
+
+# hull05 = concave_hull([eachcol(points[:, ll .> llstar05])...], 30)
+# plot!(hull05, label="0.05")
+# display(boundary_plot)
 
 
 
@@ -185,16 +254,18 @@ display(boundary_plot)
 
 
 
-prediction_locations = ["n*p"]
-generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
-generate_predictions_bivariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
-generate_predictions_dim_samples!(model, prediction_locations, 0.1)
 
-union_plot = plot_predictions_union(model, prediction_locations, 2)
-display(union_plot)
 
-histogram(transpose(model.biv_predictions_dict[1].predictions), legend=false, normalize=:true, bins=30)
-vline!(model.biv_predictions_dict[1].extrema, label="")
+# prediction_locations = ["n*p"]
+# generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
+# generate_predictions_bivariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
+# generate_predictions_dim_samples!(model, prediction_locations, 0.1)
 
-using StatsPlots
-density(transpose(model.biv_predictions_dict[1].predictions), legend=false, bandwidth=0.1, trim=true)
+# union_plot = plot_predictions_union(model, prediction_locations, 2)
+# display(union_plot)
+
+# histogram(transpose(model.biv_predictions_dict[1].predictions), legend=false, normalize=:true, bins=30)
+# vline!(model.biv_predictions_dict[1].extrema, label="")
+
+# using StatsPlots
+# density(transpose(model.biv_predictions_dict[1].predictions), legend=false, bandwidth=0.1, trim=true)

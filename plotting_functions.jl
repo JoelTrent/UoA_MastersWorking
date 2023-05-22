@@ -3,6 +3,12 @@ function profilecolor(profile_type::Union{AbstractProfileType,AbstractSampleType
         return 1
     elseif profile_type isa EllipseApprox
         return 2
+    elseif profile_type isa UniformGridSamples
+        return 4
+    elseif profile_type isa UniformRandomSamples
+        return 5
+    elseif profile_type isa LatinHypercubeSamples
+        return 6
     end
     return 3
 end
@@ -21,6 +27,8 @@ function profile2Dmarkershape(profile_type::Union{AbstractProfileType, AbstractS
         return on_boundary ? :diamond : :hexagon
     elseif profile_type isa EllipseApprox
         return on_boundary ? :utriangle : :dtriangle
+    elseif profile_type isa AbstractSampleType
+        return on_boundary ? :ltriangle : :rtriangle
     end
     return on_boundary ? :circle : :rect
 end
@@ -330,7 +338,10 @@ function plot_bivariate_profiles(model::LikelihoodModel,
 
         if include_internal_points && (for_dim_samples || !row.not_evaluated_internal_points)
             internal_points = for_dim_samples ? @view(model.dim_samples_dict[row.row_ind].points[θindices, :]) : @view(model.biv_profiles_dict[row.row_ind].internal_points[θindices, :])
-            internal_points = @view(internal_points[:, 1:min(1000,end)])
+            
+            num_internal_points = size(internal_points, 2)
+
+            internal_points = @view(internal_points[:, sample(1:num_internal_points, min(1000, num_internal_points), replace=false)])
             plot2Dboundary!(profile_plots[i], 
                             internal_points,
                             "internal points", 
@@ -359,14 +370,14 @@ end
 function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                                     xlim_scaler::Real=0.2,
                                     ylim_scaler::Real=0.2;
-                                    include_dim_samples::Bool=false,
                                     θcombinations_to_plot::Vector=Tuple{Int,Int}[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                     sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                                     compare_within_methods::Bool=false,
-                                    palette_to_use::Symbol=:Paired_6, 
+                                    include_dim_samples::Bool=false,
+                                    palette_to_use::Symbol=:Paired_7, 
                                     markeralpha=0.7,
                                     kwargs...)
 
@@ -389,9 +400,22 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
 
     if compare_within_methods
         if isempty(methods); methods = unique(sub_df.method) end
+        if isempty(confidence_levels); confidence_levels = unique(sub_df.conf_level) end
+        
+        θcombinations = [[inds...] for inds in unique(sub_df.θindices)]
     else
-        if isempty(profile_types); profile_types = unique(sub_df.profile_type) end
-        if isempty(sample_types); sample_types = unique(sub_df_samples.sample_type) end
+        if include_dim_samples
+            if isempty(confidence_levels); confidence_levels = unique(vcat(sub_df.conf_level, sub_df_samples.conf_level)) end
+            if isempty(sample_types) && nrow(sub_df_samples) > 0; sample_types = unique(sub_df_samples.sample_type) end
+
+            θcombinations = unique(vcat([[inds...] for inds in unique(sub_df.θindices)],  sub_df_samples.θindices))
+        else
+            if isempty(confidence_levels); confidence_levels = unique(sub_df.conf_level) end
+
+            θcombinations = [[inds...] for inds in unique(sub_df.θindices)]
+        end
+        
+        if isempty(profile_types) && nrow(sub_df) > 0; profile_types = unique(sub_df.profile_type) end
     end
 
     color_palette = palette(palette_to_use)
@@ -401,12 +425,10 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
     plot_i=1
 
     row_subset = trues(nrow(sub_df))
+    row_subset_samples = trues(nrow(sub_df_samples))
 
-    θcombinations = unique(sub_df.θindices)
-    θindices = zeros(Int,2); 
-
-    for θindices_tuple in θcombinations
-        for j in 1:2; θindices[j] = θindices_tuple[j] end
+    for θindices in θcombinations
+        θindices_tuple = tuple(θindices...)
         parMLEs = model.core.θmle[θindices]
         θnames = model.core.θnames[θindices]
 
@@ -419,7 +441,9 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
 
                     conf_df = @view(sub_df[row_subset, :])
 
-                    if nrow(conf_df) < 2; continue end
+                    if nrow(conf_df) < 2; 
+                        continue 
+                    end
 
                     if plot_i > 1
                         append!(profile_plots, [plot()])
@@ -471,17 +495,21 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                                     (sub_df.conf_level .== confidence_level)
 
                 conf_df = @view(sub_df[row_subset, :])
-
-                if !( nrow(conf_df) > 1 && length(unique(conf_df.profile_type)) > 1 )
-                    continue
-                end
+                nrow_conf_df = nrow(conf_df)
 
                 if include_dim_samples
-                    row_subset .= (sub_df_samples.θindices .== Ref(θindices)) .&&
-                                        (sub_df_samples.conf_df .== confidence_level)
-                    conf_df_samples = @view(sub_df_samples[row_subset, :])
+                    row_subset_samples .= (sub_df_samples.θindices .== Ref(θindices)) .&&
+                                        (sub_df_samples.conf_level .== confidence_level)
+                    conf_df_samples = @view(sub_df_samples[row_subset_samples, :])
+                    nrow_conf_df_samples = nrow(conf_df_samples)
                 else
                     conf_df_samples=nothing
+                    nrow_conf_df_samples=0
+                end
+
+                if !( nrow_conf_df > 1 && length(unique(conf_df.profile_type)) > 1 || nrow_conf_df_samples > 1 || (nrow_conf_df_samples == 1 && nrow_conf_df > 0) 
+                    )
+                    continue
                 end
 
                 if plot_i > 1
@@ -491,8 +519,8 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                 min_vals = zeros(2)
                 max_vals = zeros(2)
                 i = 1
-                for prof_type in profile_types
-                    rows = @view(conf_df[conf_df.profile_type .== Ref(prof_type),:])
+                for profile_type in profile_types
+                    rows = @view(conf_df[conf_df.profile_type .== Ref(profile_type),:])
                     boundary = zeros(2,0)
 
                     if nrow(rows) == 0
@@ -518,10 +546,43 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                     end
 
                     plot2Dboundary!(profile_plots[plot_i], boundary, 
-                        label=string(prof_type),
-                        markershape=profile2Dmarkershape(prof_type, true), 
-                        markercolor=color_palette[profilecolor(prof_type)],
-                        linecolor=color_palette[profilecolor(prof_type)],
+                        label=string(profile_type),
+                        markershape=profile2Dmarkershape(profile_type, true), 
+                        markercolor=color_palette[profilecolor(profile_type)],
+                        linecolor=color_palette[profilecolor(profile_type)],
+                        markeralpha=markeralpha,
+                        linealpha=markeralpha)
+                    
+                    i += 1
+                end
+
+                if isnothing(conf_df_samples); continue end
+
+                for sample_type in sample_types
+                    row = @view(conf_df_samples[conf_df_samples.sample_type .== Ref(sample_type),:])
+                    boundary = zeros(2,0)
+
+                    if nrow(row) == 0
+                        continue
+                    else
+                        boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind[1]], θindices, 0.15, 0.15, 
+                                                        get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2))
+                    end
+
+
+                    if i == 1
+                        min_vals .= minimum(boundary, dims=2)
+                        max_vals .= maximum(boundary, dims=2)
+                    else
+                        min_vals .= min.(min_vals, minimum(boundary, dims=2))
+                        max_vals .= max.(max_vals, maximum(boundary, dims=2))
+                    end
+
+                    plot2Dboundary!(profile_plots[plot_i], boundary, 
+                        label=string(sample_type),
+                        markershape=profile2Dmarkershape(sample_type, true), 
+                        markercolor=color_palette[profilecolor(sample_type)],
+                        linecolor=color_palette[profilecolor(sample_type)],
                         markeralpha=markeralpha,
                         linealpha=markeralpha)
                     

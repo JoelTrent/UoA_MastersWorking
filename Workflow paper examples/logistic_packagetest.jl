@@ -1,5 +1,5 @@
 # Section 1: set up packages and parameter values
-using BenchmarkTools
+# using BenchmarkTools
 
 using Distributed
 # addprocs(3)
@@ -113,7 +113,7 @@ getMLE_ellipse_approximation!(model)
 # @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
 bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
-# @time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadial(3), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
 bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
@@ -121,8 +121,9 @@ bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=Lo
 
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 
+dimensional_likelihood_sample!(model, 2, 300, sample_type=UniformGridSamples())
+dimensional_likelihood_sample!(model, 2, 30000, sample_type=UniformRandomSamples())
 dimensional_likelihood_sample!(model, 2, 200000)
-# dimensional_likelihood_sample!(model, 2, 2,  10000)
 
 prediction_locations = collect(LinRange(t[1], t[end], 50))
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])
@@ -154,7 +155,7 @@ for i in eachindex(plots); display(plots[i]) end
 plots = plot_bivariate_profiles(model, 0.2, 0.2, for_dim_samples=true, include_internal_points=true, markeralpha=0.9)
 for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false)
+plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=false, include_dim_samples=true)
 for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=true)
