@@ -25,14 +25,14 @@ function bivariate_concave_hull(points::AbstractArray{Float64}, ll::Vector{<:Flo
     hull_points = reduce(hcat, hull.vertices)
 
     # TSP the points to make sure they're in the right order
-    hull_points .= minimum_perimeter_polygon(hull_points)[:,1:end-1]
+    minimum_perimeter_polygon!(hull_points)
 
     # additional concave hull iter to get rid of any accidental non boundary points
     hull = concave_hull([eachcol(hull_points)...])
     hull_points = reduce(hcat, hull.vertices)
 
     # TSP the points again
-    hull_points = minimum_perimeter_polygon(hull_points)
+    minimum_perimeter_polygon!(hull_points)
 
     return hull_points
 end

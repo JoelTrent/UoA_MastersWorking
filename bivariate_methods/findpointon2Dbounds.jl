@@ -53,12 +53,12 @@ function findpointonbounds(model::LikelihoodModel,
                             returnboundindex::Bool=false)
 
     direction_πradians = atan(direction2D[2], direction2D[1]) / pi
-
+    
     # define direction_πradians on [0,2] rather than [-1,1]
     if direction_πradians < 0
         direction_πradians = 2 + direction_πradians
     end
-
+    
     return findpointonbounds(model, internalpoint, direction_πradians, direction2D[1], direction2D[2], ind1, ind2, returnboundindex)
 end
 

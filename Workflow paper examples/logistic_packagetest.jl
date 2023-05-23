@@ -117,7 +117,7 @@ bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=Br
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
 bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
-bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(1, 0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
+bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(5, 0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 

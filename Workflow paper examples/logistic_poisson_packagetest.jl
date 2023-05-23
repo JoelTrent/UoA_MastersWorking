@@ -84,6 +84,10 @@ get_points_in_interval!(model, 100, additional_width=0.3)
 bivariate_confidenceprofiles!(model, 200, method=AnalyticalEllipseMethod())
 bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(0.1, 0.0), save_internal_points=true)
 bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), save_internal_points=true)
+bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(), save_internal_points=true)
+
+bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(4, 0.1, 0.0), save_internal_points=true)
+
 
 prediction_locations = collect(LinRange(t[1], t[end], 50));
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[LogLikelihood()])
@@ -92,6 +96,9 @@ generate_predictions_dim_samples!(model, prediction_locations, 0.1)
 
 using Plots
 gr()
+
+plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+for i in eachindex(plots); display(plots[i]) end
 
 p1 = plot(prediction_locations, predictFunc(model.core.θmle, model.core.data, prediction_locations), color=:turquoise1, xlabel="t", ylabel="C(t)",
             legend=false, lw=4, xlims=(0,1100), ylims=(0,120),

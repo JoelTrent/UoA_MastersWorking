@@ -23,7 +23,7 @@ N_samples = 10 # measurements of model
 #data = rand(distrib_xy(xy_true),N_samples)
 data = (;samples=SA[21.9,22.3,12.8,16.4,16.4,20.3,16.2,20.0,19.7,24.4])
 
-par_magnitudes = [100, 1]
+par_magnitudes = [1000, 1]
 
 
 # ---- use above to construct log likelihood in original parameterisation given (iid) data
@@ -39,7 +39,11 @@ full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
 
-bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
+
+bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=ContinuationMethod(4, 0.005, 0.0), existing_profiles=:overwrite, save_internal_points=true)
+
+bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(0.5), confidence_level=0.005, existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
 gr()
@@ -95,7 +99,7 @@ nodes = transpose(reduce(hcat, hull95.vertices))
 
 using Meshes
 points = model.biv_profiles_dict[1].confidence_boundary
-points = minimum_perimeter_polygon(points)[:, 1:end-1]
+minimum_perimeter_polygon!(points)
 n = size(points,2)
 mesh = SimpleMesh([(points[1,i], points[2,i]) for i in 1:n], [connect(tuple(1:n...))])
 
@@ -187,12 +191,12 @@ path, cost = solve_tsp(Dij)
 
 reordered_points = points[:,path]
 
-n=size(reordered_points,2)
+n=size(reordered_points,2)-1
 plot(reordered_points[1,:], reordered_points[2,:])
 scatter(reordered_points[1,:], reordered_points[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
 
 mesh = SimpleMesh([(reordered_points[1,i], reordered_points[2,i]) for i in 1:n], [connect(tuple(1:n...))])
-smesh = mesh |> LaplaceSmoothing(10)
+smesh = mesh |> LaplaceSmoothing(20)
 
 smeshvertices = reduce(hcat,[point.coords for point in smesh.vertices])
 scatter(smeshvertices[1,:], smeshvertices[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))

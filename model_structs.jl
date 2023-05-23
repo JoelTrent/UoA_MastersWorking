@@ -146,12 +146,12 @@ struct BracketingMethodRadialRandom <: AbstractBivariateMethod
 end
 
 struct BracketingMethodRadialMLE <: AbstractBivariateMethod
-    ellipse_confidence_level::Float64
+    # ellipse_confidence_level::Float64
     ellipse_start_point_shift::Float64
-    function BracketingMethodRadialMLE(x=0.1,y=rand()) 
-        (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the open interval (0.0,1.0)"))
-        (0.0 <= y && y <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
-        return new(x,y)
+    function BracketingMethodRadialMLE(x=rand()) 
+        # (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the open interval (0.0,1.0)"))
+        (0.0 <= x && x <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
+        return new(x)
     end
 end
 

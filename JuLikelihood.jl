@@ -14,6 +14,7 @@ using Distributed
 using FLoops
 using ConcaveHull
 using Distances, TravelingSalesmanHeuristics
+using Clustering, Meshes
 
 using ProgressMeter
 global const PROGRESS__METER__DT = 1.0
@@ -38,6 +39,7 @@ include("bivariate_methods/findpointon2Dbounds.jl")
 include("bivariate_methods/loglikelihood_functions.jl")
 include("bivariate_methods/fix1axis.jl")
 include("bivariate_methods/vectorsearch.jl")
+include("bivariate_methods/continuation_polygon_manipulation.jl")
 include("bivariate_methods/continuation.jl")
 include("bivariate_methods/bivariate_profile_likelihood.jl")
 include("bivariate_methods/MPP_TSP.jl")

@@ -128,7 +128,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
                                 save_internal_points,
-                                ellipse_confidence_level=method.ellipse_confidence_level,
+                                ellipse_confidence_level=0.1,
                                 ellipse_start_point_shift=method.ellipse_start_point_shift)
     elseif method isa ContinuationMethod
         if profile_type isa EllipseApproxAnalytical

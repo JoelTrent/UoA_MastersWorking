@@ -341,7 +341,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
             
             num_internal_points = size(internal_points, 2)
 
-            internal_points = @view(internal_points[:, sample(1:num_internal_points, min(1000, num_internal_points), replace=false)])
+            internal_points = @view(internal_points[:, sample(1:num_internal_points, min(1000, num_internal_points), replace=false, ordered=true)])
             plot2Dboundary!(profile_plots[i], 
                             internal_points,
                             "internal points", 

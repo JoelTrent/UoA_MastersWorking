@@ -82,6 +82,7 @@ get_points_in_interval!(model, 100, additional_width=0.3)
 bivariate_confidenceprofiles!(model, 200, method=AnalyticalEllipseMethod())
 bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(), save_internal_points=true)
 bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.1,0.0), save_internal_points=true, existing_profiles=:overwrite)
+# bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=ContinuationMethod(4,0.1,0.0), save_internal_points=true, existing_profiles=:overwrite)
 
 dimensional_likelihood_sample!(model, 3, 10000)
 

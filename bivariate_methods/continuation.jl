@@ -39,18 +39,14 @@ function continuation_line_search!(p::NamedTuple,
                                     ind1::Int, 
                                     ind2::Int,
                                     target_confidence_ll::Float64, 
+                                    search_directions::Matrix{Float64},
                                     start_level_set_2D::Matrix{Float64}, 
                                     start_level_set_all::Matrix{Float64}=zeros(0,0),
-                                    tangent_between_level_sets::Matrix{Float64}=zeros(0,0))
+                                    level_set_not_smoothed::Bool=true)
 
     f_gradient(x) = bivariate_optimiser_gradient(x, p)
     
     start_have_all_pars = !isempty(start_level_set_all) 
-    
-    if isempty(tangent_between_level_sets)
-        tangent_between_level_sets = zeros(2, num_points)
-        tangent_between_level_sets .= start_level_set_2D .- model.core.θmle[[ind1, ind2]]
-    end
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical_continuation
     target_level_set_2D = zeros(2, num_points)
@@ -71,6 +67,10 @@ function continuation_line_search!(p::NamedTuple,
         normal_scaling = model.core.θmagnitudes[ind1]/model.core.θmagnitudes[ind2]
     end
 
+    if !level_set_not_smoothed
+        boundsmapping2d!(p.initGuess, model.core.θmle, ind1, ind2)
+    end
+
     for i in 1:num_points
         if point_is_on_bounds[i]
             target_level_set_2D[:, i] .= start_level_set_2D[:, i]
@@ -79,7 +79,7 @@ function continuation_line_search!(p::NamedTuple,
             p.pointa .= start_level_set_2D[:,i]
             # if know the optimised values of nuisance parameters at a given start point,
             # pass them to the optimiser
-            if start_have_all_pars
+            if start_have_all_pars && level_set_not_smoothed
                 boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
             end
 
@@ -91,9 +91,9 @@ function continuation_line_search!(p::NamedTuple,
             # normal_vector_i_2d!(normal_i, i, start_level_set_2D)
             # normal_i[1] = normal_i[1] * normal_scaling
             # normal_i .= (normal_i ./ norm(normal_i, 2)) 
-            # gradient_i .= tangent_amount*(tangent_between_level_sets[:,i] ./ norm(tangent_between_level_sets[:,i], 2)) + (1-tangent_amount)*normal_i
+            # gradient_i .= tangent_amount*(search_directions[:,i] ./ norm(search_directions[:,i], 2)) + (1-tangent_amount)*normal_i
 
-            gradient_i .= tangent_between_level_sets[:,i] .* 1.0
+            gradient_i .= search_directions[:,i] .* 1.0
 
             p.uhat .= (gradient_i ./ (norm(gradient_i, 2))) 
 
@@ -103,12 +103,16 @@ function continuation_line_search!(p::NamedTuple,
             # if bound point and pointa bracket a boundary, search for the boundary
             # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
             if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
-                Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), Roots.Order8(); p=p)
+                if isapprox(bivariate_optimiser(0.0, p), 0.0, atol=1e-20)
+                    Ψ_y1 = 0.0
+                else
+                    Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), Roots.Order8(); p=p)
 
-                # in event Roots.Order8 fails to converge, switch to bracketing method
-                if isnan(Ψ_y1) || Ψ_y1 < 0.0
-                    # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
-                    Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+                    # in event Roots.Order8 fails to converge, switch to bracketing method
+                    if isnan(Ψ_y1) || isinf(Ψ_y1) || Ψ_y1 < 0.0
+                        # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
+                        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+                    end
                 end
 
                 boundarypoint .= p.pointa + Ψ_y1*p.uhat
@@ -135,27 +139,27 @@ function continuation_line_search!(p::NamedTuple,
     end
 
 
-    tangent_between_level_sets .= target_level_set_2D - start_level_set_2D
+    # search_directions .= target_level_set_2D - start_level_set_2D
     # α = 0.2
 
-    # tangent_between_level_sets[:,1] .= (target_level_set_2D[:,1] - start_level_set_2D[:,1]) + 
+    # search_directions[:,1] .= (target_level_set_2D[:,1] - start_level_set_2D[:,1]) + 
     #                                     α .* ((target_level_set_2D[:,1] - start_level_set_2D[:, end]) + 
     #                                     (target_level_set_2D[:,1] - start_level_set_2D[:, 2]))
 
-    # tangent_between_level_sets[:,end] .= (target_level_set_2D[:,end] - start_level_set_2D[:,end]) + 
+    # search_directions[:,end] .= (target_level_set_2D[:,end] - start_level_set_2D[:,end]) + 
     #                                     α .* ((target_level_set_2D[:,end] - start_level_set_2D[:, 1]) + 
     #                                     (target_level_set_2D[:,end] - start_level_set_2D[:, end-1]))
 
     # for i in 2:(num_points-1)
-    #     tangent_between_level_sets[:,i] .= (target_level_set_2D[:,i] - start_level_set_2D[:,i]) + 
+    #     search_directions[:,i] .= (target_level_set_2D[:,i] - start_level_set_2D[:,i]) + 
     #                                     α .* ((target_level_set_2D[:,i] - start_level_set_2D[:, i-1]) + 
     #                                     (target_level_set_2D[:,i] - start_level_set_2D[:, i+1]))
     # end
 
-    # tangent_between_level_sets[:, 1] .= @view(target_level_set_2D[:,1]) .- @view(start_level_set_2D[:, end])
-    # tangent_between_level_sets[:, 2:end] .= @view(target_level_set_2D[:,2:end]) .- @view(start_level_set_2D[:, 1:end-1])
+    # search_directions[:, 1] .= @view(target_level_set_2D[:,1]) .- @view(start_level_set_2D[:, end])
+    # search_directions[:, 2:end] .= @view(target_level_set_2D[:,2:end]) .- @view(start_level_set_2D[:, 1:end-1])
 
-    return target_level_set_2D, target_level_set_all, tangent_between_level_sets
+    return target_level_set_2D, target_level_set_all
 end
 
 function continuation_inwards_radial_search!(p::NamedTuple, 
@@ -164,7 +168,8 @@ function continuation_inwards_radial_search!(p::NamedTuple,
                                                 num_points::Int, 
                                                 ind1::Int, 
                                                 ind2::Int, 
-                                                target_confidence_ll::Float64, 
+                                                target_confidence_ll::Float64,
+                                                search_directions::Matrix{Float64},
                                                 start_level_set_2D::Matrix{Float64})
 
     mle_point = model.core.θmle[[ind1, ind2]]
@@ -179,7 +184,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
     p.pointa .= mle_point
     # effectively equivalent code to vector search code 
     for i in 1:num_points
-        v_bar = start_level_set_2D[:,i] - mle_point
+        v_bar = search_directions[:,i] # start_level_set_2D[:,i] - mle_point
 
         v_bar_norm = norm(v_bar, 2)
         p.uhat .= v_bar / v_bar_norm
@@ -278,13 +283,16 @@ function initial_continuation_solution!(p::NamedTuple,
 
     point_is_on_bounds = falses(num_points)
 
+    search_directions = zeros(2, num_points)
+    search_directions .= ellipse_points .- model.core.θmle[[ind1, ind2]]
+
     if target_confidence_ll < min_ll # case 1
         corrected_ll = ll_correction(model, profile_type, min_ll)
-        a, b, _ = continuation_line_search!(p, point_is_on_bounds, bivariate_optimiser, 
+        a, b = continuation_line_search!(p, point_is_on_bounds, bivariate_optimiser, 
                                             bivariate_optimiser_gradient, model, 
                                             num_points, ind1, ind2,
-                                            corrected_ll, ellipse_points)
-        return a, b, min_ll, point_is_on_bounds
+                                            corrected_ll, search_directions, ellipse_points)
+        return a, b, search_directions, min_ll, point_is_on_bounds
 
     elseif max_ll < target_confidence_ll # case 2
         corrected_ll = ll_correction(model, profile_type, target_confidence_ll)
@@ -292,8 +300,8 @@ function initial_continuation_solution!(p::NamedTuple,
         @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," contains the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
         a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
                                                     num_points, ind1, ind2,
-                                                    corrected_ll, ellipse_points)
-        return a, b, target_confidence_ll, point_is_on_bounds
+                                                    corrected_ll, search_directions, ellipse_points)
+        return a, b, search_directions, target_confidence_ll, point_is_on_bounds
     end
 
     # else # case 3
@@ -301,8 +309,8 @@ function initial_continuation_solution!(p::NamedTuple,
 
     @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," intersects the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
     a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, num_points, 
-                                                ind1, ind2, corrected_ll, ellipse_points)
-    return a, b, max_ll, point_is_on_bounds
+                                                ind1, ind2, corrected_ll, search_directions, ellipse_points)
+    return a, b, search_directions, max_ll, point_is_on_bounds
 end
 
 """
@@ -351,7 +359,8 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                  EllipseApproxAnalytical(), 2)
 
     # find initial solution
-    current_level_set_2D, current_level_set_all, initial_ll, point_is_on_bounds =
+    current_level_set_2D, current_level_set_all, 
+        search_directions, initial_ll, point_is_on_bounds =
         initial_continuation_solution!(p, bivariate_optimiser, bivariate_optimiser_gradient, 
                                         model, num_points, ind1, ind2, profile_type,
                                         ellipse_confidence_level, initial_target_ll, 
@@ -377,19 +386,35 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                             profile_type, 2) for i in 1:num_level_sets]
     end
 
-    tangent_between_level_sets = zeros(0,0)
-
+    require_TSP_reordering=false
     for level_set_ll in level_set_lls
         if save_internal_points
             internal_all = hcat(internal_all, current_level_set_all[:, .!point_is_on_bounds]) 
         end
         
-        current_level_set_2D, current_level_set_all, tangent_between_level_sets = 
+        # perform any desired manipulation of the polygon boundary or search directions
+        if false; 
+            boundary_smoother!(current_level_set_2D, point_is_on_bounds) 
+            level_set_not_smoothed = false
+        else
+            level_set_not_smoothed = true
+        end
+
+        require_TSP_reordering = refine_search_directions!(search_directions, current_level_set_2D, point_is_on_bounds)
+
+        # find next level set
+        current_level_set_2D, current_level_set_all = 
             continuation_line_search!(p, point_is_on_bounds, 
                                         bivariate_optimiser, bivariate_optimiser_gradient,
-                                        model, num_points, ind1, ind2, level_set_ll,
-                                        current_level_set_2D, current_level_set_all, tangent_between_level_sets)
-        # display(scatter(current_level_set_2D[1,:], current_level_set_2D[2,:], legend=false, markeropacity=0.4))
+                                        model, num_points, ind1, ind2, level_set_ll, search_directions,
+                                        current_level_set_2D, current_level_set_all,
+                                        level_set_not_smoothed)
+
+        if require_TSP_reordering
+            path = minimum_perimeter_polygon!(current_level_set_2D)[1:end-1]
+            current_level_set_all .= current_level_set_all[:,path]
+            point_is_on_bounds .= point_is_on_bounds[path]
+        end
     end
 
     return current_level_set_all, internal_all
