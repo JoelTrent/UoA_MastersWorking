@@ -77,7 +77,7 @@ If star point doesn't exist then... Presently will use each individual kmeans po
 
 Returns whether or not a star point was found (if not, cannot guarantee that the ordering of boundary points will stay the same, and require a TSP iteration after solving for the next level set).
 """
-function refine_search_directions!(search_directions, points, point_is_on_bounds, k_means=9, sample_in_polygon=true, verbose=true)
+function refine_search_directions!(search_directions, points, point_is_on_bounds; k_means=9, sample_in_polygon=true, verbose=true)
 
     if sample_in_polygon
         mesh = SimpleMesh([(points[1,i], points[2,i]) for i in axes(points,2)], 

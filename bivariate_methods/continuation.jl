@@ -42,7 +42,8 @@ function continuation_line_search!(p::NamedTuple,
                                     search_directions::Matrix{Float64},
                                     start_level_set_2D::Matrix{Float64}, 
                                     start_level_set_all::Matrix{Float64}=zeros(0,0),
-                                    level_set_not_smoothed::Bool=true)
+                                    level_set_not_smoothed::Bool=true;
+                                    is_a_zero::BitVector=falses(num_points))
 
     f_gradient(x) = bivariate_optimiser_gradient(x, p)
     
@@ -74,58 +75,67 @@ function continuation_line_search!(p::NamedTuple,
     for i in 1:num_points
         if point_is_on_bounds[i]
             target_level_set_2D[:, i] .= start_level_set_2D[:, i]
-            target_level_set_all[[ind1, ind2], i] .= start_level_set_all[[ind1, ind2], i]
-        else
-            p.pointa .= start_level_set_2D[:,i]
-            # if know the optimised values of nuisance parameters at a given start point,
-            # pass them to the optimiser
-            if start_have_all_pars && level_set_not_smoothed
-                boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
-            end
+            target_level_set_all[:, i] .= start_level_set_all[:, i]
+            continue
+        end
+        
+        p.pointa .= start_level_set_2D[:,i]
+        # if know the optimised values of nuisance parameters at a given start point,
+        # pass them to the optimiser
+        if start_have_all_pars && level_set_not_smoothed
+            boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
+        end
 
-            # calculate gradient at point i; want to go in downhill direction
-            # FORWARDDIFF NOT WORKING WITH ANON FUNCTION JUST YET - likely because it is contains a mutating function, i.e. zeros()
-            # 
-            # gradient_i .= -ForwardDiff.gradient(f_gradient, p.pointa)
-
-            # normal_vector_i_2d!(normal_i, i, start_level_set_2D)
-            # normal_i[1] = normal_i[1] * normal_scaling
-            # normal_i .= (normal_i ./ norm(normal_i, 2)) 
-            # gradient_i .= tangent_amount*(search_directions[:,i] ./ norm(search_directions[:,i], 2)) + (1-tangent_amount)*normal_i
-
-            gradient_i .= search_directions[:,i] .* 1.0
-
-            p.uhat .= (gradient_i ./ (norm(gradient_i, 2))) 
-
-            boundpoint .= findpointonbounds(model, p.pointa, p.uhat, ind1, ind2)
-            v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
-
-            # if bound point and pointa bracket a boundary, search for the boundary
-            # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
-            if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
-                if isapprox(bivariate_optimiser(0.0, p), 0.0, atol=1e-20)
-                    Ψ_y1 = 0.0
-                else
-                    Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), Roots.Order8(); p=p)
-
-                    # in event Roots.Order8 fails to converge, switch to bracketing method
-                    if isnan(Ψ_y1) || isinf(Ψ_y1) || Ψ_y1 < 0.0
-                        # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
-                        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
-                    end
-                end
-
-                boundarypoint .= p.pointa + Ψ_y1*p.uhat
-                target_level_set_2D[:, i] .= boundarypoint
-                target_level_set_all[[ind1, ind2], i] .= boundarypoint
-            else
-                point_is_on_bounds[i] = true
-                target_level_set_2D[:, i] .= boundpoint
-                target_level_set_all[[ind1, ind2], i] .= boundpoint
-            end
+        if is_a_zero[i]
+            bivariate_optimiser(0.0, p) # to extract nuisance parameter values
+            boundarypoint .= start_level_set_2D[:,i] .* 1.0
+            target_level_set_2D[:, i] .= boundarypoint
+            target_level_set_all[[ind1, ind2], i] .= boundarypoint
             if !biv_opt_is_ellipse_analytical
                 variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
             end
+            continue
+        end
+
+        # calculate gradient at point i; want to go in downhill direction
+        # FORWARDDIFF NOT WORKING WITH ANON FUNCTION JUST YET - likely because it is contains a mutating function, i.e. zeros()
+        # 
+        # gradient_i .= -ForwardDiff.gradient(f_gradient, p.pointa)
+
+        # normal_vector_i_2d!(normal_i, i, start_level_set_2D)
+        # normal_i[1] = normal_i[1] * normal_scaling
+        # normal_i .= (normal_i ./ norm(normal_i, 2)) 
+        # gradient_i .= tangent_amount*(search_directions[:,i] ./ norm(search_directions[:,i], 2)) + (1-tangent_amount)*normal_i
+
+        gradient_i .= search_directions[:,i] .* 1.0
+
+        p.uhat .= (gradient_i ./ (norm(gradient_i, 2))) 
+
+        boundpoint .= findpointonbounds(model, p.pointa, p.uhat, ind1, ind2)
+        v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
+
+        # if bound point and pointa bracket a boundary, search for the boundary
+        # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
+        if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
+            
+            Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), Roots.Order8(); p=p)
+
+            # in event Roots.Order8 fails to converge, switch to bracketing method
+            if isnan(Ψ_y1) || isinf(Ψ_y1) || Ψ_y1 < 0.0
+                # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
+                Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            end
+
+            boundarypoint .= p.pointa + Ψ_y1*p.uhat
+            target_level_set_2D[:, i] .= boundarypoint
+            target_level_set_all[[ind1, ind2], i] .= boundarypoint
+        else
+            point_is_on_bounds[i] = true
+            target_level_set_2D[:, i] .= boundpoint
+            target_level_set_all[[ind1, ind2], i] .= boundpoint
+        end
+        if !biv_opt_is_ellipse_analytical
+            variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
         end
     end
 
@@ -170,7 +180,8 @@ function continuation_inwards_radial_search!(p::NamedTuple,
                                                 ind2::Int, 
                                                 target_confidence_ll::Float64,
                                                 search_directions::Matrix{Float64},
-                                                start_level_set_2D::Matrix{Float64})
+                                                start_level_set_2D::Matrix{Float64},
+                                                is_a_zero::BitVector)
 
     mle_point = model.core.θmle[[ind1, ind2]]
     
@@ -189,9 +200,13 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         v_bar_norm = norm(v_bar, 2)
         p.uhat .= v_bar / v_bar_norm
 
-        # there's a chance that the start_level_set_2D[:, i] is exactly on the boundary of interest, so define the bracket as slightly larger than that point
-        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm*1.2), Roots.Brent(); p=p)
-        
+        if is_a_zero[i]
+            Ψ_y1 = v_bar_norm
+            bivariate_optimiser(v_bar_norm, p) # to extract nuisance parameter values
+        else
+            Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+        end
+
         boundarypoint .= p.pointa + Ψ_y1*p.uhat
         target_level_set_2D[:, i] .= boundarypoint
         target_level_set_all[[ind1, ind2], i] .= boundarypoint
@@ -252,7 +267,7 @@ function initial_continuation_solution!(p::NamedTuple,
                                                         model.core.θmle, ind1, ind2,
                                                         confidence_level=ellipse_confidence_level, 
                                                         start_point_shift=ellipse_start_point_shift, 
-                                                        sqrt_distortion=0.01)
+                                                        sqrt_distortion=0.0)
 
     for i in 1:num_points
         if model.core.θlb[ind1] > ellipse_points[1,i] || model.core.θub[ind1] < ellipse_points[1,i]
@@ -280,6 +295,7 @@ function initial_continuation_solution!(p::NamedTuple,
     end
 
     min_ll, max_ll = extrema(ellipse_true_lls)
+    is_a_zero = falses(num_points)
 
     point_is_on_bounds = falses(num_points)
 
@@ -288,10 +304,14 @@ function initial_continuation_solution!(p::NamedTuple,
 
     if target_confidence_ll < min_ll # case 1
         corrected_ll = ll_correction(model, profile_type, min_ll)
+        is_a_zero[findfirst(ellipse_true_lls .== min_ll)] = true
+
         a, b = continuation_line_search!(p, point_is_on_bounds, bivariate_optimiser, 
                                             bivariate_optimiser_gradient, model, 
                                             num_points, ind1, ind2,
-                                            corrected_ll, search_directions, ellipse_points)
+                                            corrected_ll, search_directions, ellipse_points,
+                                            is_a_zero=is_a_zero
+                                            )
         return a, b, search_directions, min_ll, point_is_on_bounds
 
     elseif max_ll < target_confidence_ll # case 2
@@ -300,16 +320,18 @@ function initial_continuation_solution!(p::NamedTuple,
         @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," contains the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
         a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
                                                     num_points, ind1, ind2,
-                                                    corrected_ll, search_directions, ellipse_points)
+                                                    corrected_ll, search_directions, ellipse_points,
+                                                    is_a_zero)
         return a, b, search_directions, target_confidence_ll, point_is_on_bounds
     end
 
     # else # case 3
     corrected_ll = ll_correction(model, profile_type, max_ll)
+    is_a_zero[findfirst(ellipse_true_lls .== max_ll)] = true
 
     @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," intersects the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
     a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, num_points, 
-                                                ind1, ind2, corrected_ll, search_directions, ellipse_points)
+                                                ind1, ind2, corrected_ll, search_directions, ellipse_points, is_a_zero)
     return a, b, search_directions, max_ll, point_is_on_bounds
 end
 

@@ -39,11 +39,11 @@ full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
 
-bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=ContinuationMethod(4, 0.005, 0.0), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), confidence_level=0.05, method=ContinuationMethod(1, 0.5, 0.0), existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(0.5), confidence_level=0.005, existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
 gr()
@@ -98,7 +98,7 @@ nodes = transpose(reduce(hcat, hull95.vertices))
 
 
 using Meshes
-points = model.biv_profiles_dict[1].confidence_boundary
+points = model.biv_profiles_dict[3].confidence_boundary
 minimum_perimeter_polygon!(points)
 n = size(points,2)
 mesh = SimpleMesh([(points[1,i], points[2,i]) for i in 1:n], [connect(tuple(1:n...))])
@@ -182,7 +182,7 @@ smesh = mesh |> TaubinSmoothing(30)
 scatter(nodes[:,1], nodes[:,2], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
 
 smeshvertices = reduce(hcat,[point.coords for point in smesh.vertices])
-scatter(smeshvertices[1,:], smeshvertices[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
+scatter!(smeshvertices[1,:], smeshvertices[2,:], label=nothing, mw=0, ms=4, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4), size=(600,500))
 
 
 using Distances, TravelingSalesmanHeuristics
