@@ -199,7 +199,7 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
     mle_point = model.core.θmle[[ind1, ind2]]
     internal = zeros(2,num_points) .= mle_point
     external = zeros(2,num_points)
-    bound_is_boundary = falses(num_points)
+    point_is_on_bounds = falses(num_points)
     # warn if bound prevents reaching boundary
     bound_warning=true
 
@@ -217,7 +217,7 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
 
         p.pointa .= external[:,i]
         if !(bivariate_optimiser(0.0, p) < 0)
-            bound_is_boundary[i] = true
+            point_is_on_bounds[i] = true
 
             if bound_warning
                 @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
@@ -228,7 +228,7 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
 
     internal_all = zeros(model.core.num_pars, 0)
     ll_values = zeros(0)
-    return internal, internal_all, ll_values, external, bound_is_boundary
+    return internal, internal_all, ll_values, external, point_is_on_bounds
 end
 
 function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function, 
@@ -260,7 +260,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
     end
 
     if ellipse_confidence_level !== -1.0
-        internal, internal_all, ll_values, external, bound_is_boundary = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
+        internal, internal_all, ll_values, external, point_is_on_bounds = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
                                                                                             ellipse_confidence_level, ellipse_start_point_shift)
 
     else
@@ -273,11 +273,11 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                                                 mle_targetll,
                                                                                 save_internal_points, biv_opt_is_ellipse_analytical)
         end
-        bound_is_boundary = falses(num_points)
+        point_is_on_bounds = falses(num_points)
     end
 
     for i in 1:num_points
-        if bound_is_boundary[i]
+        if point_is_on_bounds[i]
             p.pointa .= external[:,i]
             bivariate_optimiser(0, p)
             boundary[[ind1, ind2], i] .= external[:,i]

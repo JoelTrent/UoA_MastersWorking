@@ -36,7 +36,7 @@ function get_bivariate_opt_func(profile_type::AbstractProfileType, method::Abstr
             return bivariateΨ!
         end
 
-    elseif method isa BracketingMethodRadialRandom || method isa BracketingMethodRadialMLE || method isa BracketingMethodSimultaneous
+    elseif method isa AbstractBivariateVectorMethod
         if profile_type isa EllipseApproxAnalytical
             return bivariateΨ_ellipse_analytical_vectorsearch
         elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox

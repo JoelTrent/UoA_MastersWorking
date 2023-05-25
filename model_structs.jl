@@ -13,6 +13,7 @@ abstract type AbstractProfileType end
 abstract type AbstractEllipseProfileType <: AbstractProfileType end
 
 abstract type AbstractBivariateMethod end
+abstract type AbstractBivariateVectorMethod <: AbstractBivariateMethod end
 
 abstract type AbstractSampleType end
 
@@ -122,12 +123,12 @@ struct LogLikelihood <: AbstractProfileType end
 struct EllipseApprox <: AbstractEllipseProfileType end
 struct EllipseApproxAnalytical <: AbstractEllipseProfileType end
 
-struct BracketingMethodRadialRandom <: AbstractBivariateMethod
+struct BracketingMethodRadialRandom <: AbstractBivariateVectorMethod
     num_radial_directions::Int
     BracketingMethodRadialRandom(x) = x < 1 ? throw(DomainError("num_radial_directions must be greater than zero")) : new(x)
 end
 
-struct BracketingMethodRadialMLE <: AbstractBivariateMethod
+struct BracketingMethodRadialMLE <: AbstractBivariateVectorMethod
     # ellipse_confidence_level::Float64
     ellipse_start_point_shift::Float64
     function BracketingMethodRadialMLE(x=rand()) 
@@ -137,7 +138,11 @@ struct BracketingMethodRadialMLE <: AbstractBivariateMethod
     end
 end
 
-struct BracketingMethodSimultaneous <: AbstractBivariateMethod end
+struct BracketingMethodIterativeBoundary <: AbstractBivariateVectorMethod 
+    initial_num_points::Int
+end
+
+struct BracketingMethodSimultaneous <: AbstractBivariateVectorMethod end
 struct BracketingMethodFix1Axis <: AbstractBivariateMethod end
 
 """
@@ -160,14 +165,11 @@ struct ContinuationMethod <: AbstractBivariateMethod
         # (0.0 < y && y < 1.0) || throw(DomainError("target_confidence_level must be in the interval (0.0,1.0)"))
         # if y isa Float64
 
-
         (0.0 <= z && z <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
         spacing ∈ [:confidence, :loglikelihood] || throw(ArgumentError("level_set_spacing must be either :confidence or :loglikelihood"))
 
         return new(x,y,z,spacing)
     end
 end
-
-
 
 struct AnalyticalEllipseMethod <: AbstractBivariateMethod end

@@ -15,6 +15,7 @@ using FLoops
 using ConcaveHull
 using Distances, TravelingSalesmanHeuristics
 using Clustering, Meshes
+using TrackingHeaps
 
 using ProgressMeter
 global const PROGRESS__METER__DT = 1.0
