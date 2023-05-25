@@ -81,7 +81,6 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         θi::Int, 
                                         profile_type::AbstractProfileType,
                                         mle_targetll::Float64,
-                                        ll_shift::Float64,
                                         num_points_in_interval::Int,
                                         additional_width::Real; 
                                         bracket_l::Vector{<:Float64}=Float64[],
@@ -156,12 +155,12 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
     if isnan(interval[1])
         interval_points[θi,1] = bracket_l[1] * 1.0
-        ll[1] = univariate_optimiser(bracket_l[1], p) + p.consistent.targetll - ll_shift
+        ll[1] = univariate_optimiser(bracket_l[1], p) + mle_targetll
         variablemapping1d!(@view(interval_points[:, 1]), p.λ_opt, θranges, λranges)
     end
     if isnan(interval[2])         
         interval_points[θi,2] = bracket_r[2] * 1.0
-        ll[2] = univariate_optimiser(bracket_r[2], p) + p.consistent.targetll - ll_shift
+        ll[2] = univariate_optimiser(bracket_r[2], p) + mle_targetll
         variablemapping1d!(@view(interval_points[:, 2]), p.λ_opt, θranges, λranges)
     end
   
@@ -183,7 +182,6 @@ function univariate_confidenceinterval_master(univariate_optimiser::Function,
                                         confidence_level::Float64, 
                                         profile_type::AbstractProfileType, 
                                         mle_targetll::Float64,
-                                        ll_shift::Float64,
                                         use_existing_profiles::Bool,
                                         num_points_in_interval::Int,
                                         additional_width::Real)
@@ -192,12 +190,12 @@ function univariate_confidenceinterval_master(univariate_optimiser::Function,
                                                         profile_type)                
 
         interval_struct = univariate_confidenceinterval(univariate_optimiser, model, consistent,
-                                                        θi, profile_type, mle_targetll, ll_shift, 
+                                                        θi, profile_type, mle_targetll, 
                                                         num_points_in_interval, additional_width,
                                                         bracket_l=bracket_l, bracket_r=bracket_r)
     else
         interval_struct = univariate_confidenceinterval(univariate_optimiser, model, consistent,
-                                                        θi, profile_type, mle_targetll, ll_shift, 
+                                                        θi, profile_type, mle_targetll, 
                                                         num_points_in_interval, additional_width)
     end
     return interval_struct
@@ -231,7 +229,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     univariate_optimiser = get_univariate_opt_func(profile_type)
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 1)
     mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 1)
-    ll_shift = ll_correction(model, profile_type, 0.0)
 
     θs_is_unique || (sort(θs_to_profile); unique!(θs_to_profile))
 
@@ -272,7 +269,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
         [(θi, univariate_confidenceinterval_master(univariate_optimiser, model,
                                                     consistent, θi, 
                                                     confidence_level, profile_type,
-                                                    mle_targetll, ll_shift,
+                                                    mle_targetll,
                                                     use_existing_profiles,
                                                     num_points_in_interval,
                                                     additional_width))]
