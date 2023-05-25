@@ -4,11 +4,13 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
                                     num_points::Int, 
                                     i::Int, 
                                     j::Int,
+                                    mle_targetll::Float64,
                                     save_internal_points::Bool,
                                     biv_opt_is_ellipse_analytical::Bool)
 
     x_vec, y_vec = zeros(num_points), zeros(2, num_points)
     local internal_all = zeros(model.core.num_pars, save_internal_points ? num_points : 0)
+    local ll_values = zeros(save_internal_points ? num_points : 0)
 
     Ψ_y0, Ψ_y1 = 0.0, 0.0
     
@@ -30,7 +32,14 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
 
                     if save_internal_points
                         internal_all[i,k] = p.Ψ_x[1]
-                        internal_all[j,k] = f0 ≥ 0 ? Ψ_y0 : Ψ_y1
+
+                        if f0 ≥ 0 
+                            ll_values[k] = f0
+                            internal_all[j,k] = Ψ_y0
+                        else
+                            ll_values[k] = f1
+                            internal_all[j,k] = Ψ_y1
+                        end
                     end
                     break
                 end
@@ -65,8 +74,15 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
 
                     if save_internal_points
                         internal_all[i,k] = p.Ψ_x[1]
-                        internal_all[j,k] = f0 ≥ 0 ? Ψ_y0 : Ψ_y1
-                        variablemapping2d!(@view(internal_all[:, k]), f0 ≥ 0 ? λ_opt0 : λ_opt1, p.θranges, p.λranges)
+                        if f0 ≥ 0 
+                            ll_values[k] = f0
+                            internal_all[j,k] = Ψ_y0
+                            variablemapping2d!(@view(internal_all[:, k]), λ_opt0, p.θranges, p.λranges)
+                        else
+                            ll_values[k] = f1
+                            internal_all[j,k] = Ψ_y1
+                            variablemapping2d!(@view(internal_all[:, k]), λ_opt1, p.θranges, p.λranges)
+                        end
                     end
                     break
                 end
@@ -74,7 +90,9 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
         end
     end
 
-    return x_vec, y_vec, internal_all
+    if save_internal_points; ll_values .= ll_values .+ mle_targetll end
+
+    return x_vec, y_vec, internal_all, ll_values
 end
 
 function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, 
@@ -83,6 +101,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                                                 consistent::NamedTuple, 
                                                 ind1::Int, 
                                                 ind2::Int,
+                                                mle_targetll::Float64,
                                                 save_internal_points::Bool)
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
@@ -91,6 +110,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
 
     boundary = zeros(model.core.num_pars, num_points)
     internal_all = zeros(model.core.num_pars, 0)
+    ll_values = zeros(0)
 
     count=0
     for (i, j, N) in [[ind1, ind2, div(num_points,2)], [ind2, ind1, (div(num_points,2) + rem(num_points,2))]]
@@ -104,8 +124,8 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
         end
 
 
-        x_vec, y_vec, internal = findNpointpairs_fix1axis!(p, bivariate_optimiser, model,
-                                                            N, i, j, save_internal_points,
+        x_vec, y_vec, internal, ll = findNpointpairs_fix1axis!(p, bivariate_optimiser, model,
+                                                            N, i, j, mle_targetll, save_internal_points,
                                                             biv_opt_is_ellipse_analytical)
         
         for k in 1:N
@@ -123,15 +143,18 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
             end
         end
 
-        if save_internal_points; internal_all = hcat(internal_all, internal) end
+        if save_internal_points
+            internal_all = hcat(internal_all, internal)
+            ll_values = vcat(ll_values, ll) 
+        end
     end
 
     if biv_opt_is_ellipse_analytical
         return get_λs_bivariate_ellipse_analytical!(@view(boundary[[ind1, ind2], :]), num_points,
                                                     consistent, ind1, ind2, 
                                                     model.core.num_pars, initGuess,
-                                                    θranges, λranges, boundary), internal_all
+                                                    θranges, λranges, boundary), PointsAndLogLikelihood(internal_all, ll_values)
     end
 
-    return boundary, internal_all
+    return boundary, PointsAndLogLikelihood(internal_all, ll_values)
 end

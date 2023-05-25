@@ -91,10 +91,10 @@ function generate_prediction_bivariate(model::LikelihoodModel,
 
     conf_struct = model.biv_profiles_dict[sub_df[row_i, :row_ind]]
 
-    if !isempty(conf_struct.internal_points)
+    if !isempty(conf_struct.internal_points.points)
         return generate_prediction(model.core.predictfunction, 
                                     model.core.data, t, model.core.ymle,
-                                    hcat(conf_struct.confidence_boundary, conf_struct.internal_points), 
+                                    hcat(conf_struct.confidence_boundary, conf_struct.internal_points.points), 
                                     proportion_to_keep)
     end
     return generate_prediction(model.core.predictfunction, 

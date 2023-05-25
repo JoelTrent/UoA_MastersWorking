@@ -337,7 +337,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
                             linealpha=markeralpha)
 
         if include_internal_points && (for_dim_samples || !row.not_evaluated_internal_points)
-            internal_points = for_dim_samples ? @view(model.dim_samples_dict[row.row_ind].points[θindices, :]) : @view(model.biv_profiles_dict[row.row_ind].internal_points[θindices, :])
+            internal_points = for_dim_samples ? @view(model.dim_samples_dict[row.row_ind].points[θindices, :]) : @view(model.biv_profiles_dict[row.row_ind].internal_points.points[θindices, :])
             
             num_internal_points = size(internal_points, 2)
 

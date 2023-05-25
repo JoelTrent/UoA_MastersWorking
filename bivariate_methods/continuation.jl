@@ -352,6 +352,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     ellipse_start_point_shift::Float64,
                                                     num_level_sets::Int,
                                                     level_set_spacing::Symbol,
+                                                    mle_targetll::Float64,
                                                     save_internal_points::Bool,
                                                     )
 
@@ -361,6 +362,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     uhat   = [0.0,0.0]
 
     internal_all = zeros(model.core.num_pars, 0)
+    ll_values = zeros(0)
 
     if profile_type isa EllipseApproxAnalytical
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
@@ -409,9 +411,10 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     end
 
     require_TSP_reordering=false
-    for level_set_ll in level_set_lls
+    for (i, level_set_ll) in enumerate(level_set_lls)
         if save_internal_points
-            internal_all = hcat(internal_all, current_level_set_all[:, .!point_is_on_bounds]) 
+            internal_all = hcat(internal_all, current_level_set_all[:, .!point_is_on_bounds])
+            ll_values = vcat(ll_values, fill(i == 1 ? initial_ll : level_set_lls[i-1], length(point_is_on_bounds) - sum(point_is_on_bounds)))
         end
         
         # perform any desired manipulation of the polygon boundary or search directions
@@ -439,5 +442,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         end
     end
 
-    return current_level_set_all, internal_all
+    if save_internal_points; ll_values .= ll_values .+ mle_targetll end
+
+    return current_level_set_all, PointsAndLogLikelihood(internal_all, ll_values)
 end

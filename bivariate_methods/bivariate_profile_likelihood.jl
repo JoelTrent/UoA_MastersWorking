@@ -88,8 +88,9 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         ind2::Int,
                                         profile_type::AbstractProfileType,
                                         method::AbstractBivariateMethod,
+                                        mle_targetll::Float64,
                                         save_internal_points::Bool)
-    internal=zeros(model.core.num_pars,0)
+    internal=PointsAndLogLikelihood(zeros(model.core.num_pars,0), zeros(0))
     if method isa AnalyticalEllipseMethod
         boundary_ellipse = generate_N_clustered_points(
                                     num_points, consistent.data_analytic.Γmle, 
@@ -110,24 +111,24 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
         boundary, internal = bivariate_confidenceprofile_fix1axis(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
-                                save_internal_points)
+                                mle_targetll, save_internal_points)
         
     elseif method isa BracketingMethodSimultaneous
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
-                                save_internal_points)
+                                mle_targetll, save_internal_points)
     elseif method isa BracketingMethodRadialRandom
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
-                                save_internal_points,
+                                mle_targetll, save_internal_points,
                                 num_radial_directions=method.num_radial_directions)
     elseif method isa BracketingMethodRadialMLE
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
-                                save_internal_points,
+                                mle_targetll, save_internal_points,
                                 ellipse_confidence_level=0.1,
                                 ellipse_start_point_shift=method.ellipse_start_point_shift)
     elseif method isa ContinuationMethod
@@ -145,7 +146,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 method.ellipse_start_point_shift,
                                 method.num_level_sets,
                                 method.level_set_spacing,
-                                save_internal_points)
+                                mle_targetll, save_internal_points)
     end
     
     return BivariateConfidenceStruct(boundary, internal)
@@ -178,6 +179,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, method)
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
+    mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
 
     # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
     if !θcombinations_is_unique 
@@ -243,7 +245,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         [((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
                                                         confidence_level, consistent, 
                                                         ind1, ind2, profile_type,
-                                                        method, save_internal_points))]
+                                                        method, mle_targetll,
+                                                        save_internal_points))]
         # next!(p)
         # out
     end
