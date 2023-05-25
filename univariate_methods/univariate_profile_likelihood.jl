@@ -127,16 +127,24 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
     else
         # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
-        if univariate_optimiser(bracket_l[1], p) < 0.0
+        g = univariate_optimiser(bracket_l[1], p)
+        if g < 0.0
+            # make bracket a tiny bit smaller
+            if isinf(g); bracket_l[1] = bracket_l[1] - 1e-8 * diff(bracket_l)[1] end
+
             interval[1] = find_zero(univariate_optimiser, bracket_l, Roots.Brent(), p=p) 
             interval_points[θi,1] = interval[1]
-            variablemapping1d!(@view(interval_points[:, 1]), p.λ_opt, θranges, λranges)
+            variablemapping1d!(@view(interval_points[:,1]), p.λ_opt, θranges, λranges)
             ll[1] = mle_targetll
         else
             interval[1] = NaN
         end
 
-        if univariate_optimiser(bracket_r[2], p) < 0.0
+        g = univariate_optimiser(bracket_r[2], p)
+        if g < 0.0
+            # make bracket a tiny bit smaller
+            if isinf(g); bracket_r[2] = bracket_r[2] - 1e-8 * diff(bracket_r)[1] end
+
             interval[2] = find_zero(univariate_optimiser, bracket_r, Roots.Brent(), p=p)
             interval_points[θi,2] = interval[2]
             variablemapping1d!(@view(interval_points[:,2]), p.λ_opt, θranges, λranges)
