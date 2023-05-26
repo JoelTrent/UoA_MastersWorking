@@ -16,6 +16,7 @@ using ConcaveHull
 using Distances, TravelingSalesmanHeuristics
 using Clustering, Meshes
 using TrackingHeaps
+using AngleBetweenVectors
 
 using ProgressMeter
 global const PROGRESS__METER__DT = 1.0

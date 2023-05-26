@@ -108,18 +108,22 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
 
     num_vertices = initial_num_points * 1
 
+    if isnan(model.core.θmagnitudes[ind1]) || isnan(model.core.θmagnitudes[ind2]) 
+        relative_magnitude = 1.0
+    else
+        relative_magnitude = model.core.θmagnitudes[ind1]/model.core.θmagnitudes[ind2]
+    end
+
+
     # adjacent vertices of each vertex
     adjacent_vertices = zeros(Int, num_points, 2)
     adjacent_vertices[1,:] .= num_vertices, 2
     for i in 2:num_vertices-1; edges[i,:] .= i-1, i+1 end
     adjacent_vertices[num_vertices,:] .= num_vertices-1, 1
 
-    # tracked heap for internal angles between adjacent edges 
     # WRITE CUSTOM STRUCTS FOR STORING EDGE INFORMATION BETWEEN VERTICES SO THAT IT IS EASY TO UPDATE CONNECTIONS
     # AND/OR FUNCTIONS THAT DO THIS
-    vertex_internal_angle_objs = zeros(num_points)
     
-    angle_heap = TrackingHeap(Float64, S=NoTrainingWheels, O=MaxHeapOrder, N = 2, init_val_coll=vertex_internal_angle_objs)
 
     # vertices edges are incident on
     edges = zeros(Int, num_points, 2)
@@ -130,12 +134,42 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
     edge_lengths = zeros(num_points)
     edge_lengths[num_vertices+1:end] .= -Inf
 
-    edge_lengths[1:num_vertices] .= colwise(Euclidean(), 
-                                            @view(boundary[:, 1:num_vertices]), 
-                                            @view(boundary[:, @view(edges[2,1:num_vertices])])) 
+    function edge_length(boundary, inds1, inds2, relative_magnitude)
+        return colwise(Euclidean(), 
+        @view(boundary[:, inds1]) .* [relative_magnitude, 1.0], 
+        @view(boundary[:, inds2]) .* [relative_magnitude, 1.0]) 
+    end
 
-    edge_heap = TrackingHeap(Float64, S=NoTrainingWheels, O=MaxHeapOrder, N = 2, init_val_coll=edge_lengths)
+    edge_lengths[1:num_vertices] .= edge_length(boundary, 1:num_vertices, 
+                                                @view(edges[2,1:num_vertices]), 
+                                                relative_magnitude)
+
+    # edge_vectors = zeros(2, num_points)
+    # edge_vectors[:, 1:num_vertices] .= boundary[:, edges[2,1:num_vertices]] .- boundary[:, edges[1,1:num_vertices]]
+
+
+    edge_heap = TrackingHeap(Float64, S=NoTrainingWheels, O=MaxHeapOrder, N = 2,
+                                init_val_coll=edge_lengths)
     
+    # internal angle function
+    # tracked heap for internal angles between adjacent edges 
+    vertex_internal_angle_objs = zeros(num_points)
+    for i in 1:num_vertices
+        vertex_internal_angle_objs[i] = AngleBetweenVectors.angle(boundary[:,i] .- boundary[:, adjacent_vertices[1,i]],
+                                                boundary[:,i] .- boundary[:, adjacent_vertices[2,i]]) 
+    end
+    
+    angle_heap = TrackingHeap(Float64, S=NoTrainingWheels, O=MaxHeapOrder, N = 2, init_val_coll=vertex_internal_angle_objs)
+   
+    # candidate point - midpoint of edge calculation
+
+    # use candidate point to find new vertex
+
+    # update adjacent vertices (break existing edge and replace with two new ones)
+    # update edges
+    # update edge lengths of the two new edges (the longer of the two edges should replace the original edge, while the shorter should be a new edge) 
+    # update internal angles (the internal angle update should stay referencing the original vertex, while the new vertex also gets an internal angle update (value is already stored in heap as -Inf))
+
 
 
 
@@ -186,3 +220,14 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
 
     return boundary, PointsAndLogLikelihood(internal_all, ll_values)
 end
+
+
+polygon = [0 3 1 2 -1; 0 1 2 3 2]*1.0
+
+edges = [1 2 3 4 5; 2 3 4 5 1]
+
+edge_vectors = polygon[:, edges[2,:]] .- polygon[:, edges[1,:]]
+
+
+angles = rad2deg.([angle(edge_vectors[:, i], edge_vectors[:,j]) for (i,j) in [(1,2),(2,3),(3,4),(4,5),(5,1)]])
+
