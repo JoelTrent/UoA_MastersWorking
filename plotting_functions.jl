@@ -306,7 +306,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
         for j in 1:2; θindices[j] = row.θindices[j] end
         
         if for_dim_samples
-            boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind], θindices, 0.15, 0.15, get_target_loglikelihood(model, row.conf_level, EllipseApproxAnalytical(), 2))
+            boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind], θindices, 0.15, 0.15, get_target_loglikelihood(model, row.conf_level, EllipseApproxAnalytical(), 2), row.sample_type)
             profile_type=row.sample_type
 
             title=string("Sample type: ", profile_type, 
@@ -566,7 +566,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                         continue
                     else
                         boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind[1]], θindices, 0.15, 0.15, 
-                                                        get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2))
+                                                        get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2), sample_type)
                     end
 
 
