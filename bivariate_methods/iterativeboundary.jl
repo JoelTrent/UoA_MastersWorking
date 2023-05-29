@@ -40,7 +40,7 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
         end
     end
 
-    return external, point_is_on_bounds
+    return external, point_is_on_bounds, bound_warning
 end
 
 """
@@ -50,14 +50,14 @@ Euclidean distance between two vertices (length of an edge), scaled by the relat
 """
 function edge_length(boundary, inds1::Union{UnitRange, AbstractVector}, inds2::Union{UnitRange, AbstractVector}, relative_magnitude)
     return colwise(Euclidean(), 
-    boundary[:, inds1] .* SA[relative_magnitude, 1.0], 
-    boundary[:, inds2] .* SA[relative_magnitude, 1.0]) 
+    boundary[:, inds1] ./ SA[relative_magnitude, 1.0], 
+    boundary[:, inds2] ./ SA[relative_magnitude, 1.0]) 
 end
 
 function edge_length(boundary, ind1::Int, ind2::Int, relative_magnitude)
     return evaluate(Euclidean(), 
-    boundary[:, ind1] .* SA[relative_magnitude, 1.0], 
-    boundary[:, ind2] .* SA[relative_magnitude, 1.0]) 
+    boundary[:, ind1] ./ SA[relative_magnitude, 1.0], 
+    boundary[:, ind2] ./ SA[relative_magnitude, 1.0]) 
 end
 
 """
@@ -67,15 +67,15 @@ The magnitude the internal angle in radians between two adjacent edges is from p
 """
 function internal_angle_from_pi!(vertex_internal_angle_objs, indexes::UnitRange, boundary, edge_clock, edge_anti, relative_magnitude)
     for i in indexes
-        vertex_internal_angle_objs[i] = AngleBetweenVectors.angle((boundary[:,i] .- boundary[:, edge_clock[i]]) .* SA[relative_magnitude, 1.0], 
-        (boundary[:,edge_anti[i]] .- boundary[:,i]).* SA[relative_magnitude, 1.0]) 
+        vertex_internal_angle_objs[i] = π - AngleBetweenVectors.angle((boundary[:,edge_clock[i]] .- boundary[:, i]) ./ SA[relative_magnitude, 1.0], 
+        (boundary[:,edge_anti[i]] .- boundary[:,i]) ./ SA[relative_magnitude, 1.0]) 
     end
     return nothing
 end
 
 function internal_angle_from_pi(index::Int, boundary, edge_clock, edge_anti, relative_magnitude)
-    return AngleBetweenVectors.angle((boundary[:,index] .- boundary[:, edge_clock[index]]).* SA[relative_magnitude, 1.0],
-    (boundary[:,edge_anti[index]] .- boundary[:, index]).* SA[relative_magnitude, 1.0]) 
+    return π - AngleBetweenVectors.angle((boundary[:,edge_clock[index]] .- boundary[:,index])./ SA[relative_magnitude, 1.0],
+    (boundary[:,edge_anti[index]] .- boundary[:,index]) ./ SA[relative_magnitude, 1.0]) 
 end
 
 function iterativeboundary_init(bivariate_optimiser::Function, 
@@ -95,7 +95,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     # warn if bound prevents reaching boundary
     bound_warning=true
 
-    external, point_is_on_bounds_external = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
+    external, point_is_on_bounds_external, bound_warning = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
                                                             initial_num_points, ind1, ind2, bound_warning)
 
     point_is_on_bounds[1:initial_num_points] .= point_is_on_bounds_external[:]
@@ -232,10 +232,10 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
             # candidate point - midpoint of edge calculation
             candidate_midpoint = boundary[:, vi] .+ 0.5 .* (boundary[:, adj_vertex] - boundary[:, vi])
 
-            # find new boundary point, given candidate midpoint, the vertexes that describe the edge and a set of valid cluster points to potentially search towards. 
+            # find new boundary point, given candidate midpoint, the vertexes that describe the edge
             # use candidate point to find new vertex
 
-            if edge_anti_on_bounds[ve1] # just accept the mid point and find nuisance parameters (if needed)
+            if edge_anti_on_bounds[ve1] # accept the mid point and find nuisance parameters
                 p.pointa .= candidate_midpoint
                 bivariate_optimiser(0.0, p)
                 boundary[:, num_vertices] .= candidate_midpoint
@@ -388,12 +388,17 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
 end
 
 
-polygon = [0 3 6 2 -1; 0 1 2 4 2]*1.0
+polygon = [0 3 2 2 -1; 0 1 2 4 2]*1.0
 
 edges = [1 2 3 4 5; 2 3 4 5 1]
 
 edge_vectors = polygon[:, edges[2,:]] .- polygon[:, edges[1,:]]
 
 
-angles = rad2deg.([AngleBetweenVectors.angle(edge_vectors[:, i], edge_vectors[:,j]) for (i,j) in [(1,2),(2,3),(3,4),(4,5),(5,1)]])
+@time angles = rad2deg.([AngleBetweenVectors.angle(edge_vectors[:, i], edge_vectors[:,j]) for (i,j) in [(1,2),(2,3),(3,4),(4,5),(5,1)]])
 
+@time rad2deg.([(abs(∠(Point(polygon[:,i]), Point(polygon[:,i+1]), Point(polygon[:,i+2])))) for i in 1:3])
+
+@time ∠(Point(polygon[:,1]), Point(polygon[:,2]), Point(polygon[:,3]))
+@time AngleBetweenVectors.angle(edge_vectors[:,1], edge_vectors[:,2])
+@time ∠(Vec(edge_vectors[:,1]), Vec(edge_vectors[:,2]))

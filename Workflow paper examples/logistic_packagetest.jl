@@ -71,7 +71,7 @@ C0min, C0max = (0.0, 50.)
 θG = [λ, K, C0]
 lb = [λmin, Kmin, C0min]
 ub = [λmax, Kmax, C0max]
-par_magnitudes = [0.01, 20, 10]
+par_magnitudes = [0.005, 10, 10]
 # par_magnitudes = [1, 1, 1]
 
 ##############################################################################################
@@ -115,7 +115,7 @@ getMLE_ellipse_approximation!(model)
 bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
 @time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
 
-@time bivariate_confidenceprofiles!(model, 30, profile_type=EllipseApprox(), method=BracketingMethodIterativeBoundary(10, 20, 0), confidence_level=0.35, existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApprox(), method=BracketingMethodIterativeBoundary(10, 20, 0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
 bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.0), save_internal_points=true, existing_profiles=:overwrite)
 
