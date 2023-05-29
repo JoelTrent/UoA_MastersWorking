@@ -43,6 +43,7 @@ include("bivariate_methods/fix1axis.jl")
 include("bivariate_methods/vectorsearch.jl")
 include("bivariate_methods/continuation_polygon_manipulation.jl")
 include("bivariate_methods/continuation.jl")
+include("bivariate_methods/iterativeboundary.jl")
 include("bivariate_methods/bivariate_profile_likelihood.jl")
 include("bivariate_methods/MPP_TSP.jl")
 

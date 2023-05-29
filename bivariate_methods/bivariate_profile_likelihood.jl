@@ -147,6 +147,13 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 method.num_level_sets,
                                 method.level_set_spacing,
                                 mle_targetll, save_internal_points)
+    elseif method isa BracketingMethodIterativeBoundary
+        boundary, internal = bivariate_confidenceprofile_iterativeboundary(
+                                bivariate_optimiser, model,
+                                num_points, consistent, ind1, ind2,
+                                method.initial_num_points, method.angle_points_per_iter,
+                                method.edge_points_per_iter, mle_targetll,
+                                save_internal_points)
     end
     
     return BivariateConfidenceStruct(boundary, internal)
@@ -167,6 +174,9 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         show_progress::Bool=model.show_progress)
                                     
     existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
+
+    # need at least 3 boundary points some algorithms to work
+    num_points = max(3, num_points)
 
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)

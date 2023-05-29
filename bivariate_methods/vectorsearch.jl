@@ -283,10 +283,10 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             boundary[[ind1, ind2], i] .= external[:,i]
         else
             p.pointa .= internal[:,i]
-            v_bar = external[:,i] - internal[:,i]
+            v_bar = external[:,i] .- internal[:,i]
 
             v_bar_norm = norm(v_bar, 2)
-            p.uhat .= v_bar / v_bar_norm
+            p.uhat .= v_bar ./ v_bar_norm
 
             Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
             

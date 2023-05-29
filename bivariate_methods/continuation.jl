@@ -195,10 +195,10 @@ function continuation_inwards_radial_search!(p::NamedTuple,
     p.pointa .= mle_point
     # effectively equivalent code to vector search code 
     for i in 1:num_points
-        v_bar = search_directions[:,i] # start_level_set_2D[:,i] - mle_point
+        v_bar = search_directions[:,i] # start_level_set_2D[:,i] .- mle_point
 
         v_bar_norm = norm(v_bar, 2)
-        p.uhat .= v_bar / v_bar_norm
+        p.uhat .= v_bar ./ v_bar_norm
 
         if is_a_zero[i]
             Ψ_y1 = v_bar_norm

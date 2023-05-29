@@ -140,6 +140,15 @@ end
 
 struct BracketingMethodIterativeBoundary <: AbstractBivariateVectorMethod 
     initial_num_points::Int
+    angle_points_per_iter::Int
+    edge_points_per_iter::Int
+    function BracketingMethodIterativeBoundary(x,y,z)
+        x > 0 || throw(DomainError("initial_num_points must be greater than zero"))
+        y ≥ 0 || throw(DomainError("angle_points_per_iter must be greater than or equal to zero"))
+        z ≥ 0 || throw(DomainError("edge_points_per_iter must be greater than or equal zero"))
+        y > 0 || z > 0 || throw(DomainError("at least one of angle_points_per_iter and edge_points_per_iter must be greater than zero"))
+        return new(x,y,z)
+    end
 end
 
 struct BracketingMethodSimultaneous <: AbstractBivariateVectorMethod end
