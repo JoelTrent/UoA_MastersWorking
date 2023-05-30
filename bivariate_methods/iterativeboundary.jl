@@ -60,6 +60,12 @@ function edge_length(boundary, ind1::Int, ind2::Int, relative_magnitude)
     boundary[:, ind2] ./ SA[relative_magnitude, 1.0]) 
 end
 
+function edge_length(boundary, candidate_point, index::Int, relative_magnitude)
+    return evaluate(Euclidean(), 
+    candidate_point ./ SA[relative_magnitude, 1.0], 
+    boundary[:, index] ./ SA[relative_magnitude, 1.0]) 
+end
+
 """
 internal_angle_from_pi!(vertex_internal_angle_objs, indexes, boundary, adjacent_vertices)
 
@@ -178,7 +184,6 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     return false, boundary, boundary_all, internal_all, ll_values, point_is_on_bounds, edge_anti_on_bounds, bound_warning, mle_point, num_vertices, edge_clock, edge_anti, edge_heap, angle_heap, relative_magnitude
 end
 
-
 function newboundarypoint!(p::NamedTuple,
                             point_is_on_bounds::BitVector,
                             edge_anti_on_bounds::BitVector,
@@ -186,6 +191,7 @@ function newboundarypoint!(p::NamedTuple,
                             boundary_all::Matrix{Float64},
                             bivariate_optimiser::Function, 
                             model::LikelihoodModel, 
+                            edge_anti::Vector{Int},
                             num_vertices::Int,
                             ind1::Int, 
                             ind2::Int,
@@ -195,7 +201,7 @@ function newboundarypoint!(p::NamedTuple,
                             relative_magnitude,
                             bound_warning::Bool)
 
-    success = false
+    failure = false
 
     # candidate point - midpoint of edge calculation
     candidate_midpoint = boundary[:, ve1] .+ 0.5 .* (boundary[:, ve2] - boundary[:, ve1])
@@ -210,10 +216,8 @@ function newboundarypoint!(p::NamedTuple,
         boundary_all[[ind1, ind2], num_vertices] .= candidate_midpoint
         edge_anti_on_bounds[num_vertices] = true
         point_is_on_bounds[num_vertices] = true
-        success = true
     else
 
-        # num_vertices += 1
         p.pointa .= candidate_midpoint
         dir_vector = SA[(boundary[2,ve2] - boundary[2,ve1]), -(boundary[1,ve2] - boundary[1,ve1])] .* SA[relative_magnitude, 1.0]
         g = bivariate_optimiser(0.0, p)
@@ -244,32 +248,67 @@ function newboundarypoint!(p::NamedTuple,
                 end
             end
 
-            success = true
-
         else # external - push inwards
-            println("ahhh")
-            println(candidate_midpoint)
-            # p.uhat .= -dir_vector ./ norm(dir_vector, 2)
-            # num_vertices-=1
-            success = false
-
+            
+            candidate_line = Line(Point(candidate_midpoint), Point(candidate_midpoint .+ dir_vector)) 
             # find edge that the line normal vector intersects 
-            # for edge in vcat(1:(ve1-1), ve1+1:(num_vertices-1))
+            current_vertex = ve2 * 1
+            while current_vertex != ve1
+                edge_segment = Segment(Point(boundary[:,current_vertex]), Point(boundary[:, edge_anti[current_vertex]]))
 
+                if intersection(candidate_line, edge_segment).type != IntersectionType(0)
+                    break
+                end
+                current_vertex = edge_anti[current_vertex] * 1
+            end
 
-
-            # end
+            # by construction/algorithm enforcement all polygons we search within must have at least three points so this is ok
+            # don't want to choose an edge vertex that's on the candidate edge
+            if edge_anti[current_vertex] == ve1 
+                edge_vertex_index = 1
+            elseif current_vertex == ve2
+                edge_vertex_index = 2
+            else
+                edge_vertex_index = argmin(SA[edge_length(boundary, candidate_midpoint, current_vertex, relative_magnitude),
+                    edge_length(boundary, candidate_midpoint, edge_anti[current_vertex], relative_magnitude)])
+            end
+            edge_vertex = edge_vertex_index == 1 ? current_vertex : edge_anti[current_vertex] * 1
 
             
+            p.pointa .= boundary[:,edge_vertex] .* 1.0
+            p.uhat .= dir_vector ./ norm(dir_vector, 2)
+            v_bar_norm = (candidate_midpoint[1] - p.pointa[1]) / p.uhat[1]
+            f(x) = bivariate_optimiser(x, p)
+            Ψs = find_zeros(f, v_bar_norm*0.01, v_bar_norm; p=p)
 
+            if length(Ψs) == 0
+                failure=true
+            elseif length(Ψs) == 1
+                # if isapprox(Ψs[1], 0.0, atol=1e-8)
+                #     failure=true
+                # else
+                    Ψ = Ψs[1]
+                # end
+            else
+                Ψ = Ψs[end]
+            end
+                
+            if failure
+                return num_vertices, failure, bound_warning, edge_vertex
+            end
+
+            boundarypoint = p.pointa + Ψ*p.uhat
+            boundary[:, num_vertices] .= boundarypoint
+            boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
+            bivariate_optimiser(Ψ, p)
         end
 
-        if !biv_opt_is_ellipse_analytical && success
+        if !biv_opt_is_ellipse_analytical
             variablemapping2d!(@view(boundary_all[:, num_vertices]), p.λ_opt, p.θranges, p.λranges)
         end
     end
 
-    return num_vertices, success, bound_warning
+    return num_vertices, failure, bound_warning, 0
 end
 
 function heapupdates!(edge_heap::TrackingHeap,
@@ -330,6 +369,30 @@ function heapupdates!(edge_heap::TrackingHeap,
     return nothing
 end
 
+function polygon_break_and_rejoin!(edge_clock::Vector{Int},
+                                    edge_anti::Vector{Int},
+                                    ve1::Int,
+                                    ve2::Int,
+                                    opposite_edge_ve1::Int,
+                                    opposite_edge_ve2::Int,
+                                    model::LikelihoodModel,
+                                    ind1::Int, 
+                                    ind2::Int)
+
+    edge_clock[ve2] = opposite_edge_ve1 * 1
+    edge_clock[opposite_edge_ve2] = ve1 * 1
+
+    # ve1 -> edge_anti[opposite_edge]
+    # opposite_edge -> ve2
+    edge_anti[ve1] = opposite_edge_ve2 * 1
+    edge_anti[opposite_edge_ve1] = ve2 * 1
+
+    # In the case we have a polygon with only one vertex
+    if opposite_edge_ve2 == ve1 || ve2 == opposite_edge_ve1
+        @info string("there is likely to be multiple distinct level sets at this confidence level for parameters ", model.core.θnames[ind1]," and ", model.core.θnames[ind2], ". No additional points can be found on one of these level sets within this algorithm run.")
+    end
+    return nothing
+end
 
 function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Function, 
                                                 model::LikelihoodModel, 
@@ -365,10 +428,6 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
     end
 
     _, boundary, boundary_all, internal_all, ll_values, point_is_on_bounds, edge_anti_on_bounds, bound_warning, mle_point, num_vertices, edge_clock, edge_anti, edge_heap, angle_heap, relative_magnitude = return_tuple
-   
-
-    
-
 
     while num_vertices < num_points
 
@@ -385,19 +444,44 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
             ve1 = adjacent_index==1 ? adj_vertex : vi
             ve2 = edge_anti[ve1]
 
-            num_vertices, success, bound_warning = newboundarypoint!(p, point_is_on_bounds, edge_anti_on_bounds, 
+            num_vertices, failure, bound_warning, opposite_edge_ve1 = newboundarypoint!(p, point_is_on_bounds, edge_anti_on_bounds, 
                                                                     boundary, boundary_all, bivariate_optimiser, 
-                                                                    model, num_vertices, ind1, ind2, 
+                                                                    model, edge_anti, num_vertices, ind1, ind2, 
                                                                     biv_opt_is_ellipse_analytical, 
                                                                     ve1, ve2, relative_magnitude,
                                                                     bound_warning)
 
-            
-            if !success # appears we have found two distinct level sets - need to know opposite edge as well
-                # break the edges and join to form two separate polygons
-                # num_vertices -= 1
-                # continue
-                println()
+            if failure # appears we have found two distinct level sets - break the edges and join to form two separate polygons
+                num_vertices -= 1
+                
+                opposite_edge_ve2 = edge_anti[opposite_edge_ve1] * 1
+                polygon_break_and_rejoin!(edge_clock, edge_anti, ve1, ve2, opposite_edge_ve1, opposite_edge_ve2, model, ind1, ind2)
+
+                # In the case we have a new polygon with two vertices, simplest way to handle is to break this two vertex polygon into two 1 vertex polygons, so long as we have another polygon with at least 3 vertices. 
+                if ve1 == edge_anti[opposite_edge_ve2]
+                    polygon_break_and_rejoin!(edge_clock, edge_anti, ve1, opposite_edge_ve2, opposite_edge_ve2, ve1, model, ind1, ind2)
+                end
+                if opposite_edge_ve1 == edge_anti[ve2]
+                    polygon_break_and_rejoin!(edge_clock, edge_anti, ve2, opposite_edge_ve1, opposite_edge_ve1, ve2, model, ind1, ind2)
+                end
+
+                # update edge length for adj_vertex and num_vertices
+                for i in SA[ve1, opposite_edge_ve1]
+                    TrackingHeaps.update!(edge_heap, i, edge_length(boundary, i, edge_anti[i], relative_magnitude))
+                end
+
+                # update angle obj for vi, adj_vertex and new vertex (num_vertices)
+                for i in SA[ve1, ve2, opposite_edge_ve1, opposite_edge_ve2]
+                    TrackingHeaps.update!(angle_heap, i, internal_angle_from_pi(i, boundary, edge_clock, edge_anti, relative_magnitude))
+                end
+
+                if TrackingHeaps.top(edge_heap)[2] ≤ 0.0
+                    @warn(string("the number of vertices on the largest level set polygon is less than three at the current step. Algorithm aborting."))
+
+                    return boundary_all[:, 1:num_vertices], PointsAndLogLikelihood(internal_all, ll_values)
+                end
+
+                continue
             end
 
             heapupdates!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds, edge_anti_on_bounds,
@@ -415,18 +499,46 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
             vi = candidate[1]
             adj_vertex = edge_anti[vi]
 
-            num_vertices, success, bound_warning = newboundarypoint!(p, point_is_on_bounds, edge_anti_on_bounds, 
+            num_vertices, failure, bound_warning, opposite_edge_ve1 = newboundarypoint!(p, point_is_on_bounds, edge_anti_on_bounds, 
                                                                     boundary, boundary_all, bivariate_optimiser, 
-                                                                    model, num_vertices, ind1, ind2, 
+                                                                    model, edge_anti, num_vertices, ind1, ind2, 
                                                                     biv_opt_is_ellipse_analytical, 
                                                                     vi, adj_vertex, relative_magnitude,
                                                                     bound_warning)
             
-            if !success # appears we have found two distinct level sets - need to know opposite edge as well
-                # break the edges and join to form two separate polygons
-                # num_vertices -= 1
-                # continue
-                println()
+            if failure # appears we have found two distinct level sets - break the edges and join to form two separate polygons
+                num_vertices -= 1
+                ve1 = vi
+                ve2 = adj_vertex
+                
+                opposite_edge_ve2 = edge_anti[opposite_edge_ve1] * 1
+                polygon_break_and_rejoin!(edge_clock, edge_anti, ve1, ve2, opposite_edge_ve1, opposite_edge_ve2, model, ind1, ind2)
+
+                # In the case we have a new polygon with two vertices, simplest way to handle is to break this two vertex polygon into two 1 vertex polygons, so long as we have another polygon with at least 3 vertices. 
+                if ve1 == edge_anti[opposite_edge_ve2]
+                    polygon_break_and_rejoin!(edge_clock, edge_anti, ve1, opposite_edge_ve2, opposite_edge_ve2, ve1, model, ind1, ind2)
+                end
+                if opposite_edge_ve1 == edge_anti[ve2]
+                    polygon_break_and_rejoin!(edge_clock, edge_anti, ve2, opposite_edge_ve1, opposite_edge_ve1, ve2, model, ind1, ind2)
+                end
+
+                # update edge length for adj_vertex and num_vertices
+                for i in SA[ve1, opposite_edge_ve1]
+                    TrackingHeaps.update!(edge_heap, i, edge_length(boundary, i, edge_anti[i], relative_magnitude))
+                end
+
+                # update angle obj for vi, adj_vertex and new vertex (num_vertices)
+                for i in SA[ve1, ve2, opposite_edge_ve1, opposite_edge_ve2]
+                    TrackingHeaps.update!(angle_heap, i, internal_angle_from_pi(i, boundary, edge_clock, edge_anti, relative_magnitude))
+                end
+
+                if TrackingHeaps.top(edge_heap)[2] ≤ 0.0
+                    @warn(string("the number of vertices on the largest level set polygon is less than three at the current step. Algorithm aborting."))
+
+                    return boundary_all[:, 1:num_vertices], PointsAndLogLikelihood(internal_all, ll_values)
+                end
+
+                continue
             end
                         
             heapupdates!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds, edge_anti_on_bounds,
