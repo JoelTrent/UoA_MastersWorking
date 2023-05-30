@@ -178,6 +178,159 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     return false, boundary, boundary_all, internal_all, ll_values, point_is_on_bounds, edge_anti_on_bounds, bound_warning, mle_point, num_vertices, edge_clock, edge_anti, edge_heap, angle_heap, relative_magnitude
 end
 
+
+function newboundarypoint!(p::NamedTuple,
+                            point_is_on_bounds::BitVector,
+                            edge_anti_on_bounds::BitVector,
+                            boundary::Matrix{Float64},
+                            boundary_all::Matrix{Float64},
+                            bivariate_optimiser::Function, 
+                            model::LikelihoodModel, 
+                            num_vertices::Int,
+                            ind1::Int, 
+                            ind2::Int,
+                            biv_opt_is_ellipse_analytical::Bool,
+                            ve1::Int,
+                            ve2::Int,
+                            relative_magnitude,
+                            bound_warning::Bool)
+
+    success = false
+
+    # candidate point - midpoint of edge calculation
+    candidate_midpoint = boundary[:, ve1] .+ 0.5 .* (boundary[:, ve2] - boundary[:, ve1])
+
+    # find new boundary point, given candidate midpoint, the vertexes that describe the edge
+    # use candidate point to find new vertex
+
+    if edge_anti_on_bounds[ve1] # accept the mid point and find nuisance parameters
+        p.pointa .= candidate_midpoint
+        bivariate_optimiser(0.0, p)
+        boundary[:, num_vertices] .= candidate_midpoint
+        boundary_all[[ind1, ind2], num_vertices] .= candidate_midpoint
+        edge_anti_on_bounds[num_vertices] = true
+        point_is_on_bounds[num_vertices] = true
+        success = true
+    else
+
+        # num_vertices += 1
+        p.pointa .= candidate_midpoint
+        dir_vector = SA[(boundary[2,ve2] - boundary[2,ve1]), -(boundary[1,ve2] - boundary[1,ve1])] .* SA[relative_magnitude, 1.0]
+        g = bivariate_optimiser(0.0, p)
+        if g > 0 # internal - push out normal to edge
+            p.uhat .= dir_vector ./ norm(dir_vector, 2)
+
+            boundpoint, bound_ind, upper_or_lower = findpointonbounds(model, candidate_midpoint, p.uhat, ind1, ind2, true)
+
+            v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
+
+            # if bound point and pointa bracket a boundary, search for the boundary
+            # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
+            if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
+
+                Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+
+                boundarypoint = p.pointa + Ψ_y1*p.uhat
+                boundary[:, num_vertices] .= boundarypoint
+                boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
+            else
+                point_is_on_bounds[num_vertices] = true
+                boundary[:, num_vertices] .= boundpoint
+                boundary_all[[ind1, ind2], num_vertices] .= boundpoint
+
+                if bound_warning
+                    @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
+                    bound_warning = false
+                end
+            end
+
+            success = true
+
+        else # external - push inwards
+            println("ahhh")
+            println(candidate_midpoint)
+            # p.uhat .= -dir_vector ./ norm(dir_vector, 2)
+            # num_vertices-=1
+            success = false
+
+            # find edge that the line normal vector intersects 
+            # for edge in vcat(1:(ve1-1), ve1+1:(num_vertices-1))
+
+
+
+            # end
+
+            
+
+        end
+
+        if !biv_opt_is_ellipse_analytical && success
+            variablemapping2d!(@view(boundary_all[:, num_vertices]), p.λ_opt, p.θranges, p.λranges)
+        end
+    end
+
+    return num_vertices, success, bound_warning
+end
+
+function heapupdates!(edge_heap::TrackingHeap,
+                        angle_heap::TrackingHeap, 
+                        edge_clock::Vector{Int},
+                        edge_anti::Vector{Int},
+                        point_is_on_bounds::BitVector,
+                        edge_anti_on_bounds::BitVector,
+                        boundary::Matrix{Float64},
+                        num_vertices::Int,
+                        vi::Int, 
+                        adj_vertex::Int,
+                        relative_magnitude,
+                        clockwise_from_vi=false)
+
+    # perform required updates
+    if clockwise_from_vi
+        # adjacent vertex is clockwise from vi
+        edge_clock[vi] = num_vertices
+        edge_clock[num_vertices] = adj_vertex
+
+        edge_anti[adj_vertex] = num_vertices
+        edge_anti[num_vertices] = vi
+
+        if point_is_on_bounds[num_vertices]
+            edge_anti_on_bounds[num_vertices] = point_is_on_bounds[num_vertices] && point_is_on_bounds[vi]
+            edge_anti_on_bounds[adj_vertex] = point_is_on_bounds[num_vertices] && point_is_on_bounds[adj_vertex]
+        end
+
+        # update edge length for adj_vertex and num_vertices
+        for i in SA[adj_vertex, num_vertices]
+            TrackingHeaps.update!(edge_heap, i, edge_length(boundary, i, edge_anti[i], relative_magnitude))
+        end
+    else
+        # adjacent vertex is anticlockwise from vi
+        edge_clock[adj_vertex] = num_vertices
+        edge_clock[num_vertices] = vi
+
+        edge_anti[vi] = num_vertices
+        edge_anti[num_vertices] = adj_vertex
+
+        if point_is_on_bounds[num_vertices]
+            edge_anti_on_bounds[vi] = point_is_on_bounds[num_vertices] && point_is_on_bounds[vi]
+            edge_anti_on_bounds[num_vertices] = point_is_on_bounds[num_vertices] && point_is_on_bounds[adj_vertex]
+        end
+        
+        # update edge length for vi and num_vertices 
+        for i in SA[vi, num_vertices]
+            TrackingHeaps.update!(edge_heap, i, edge_length(boundary, i, edge_anti[i], relative_magnitude))
+        end
+    end
+
+    # update angle obj for vi, adj_vertex and new vertex (num_vertices)
+    for i in SA[vi, adj_vertex, num_vertices]
+        TrackingHeaps.update!(angle_heap, i, internal_angle_from_pi(i, boundary, edge_clock, edge_anti, relative_magnitude))
+    end
+
+    return nothing
+end
+
+
 function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Function, 
                                                 model::LikelihoodModel, 
                                                 num_points::Int, 
@@ -214,6 +367,9 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
     _, boundary, boundary_all, internal_all, ll_values, point_is_on_bounds, edge_anti_on_bounds, bound_warning, mle_point, num_vertices, edge_clock, edge_anti, edge_heap, angle_heap, relative_magnitude = return_tuple
    
 
+    
+
+
     while num_vertices < num_points
 
         iter_max = min(num_points, num_vertices+angle_points_per_iter)
@@ -229,148 +385,52 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
             ve1 = adjacent_index==1 ? adj_vertex : vi
             ve2 = edge_anti[ve1]
 
-            # candidate point - midpoint of edge calculation
-            candidate_midpoint = boundary[:, vi] .+ 0.5 .* (boundary[:, adj_vertex] - boundary[:, vi])
+            num_vertices, success, bound_warning = newboundarypoint!(p, point_is_on_bounds, edge_anti_on_bounds, 
+                                                                    boundary, boundary_all, bivariate_optimiser, 
+                                                                    model, num_vertices, ind1, ind2, 
+                                                                    biv_opt_is_ellipse_analytical, 
+                                                                    ve1, ve2, relative_magnitude,
+                                                                    bound_warning)
 
-            # find new boundary point, given candidate midpoint, the vertexes that describe the edge
-            # use candidate point to find new vertex
-
-            if edge_anti_on_bounds[ve1] # accept the mid point and find nuisance parameters
-                p.pointa .= candidate_midpoint
-                bivariate_optimiser(0.0, p)
-                boundary[:, num_vertices] .= candidate_midpoint
-                boundary_all[[ind1, ind2], num_vertices] .= candidate_midpoint
-                edge_anti_on_bounds[num_vertices] = true
-                point_is_on_bounds[num_vertices] = true
-            else
-
-                # num_vertices += 1
-                p.pointa .= candidate_midpoint
-                dir_vector = SA[(boundary[2,ve2] - boundary[2,ve1]), -(boundary[1,ve2] - boundary[1,ve1])] .* SA[relative_magnitude, 1.0]
-                g = bivariate_optimiser(0.0, p)
-                if g > 0 # internal - push out normal to edge
-                    p.uhat .= dir_vector ./ norm(dir_vector, 2)
-
-                    boundpoint, bound_ind, upper_or_lower = findpointonbounds(model, candidate_midpoint, p.uhat, ind1, ind2, true)
-
-                    v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
-
-                    # if bound point and pointa bracket a boundary, search for the boundary
-                    # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
-                    if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
-
-                        Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
-
-                        boundarypoint = p.pointa + Ψ_y1*p.uhat
-                        boundary[:, num_vertices] .= boundarypoint
-                        boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
-                    else
-                        point_is_on_bounds[num_vertices] = true
-                        boundary[:, num_vertices] .= boundpoint
-                        boundary_all[[ind1, ind2], num_vertices] .= boundpoint
-
-                        if bound_warning
-                            @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
-                            bound_warning = false
-                        end
-                    end
-
-                else # external - push inwards
-                    println("ahhh")
-                    p.uhat .= -dir_vector ./ norm(dir_vector, 2)
-                    # num_vertices-=1
-                end
-
-                if !biv_opt_is_ellipse_analytical
-                    variablemapping2d!(@view(boundary_all[:, num_vertices]), p.λ_opt, p.θranges, p.λranges)
-                end
+            
+            if !success # appears we have found two distinct level sets - need to know opposite edge as well
+                # break the edges and join to form two separate polygons
+                # num_vertices -= 1
+                # continue
+                println()
             end
 
-            # perform required updates
-            if adjacent_index == 1  
-                # adjacent vertex is clockwise from vi
-                edge_clock[vi] = num_vertices
-                edge_clock[num_vertices] = adj_vertex
-
-                edge_anti[adj_vertex] = num_vertices
-                edge_anti[num_vertices] = vi
-
-                if point_is_on_bounds[num_vertices]
-                    edge_anti_on_bounds[num_vertices] = point_is_on_bounds[num_vertices] && point_is_on_bounds[vi]
-                    edge_anti_on_bounds[adj_vertex] = point_is_on_bounds[num_vertices] && point_is_on_bounds[adj_vertex]
-                end
-
-                # update edge length for adj_vertex and num_vertices
-                for i in SA[adj_vertex, num_vertices]
-                    TrackingHeaps.update!(edge_heap, i, edge_length(boundary, i, edge_anti[i], relative_magnitude))
-                end
-            else
-                # adjacent vertex is anticlockwise from vi
-                edge_clock[adj_vertex] = num_vertices
-                edge_clock[num_vertices] = vi
-
-                edge_anti[vi] = num_vertices
-                edge_anti[num_vertices] = adj_vertex
-
-                if point_is_on_bounds[num_vertices]
-                    edge_anti_on_bounds[vi] = point_is_on_bounds[num_vertices] && point_is_on_bounds[vi]
-                    edge_anti_on_bounds[num_vertices] = point_is_on_bounds[num_vertices] && point_is_on_bounds[adj_vertex]
-                end
-                
-                # update edge length for vi and num_vertices 
-                for i in SA[vi, num_vertices]
-                    TrackingHeaps.update!(edge_heap, i, edge_length(boundary, i, edge_anti[i], relative_magnitude))
-                end
-            end
-
-            # update angle obj for vi, adj_vertex and new vertex (num_vertices)
-            for i in SA[vi, adj_vertex, num_vertices]
-                TrackingHeaps.update!(angle_heap, i, internal_angle_from_pi(i, boundary, edge_clock, edge_anti, relative_magnitude))
-            end
+            heapupdates!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds, edge_anti_on_bounds,
+                            boundary, num_vertices, vi, adj_vertex, relative_magnitude, adjacent_index == 1)
+            
         end
         if num_vertices == num_points; break end
 
         iter_max = min(num_points, num_vertices+edge_points_per_iter)
         while num_vertices < iter_max
+            num_vertices += 1
             
             # candidate edge
             candidate = TrackingHeaps.top(edge_heap)
             vi = candidate[1]
             adj_vertex = edge_anti[vi]
-            
-            # candidate point - midpoint of edge calculation
-            candidate_midpoint = boundary[:, vi] .+ 0.5 .* (boundary[:, adj_vertex] - boundary[:, vi])
-            
-            # find new boundary point, given candidate midpoint, the vertexes that describe the edge and a set of valid cluster points to potentially search towards. 
-            # use candidate point to find new vertex
-            
-            # if edge_anti_on_bounds[vi] # just accept the mid point and find nuisance parameters (if needed)
-            
-            boundary[:,num_vertices+1] .= [1.0,2.] # findpoint(candidate_midpoint)
-            
-            # perform required updates
-            # adjacent vertex is anticlockwise from vi
-            edge_clock[adj_vertex] = num_vertices
-            edge_clock[num_vertices] = vi
-            
-            edge_anti[vi] = num_vertices
-            edge_anti[num_vertices] = adj_vertex
 
-            if point_is_on_bounds[num_vertices]
-                edge_anti_on_bounds[vi] = point_is_on_bounds[num_vertices] && point_is_on_bounds[vi]
-                edge_anti_on_bounds[num_vertices] = point_is_on_bounds[num_vertices] && point_is_on_bounds[adj_vertex]
-            end
+            num_vertices, success, bound_warning = newboundarypoint!(p, point_is_on_bounds, edge_anti_on_bounds, 
+                                                                    boundary, boundary_all, bivariate_optimiser, 
+                                                                    model, num_vertices, ind1, ind2, 
+                                                                    biv_opt_is_ellipse_analytical, 
+                                                                    vi, adj_vertex, relative_magnitude,
+                                                                    bound_warning)
             
-            # update edge length for vi and num_vertices 
-            for i in SA[vi, num_vertices]
-                TrackingHeaps.update!(edge_heap, i, edge_length(boundary, i, edge_anti[i], relative_magnitude))
+            if !success # appears we have found two distinct level sets - need to know opposite edge as well
+                # break the edges and join to form two separate polygons
+                # num_vertices -= 1
+                # continue
+                println()
             end
-            
-            # update angle obj for vi, adj_vertex and new vertex (num_vertices)
-            for i in SA[vi, adj_vertex, num_vertices]
-                TrackingHeaps.update!(angle_heap, i, internal_angle_from_pi(i, boundary, edge_clock, edge_anti, relative_magnitude))
-            end
-            num_vertices += 1
+                        
+            heapupdates!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds, edge_anti_on_bounds,
+                            boundary, num_vertices, vi, adj_vertex, relative_magnitude)
         end
         if num_vertices == num_points; break end
     end
