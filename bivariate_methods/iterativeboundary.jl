@@ -67,15 +67,15 @@ The magnitude the internal angle in radians between two adjacent edges is from p
 """
 function internal_angle_from_pi!(vertex_internal_angle_objs, indexes::UnitRange, boundary, edge_clock, edge_anti, relative_magnitude)
     for i in indexes
-        vertex_internal_angle_objs[i] = π - AngleBetweenVectors.angle((boundary[:,edge_clock[i]] .- boundary[:, i]) ./ SA[relative_magnitude, 1.0], 
-        (boundary[:,edge_anti[i]] .- boundary[:,i]) ./ SA[relative_magnitude, 1.0]) 
+        vertex_internal_angle_objs[i] = AngleBetweenVectors.angle((boundary[:,i] .- boundary[:, edge_clock[i]]) ./ SA[relative_magnitude, 1.0], 
+                                                                    (boundary[:,edge_anti[i]] .- boundary[:,i])./ SA[relative_magnitude, 1.0])
     end
     return nothing
 end
 
 function internal_angle_from_pi(index::Int, boundary, edge_clock, edge_anti, relative_magnitude)
-    return π - AngleBetweenVectors.angle((boundary[:,edge_clock[index]] .- boundary[:,index])./ SA[relative_magnitude, 1.0],
-    (boundary[:,edge_anti[index]] .- boundary[:,index]) ./ SA[relative_magnitude, 1.0]) 
+    return AngleBetweenVectors.angle((boundary[:,index] .- boundary[:, edge_clock[index]])./ SA[relative_magnitude, 1.0],
+                                        (boundary[:,edge_anti[index]] .- boundary[:, index])./ SA[relative_magnitude, 1.0]) 
 end
 
 function iterativeboundary_init(bivariate_optimiser::Function, 
