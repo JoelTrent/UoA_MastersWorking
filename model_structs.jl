@@ -129,12 +129,12 @@ struct BracketingMethodRadialRandom <: AbstractBivariateVectorMethod
 end
 
 struct BracketingMethodRadialMLE <: AbstractBivariateVectorMethod
-    # ellipse_confidence_level::Float64
     ellipse_start_point_shift::Float64
-    function BracketingMethodRadialMLE(x=rand()) 
-        # (0.0 < x && x < 1.0) || throw(DomainError("ellipse_confidence_level must be in the open interval (0.0,1.0)"))
+    ellipse_sqrt_distortion::Float64
+    function BracketingMethodRadialMLE(x=rand(),y=0.01) 
         (0.0 <= x && x <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
-        return new(x)
+        (0.0 <= y && y <= 1.0) || throw(DomainError("ellipse_sqrt_distortion must be in the closed interval [0.0,1.0]"))
+        return new(x,y)
     end
 end
 
@@ -142,12 +142,14 @@ struct BracketingMethodIterativeBoundary <: AbstractBivariateVectorMethod
     initial_num_points::Int
     angle_points_per_iter::Int
     edge_points_per_iter::Int
-    function BracketingMethodIterativeBoundary(x,y,z)
-        x > 0 || throw(DomainError("initial_num_points must be greater than zero"))
-        y ≥ 0 || throw(DomainError("angle_points_per_iter must be greater than or equal to zero"))
-        z ≥ 0 || throw(DomainError("edge_points_per_iter must be greater than or equal zero"))
-        y > 0 || z > 0 || throw(DomainError("at least one of angle_points_per_iter and edge_points_per_iter must be greater than zero"))
-        return new(x,y,z)
+    radial_start_point_shift::Float64
+    function BracketingMethodIterativeBoundary(w,x,y,z=rand())
+        w > 0 || throw(DomainError("initial_num_points must be greater than zero"))
+        x ≥ 0 || throw(DomainError("angle_points_per_iter must be greater than or equal to zero"))
+        y ≥ 0 || throw(DomainError("edge_points_per_iter must be greater than or equal zero"))
+        x > 0 || y > 0 || throw(DomainError("at least one of angle_points_per_iter and edge_points_per_iter must be greater than zero"))
+        (0.0 <= z && z <= 1.0) || throw(DomainError("radial_start_point_shift must be in the closed interval [0.0,1.0]"))
+        return new(w,x,y,z)
     end
 end
 

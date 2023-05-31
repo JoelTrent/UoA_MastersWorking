@@ -130,7 +130,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 num_points, consistent, ind1, ind2,
                                 mle_targetll, save_internal_points,
                                 ellipse_confidence_level=0.1,
-                                ellipse_start_point_shift=method.ellipse_start_point_shift)
+                                ellipse_start_point_shift=method.ellipse_start_point_shift,
+                                ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
     elseif method isa ContinuationMethod
         if profile_type isa EllipseApproxAnalytical
             bivariate_optimiser_gradient = bivariateΨ_ellipse_analytical_gradient
@@ -152,8 +153,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 bivariate_optimiser, model,
                                 num_points, consistent, ind1, ind2,
                                 method.initial_num_points, method.angle_points_per_iter,
-                                method.edge_points_per_iter, mle_targetll,
-                                save_internal_points)
+                                method.edge_points_per_iter, method.radial_start_point_shift,
+                                mle_targetll, save_internal_points)
     end
     
     return BivariateConfidenceStruct(boundary, internal)

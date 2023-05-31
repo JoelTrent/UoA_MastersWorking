@@ -107,12 +107,15 @@ function continuation_line_search!(p::NamedTuple,
         # normal_i .= (normal_i ./ norm(normal_i, 2)) 
         # gradient_i .= tangent_amount*(search_directions[:,i] ./ norm(search_directions[:,i], 2)) + (1-tangent_amount)*normal_i
 
-        gradient_i .= search_directions[:,i] .* 1.0
+        # p.uhat .= (gradient_i ./ (norm(gradient_i, 2))) 
 
-        p.uhat .= (gradient_i ./ (norm(gradient_i, 2))) 
+        boundpoint .= findpointonbounds(model, p.pointa, search_directions[:,i], ind1, ind2)
 
-        boundpoint .= findpointonbounds(model, p.pointa, p.uhat, ind1, ind2)
-        v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
+        gradient_i .= boundpoint .- p.pointa
+        v_bar_norm = norm(gradient_i, 2)
+        p.uhat .= gradient_i ./ v_bar_norm
+
+        # v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
 
         # if bound point and pointa bracket a boundary, search for the boundary
         # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)

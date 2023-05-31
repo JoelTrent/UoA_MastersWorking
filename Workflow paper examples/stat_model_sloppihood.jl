@@ -15,7 +15,7 @@ varnames = Dict("x"=>"n", "y"=>"p")
 xy_initial =  [50, 0.3]# x (i.e. n) and y (i.e. p), starting guesses
 # parameter bounds
 xy_lower_bounds = [0.0001,0.0001]
-xy_upper_bounds = [500.0,1.0]
+xy_upper_bounds = [500.0, 0.999]
 # true parameter
 xy_true = [100.0,0.2] #x,y, truth. N, p
 N_samples = 10 # measurements of model
@@ -37,13 +37,15 @@ model = initialiseLikelihoodModel(lnlike_xy, predictFunc_xy, data, θnames, xy_i
 
 full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
-univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
+univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=50)
 
-bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), confidence_level=0.05, method=ContinuationMethod(1, 0.5, 0.0), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), confidence_level=0.95, method=ContinuationMethod(1, 0.1, 0.0), existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(0.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+
+bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApproxAnalytical(), method=BracketingMethodIterativeBoundary(10, 20, 10, 0.5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
 gr()
@@ -51,7 +53,7 @@ gr()
 plots = plot_univariate_profiles(model, 0.05, 0.3, palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=false, markeralpha=0.9)
+plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
 for i in eachindex(plots); display(plots[i]) end
 
 df=2
@@ -208,49 +210,49 @@ scatter(smeshvertices[1,:], smeshvertices[2,:], label=nothing, mw=0, ms=4, marke
 
 ###### LOG SPACE #####################################################################################
 ######################################################################################################
-function lnlike_XY(XY, data)
-    return sum(logpdf.(distrib_xy(exp.(XY)), data.samples))
-end
+# function lnlike_XY(XY, data)
+#     return sum(logpdf.(distrib_xy(exp.(XY)), data.samples))
+# end
 
-function forward_parameter_transformLog(θ)
-    return log.(θ)
-end
+# function forward_parameter_transformLog(θ)
+#     return log.(θ)
+# end
 
-function predictFunc_XY(xy, data, t=["n*p"]); [prod(exp.(xy))] end
+# function predictFunc_XY(xy, data, t=["n*p"]); [prod(exp.(xy))] end
 
-newlb, newub = transformbounds(forward_parameter_transformLog, xy_lower_bounds, xy_upper_bounds, collect(1:2), Int[])
-θnames = [:ln_n, :ln_p]
-par_magnitudes = [2, 1]
+# newlb, newub = transformbounds(forward_parameter_transformLog, xy_lower_bounds, xy_upper_bounds, collect(1:2), Int[])
+# θnames = [:ln_n, :ln_p]
+# par_magnitudes = [2, 1]
 
-model = initialiseLikelihoodModel(lnlike_XY, predictFunc_XY, data, θnames, forward_parameter_transformLog(xy_initial), newlb, newub, par_magnitudes);
+# model = initialiseLikelihoodModel(lnlike_XY, predictFunc_XY, data, θnames, forward_parameter_transformLog(xy_initial), newlb, newub, par_magnitudes);
 
-full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
+# full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
-univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=300)
+# univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=300)
 
-bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
+# bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
 
-plots = plot_univariate_profiles(model, 0.05, 0.3, palette_to_use=:Spectral_8)
-for i in eachindex(plots); display(plots[i]) end
+# plots = plot_univariate_profiles(model, 0.05, 0.3, palette_to_use=:Spectral_8)
+# for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
-for i in eachindex(plots); display(plots[i]) end
+# plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+# for i in eachindex(plots); display(plots[i]) end
 
 
-points = model.dim_samples_dict[1].points
-ll = exp.(model.dim_samples_dict[1].ll)
-inds = sample(1:length(ll), min(length(ll), 2000), replace=false, ordered=true)
-boundary_plot = scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
+# points = model.dim_samples_dict[1].points
+# ll = exp.(model.dim_samples_dict[1].ll)
+# inds = sample(1:length(ll), min(length(ll), 2000), replace=false, ordered=true)
+# boundary_plot = scatter(points[1,inds], points[2,inds], label=nothing, mw=0, ms=1, markerstrokewidth=0.0, opacity=1.0,palette=palette(:Reds_4))
 
-hull95 = concave_hull([eachcol(points)...], 300)
-plot!(hull95, label="0.95")
+# hull95 = concave_hull([eachcol(points)...], 300)
+# plot!(hull95, label="0.95")
 
-hull50 = concave_hull([eachcol(points[:, ll .> llstar50])...], 300)
-plot!(hull50, label="0.50")
+# hull50 = concave_hull([eachcol(points[:, ll .> llstar50])...], 300)
+# plot!(hull50, label="0.50")
 
-hull05 = concave_hull([eachcol(points[:, ll .> llstar05])...], 30)
-plot!(hull05, label="0.05")
-display(boundary_plot)
+# hull05 = concave_hull([eachcol(points[:, ll .> llstar05])...], 30)
+# plot!(hull05, label="0.05")
+# display(boundary_plot)
 
 
 

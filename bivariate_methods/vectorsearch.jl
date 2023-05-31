@@ -91,9 +91,9 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
     return internal, internal_all, ll_values, external
 end
 
-function find_m_spaced_radialdirections(num_directions::Int)
+function find_m_spaced_radialdirections(num_directions::Int; start_point_shift::Float64=rand())
     radial_dirs = zeros(num_directions)
-    radial_dirs .= (rand() * 2.0 / convert(Float64, num_directions)) .+ collect(LinRange(1e-12, 2.0, num_directions+1))[1:end-1]
+    radial_dirs .= (start_point_shift * 2.0 / convert(Float64, num_directions)) .+ collect(LinRange(1e-12, 2.0, num_directions+1))[1:end-1]
     return radial_dirs
 end
 
@@ -160,11 +160,13 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
                 external[:, count] .= boundpoint
                 internal_unique[count] = count_accepted == 1
 
-                if save_λs && count_accepted == 1
+                if save_internal_points && count_accepted == 1
                     internal_count += 1
-                    internal_all[[ind1, ind2], internal_count] .= x, y
                     ll_values[internal_count] = g_ll * 1.0
-                    variablemapping2d!(@view(internal_all[:, internal_count]), λ_opt, p.θranges, p.λranges)
+                    if !biv_opt_is_ellipse_analytical
+                        internal_all[[ind1, ind2], internal_count] .= x, y
+                        variablemapping2d!(@view(internal_all[:, internal_count]), λ_opt, p.θranges, p.λranges)
+                    end
                 end
             end
 
@@ -174,14 +176,17 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
         end
     end
 
-    if save_internal_points && biv_opt_is_ellipse_analytical
-        internal_all = get_λs_bivariate_ellipse_analytical!(internal[:, internal_unique], sum(internal_unique),
-                                                    p.consistent, ind1, ind2, 
-                                                    model.core.num_pars, p.initGuess,
-                                                    p.θranges, p.λranges)
-    else
-        internal_all = internal_all[:, 1:internal_count]
+    if save_internal_points 
         ll_values = ll_values[1:internal_count] .+ mle_targetll
+        
+        if biv_opt_is_ellipse_analytical
+            internal_all = get_λs_bivariate_ellipse_analytical!(internal[:, internal_unique], sum(internal_unique),
+                                                                p.consistent, ind1, ind2, 
+                                                                model.core.num_pars, p.initGuess,
+                                                                p.θranges, p.λranges)
+        else
+            internal_all = internal_all[:, 1:internal_count]
+        end
     end
 
     return internal, internal_all, ll_values, external
@@ -194,7 +199,8 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
                                     ind1::Int, 
                                     ind2::Int,
                                     ellipse_confidence_level::Float64,
-                                    ellipse_start_point_shift::Float64)
+                                    ellipse_start_point_shift::Float64,
+                                    ellipse_sqrt_distortion::Float64)
 
     mle_point = model.core.θmle[[ind1, ind2]]
     internal = zeros(2,num_points) .= mle_point
@@ -208,7 +214,7 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
                                                         model.core.θmle, ind1, ind2,
                                                         confidence_level=ellipse_confidence_level, 
                                                         start_point_shift=ellipse_start_point_shift, 
-                                                        sqrt_distortion=0.01)
+                                                        sqrt_distortion=ellipse_sqrt_distortion)
 
     bound_ind=0
     for i in 1:num_points
@@ -241,7 +247,8 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     save_internal_points::Bool;
                                                     num_radial_directions::Int=0,
                                                     ellipse_confidence_level::Float64=-1.0,
-                                                    ellipse_start_point_shift::Float64=0.0)
+                                                    ellipse_start_point_shift::Float64=0.0,
+                                                    ellipse_sqrt_distortion::Float64=0.0)
 
     newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
 
@@ -261,7 +268,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
 
     if ellipse_confidence_level !== -1.0
         internal, internal_all, ll_values, external, point_is_on_bounds = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
-                                                                                            ellipse_confidence_level, ellipse_start_point_shift)
+                                                                                            ellipse_confidence_level, ellipse_start_point_shift, ellipse_sqrt_distortion)
 
     else
         if num_radial_directions == 0
