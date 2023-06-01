@@ -129,7 +129,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
         g = univariate_optimiser(bracket_l[1], p)
         if g < 0.0
             # make bracket a tiny bit smaller
-            if isinf(g); bracket_l[1] = bracket_l[1] - 1e-8 * diff(bracket_l)[1] end
+            if isinf(g); bracket_l[1] = bracket_l[1] + 1e-8 * diff(bracket_l)[1] end
 
             interval[1] = find_zero(univariate_optimiser, bracket_l, Roots.Brent(), p=p) 
             interval_points[θi,1] = interval[1]
