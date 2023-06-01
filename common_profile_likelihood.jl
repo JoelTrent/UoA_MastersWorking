@@ -1,3 +1,12 @@
+function setθmagnitudes!(model::LikelihoodModel,
+                            θmagnitudes::AbstractVector{<:Real})
+
+    length(θmagnitudes) == model.core.num_pars || throw(ArgumentError(string("θmagnitudes must have the same length as the number of model parameters (", model.core.num_pars, ")")))
+
+    model.core.θmagnitudes .= θmagnitudes
+    return nothing
+end
+
 function convertθnames_toindices(model::LikelihoodModel, 
                                     θnames_to_convert::Vector{<:Symbol})
 
