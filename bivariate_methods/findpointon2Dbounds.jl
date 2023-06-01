@@ -47,7 +47,7 @@ end
 
 function findpointonbounds(model::LikelihoodModel, 
                             internalpoint::Vector{<:Float64}, 
-                            direction2D::Vector{Float64}, 
+                            direction2D::AbstractVector{Float64}, 
                             ind1::Int, 
                             ind2::Int,
                             returnboundindex::Bool=false)
