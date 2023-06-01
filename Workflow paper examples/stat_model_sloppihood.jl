@@ -14,8 +14,8 @@ varnames = Dict("x"=>"n", "y"=>"p")
 # initial guess for optimisation
 xy_initial =  [50, 0.3]# x (i.e. n) and y (i.e. p), starting guesses
 # parameter bounds
-xy_lower_bounds = [0.0001,0.0001]
-xy_upper_bounds = [500.0, 0.999]
+xy_lower_bounds = [0.000,0.000]
+xy_upper_bounds = [500.0, 1.0]
 # true parameter
 xy_true = [100.0,0.2] #x,y, truth. N, p
 N_samples = 10 # measurements of model
@@ -45,7 +45,9 @@ bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), confiden
 
 bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(0.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApproxAnalytical(), method=BracketingMethodIterativeBoundary(10, 20, 10, 0.5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodIterativeBoundary(10, 20, 10, 0.5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+
+bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
 gr()

@@ -124,9 +124,9 @@ function iterativeboundary_init(bivariate_optimiser::Function,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar ./ v_bar_norm
 
-            Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            Ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
             
-            boundary[:,i] .= p.pointa + Ψ_y1*p.uhat
+            boundary[:,i] .= p.pointa + Ψ*p.uhat
             boundary_all[[ind1, ind2], i] .= boundary[:,i]
         end
         if !biv_opt_is_ellipse_analytical
@@ -240,22 +240,24 @@ function newboundarypoint!(p::NamedTuple,
                 end
             end
 
-            p.uhat .= dir_vector ./ norm(dir_vector, 2)
+            boundpoint, bound_ind, upper_or_lower = findpointonbounds(model, candidate_midpoint, (dir_vector ./ norm(dir_vector, 2)), ind1, ind2, true)
 
-            boundpoint, bound_ind, upper_or_lower = findpointonbounds(model, candidate_midpoint, p.uhat, ind1, ind2, true)
-
-            v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
+            p.pointa .= boundpoint
+            v_bar = candidate_midpoint .- boundpoint
+            v_bar_norm = norm(v_bar, 2)
+            p.uhat .= v_bar ./ v_bar_norm
 
             # if bound point and pointa bracket a boundary, search for the boundary
             # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
-            g = bivariate_optimiser(v_bar_norm, p)
+            g = bivariate_optimiser(0.0, p)
             if biv_opt_is_ellipse_analytical || g < 0.0
                 # make bracket a tiny bit smaller
-                if isinf(g); v_bar_norm = v_bar_norm - 1e-8 * v_bar_norm end
+                
+                lb = isinf(g) ? 1e-8 * v_bar_norm : 0.0
 
-                Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+                Ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
 
-                boundarypoint = p.pointa + Ψ_y1*p.uhat
+                boundarypoint = p.pointa + Ψ*p.uhat
                 boundary[:, num_vertices] .= boundarypoint
                 boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
             else

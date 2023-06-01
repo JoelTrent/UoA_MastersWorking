@@ -153,10 +153,18 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
 
             # if bound point is a point outside the boundary, accept the point combination
             p.pointa .= boundpoint
-            if (bivariate_optimiser(0.0, p) < 0)
+            g = bivariate_optimiser(0.0, p)
+            if g < 0
                 count += 1
                 count_accepted += 1
                 internal[:, count] .= x, y 
+
+                # make bracket a tiny bit smaller
+                if isinf(g)
+                    v_bar = boundpoint .- internal[:, count]
+                    boundpoint .= internal[:, count] .+ ((1.0-1e-8) .* v_bar)
+                end
+
                 external[:, count] .= boundpoint
                 internal_unique[count] = count_accepted == 1
 
@@ -222,12 +230,19 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
         external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
 
         p.pointa .= external[:,i]
-        if !(bivariate_optimiser(0.0, p) < 0)
+        g = bivariate_optimiser(0.0, p)
+        if !(g < 0)
             point_is_on_bounds[i] = true
 
             if bound_warning
                 @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
                 bound_warning = false
+            end
+        else
+            # make bracket a tiny bit smaller
+            if isinf(g)
+                v_bar = external[:,i] .- mle_point
+                external[:,i] .= mle_point .+ ((1.0-1e-8) .* v_bar)
             end
         end
     end
@@ -295,9 +310,9 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar ./ v_bar_norm
 
-            Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            Ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
             
-            boundary[[ind1, ind2], i] .= p.pointa + Ψ_y1*p.uhat
+            boundary[[ind1, ind2], i] .= p.pointa + Ψ*p.uhat
         end
         if !biv_opt_is_ellipse_analytical
             variablemapping2d!(@view(boundary[:, i]), p.λ_opt, θranges, λranges)

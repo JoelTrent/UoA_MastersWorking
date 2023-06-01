@@ -79,14 +79,14 @@ function continuation_line_search!(p::NamedTuple,
             continue
         end
         
-        p.pointa .= start_level_set_2D[:,i]
         # if know the optimised values of nuisance parameters at a given start point,
         # pass them to the optimiser
         if start_have_all_pars && level_set_not_smoothed
             boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
         end
-
+        
         if is_a_zero[i]
+            p.pointa .= start_level_set_2D[:,i]
             bivariate_optimiser(0.0, p) # to extract nuisance parameter values
             boundarypoint .= start_level_set_2D[:,i] .* 1.0
             target_level_set_2D[:, i] .= boundarypoint
@@ -109,27 +109,35 @@ function continuation_line_search!(p::NamedTuple,
 
         # p.uhat .= (gradient_i ./ (norm(gradient_i, 2))) 
 
-        boundpoint .= findpointonbounds(model, p.pointa, search_directions[:,i], ind1, ind2)
+        boundpoint .= findpointonbounds(model, start_level_set_2D[:,i], search_directions[:,i], ind1, ind2)
 
-        gradient_i .= boundpoint .- p.pointa
+
+
+        # gradient_i .= boundpoint .- p.pointa
+        # v_bar_norm = norm(gradient_i, 2)
+        # p.uhat .= gradient_i ./ v_bar_norm
+
+        p.pointa .= boundpoint
+        gradient_i .= start_level_set_2D[:,i] .- boundpoint
         v_bar_norm = norm(gradient_i, 2)
         p.uhat .= gradient_i ./ v_bar_norm
 
-        # v_bar_norm = (boundpoint[1] - p.pointa[1]) / p.uhat[1]
 
         # if bound point and pointa bracket a boundary, search for the boundary
         # otherwise, the bound point is used as the level set boundary (i.e. it's inside the true level set boundary)
-        if biv_opt_is_ellipse_analytical || bivariate_optimiser(v_bar_norm, p) < 0
+        g = bivariate_optimiser(0.0, p) 
+        if biv_opt_is_ellipse_analytical || g < 0
             
-            Ψ_y1 = solve(ZeroProblem(bivariate_optimiser, 0.0), Roots.Order8(); p=p)
+            Ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); p=p)
 
             # in event Roots.Order8 fails to converge, switch to bracketing method
-            if isnan(Ψ_y1) || isinf(Ψ_y1) || Ψ_y1 < 0.0
-                # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ_y1*p.uhat
-                Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            if isnan(Ψ) || isinf(Ψ) || Ψ < 0.0
+                lb = isinf(g) ? 1e-8 * v_bar_norm : 0.0
+                # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ*p.uhat
+                Ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
             end
 
-            boundarypoint .= p.pointa + Ψ_y1*p.uhat
+            boundarypoint .= p.pointa + Ψ*p.uhat
             target_level_set_2D[:, i] .= boundarypoint
             target_level_set_all[[ind1, ind2], i] .= boundarypoint
         else
@@ -204,13 +212,13 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         p.uhat .= v_bar ./ v_bar_norm
 
         if is_a_zero[i]
-            Ψ_y1 = v_bar_norm
+            Ψ = v_bar_norm
             bivariate_optimiser(v_bar_norm, p) # to extract nuisance parameter values
         else
-            Ψ_y1 = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            Ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
         end
 
-        boundarypoint .= p.pointa + Ψ_y1*p.uhat
+        boundarypoint .= p.pointa + Ψ*p.uhat
         target_level_set_2D[:, i] .= boundarypoint
         target_level_set_all[[ind1, ind2], i] .= boundarypoint
         if !biv_opt_is_ellipse_analytical
