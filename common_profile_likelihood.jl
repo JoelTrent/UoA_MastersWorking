@@ -178,7 +178,7 @@ function desired_df_subset(df::DataFrame,
         row_subset .= row_subset .&& (df_sub.profile_type .∈ Ref(profile_types))
     end
     if !isempty(methods)
-        row_subset .= row_subset .&& (df_sub.method .∈ Ref(methods))
+        row_subset .= row_subset .&& (typeof.(df_sub.method) .∈ Ref(typeof.(methods)))
     end
 
     return @view(df_sub[row_subset, :])

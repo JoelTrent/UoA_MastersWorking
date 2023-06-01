@@ -367,6 +367,113 @@ function plot_bivariate_profiles(model::LikelihoodModel,
     return profile_plots
 end
 
+function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
+                                    xlim_scaler::Real=0.2,
+                                    ylim_scaler::Real=0.2;
+                                    θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+                                    confidence_levels::Vector{<:Float64}=Float64[],
+                                    profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
+                                    palette_to_use::Symbol=:Paired_6,
+                                    # include_internal_points::Bool=true,
+                                    markeralpha=1.0,
+                                    save_folder=nothing,
+                                    kwargs...)
+
+    methods = [BracketingMethodIterativeBoundary(1,1,1)]
+
+    θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
+                                    
+    sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
+                                profile_types, methods)
+
+    if nrow(sub_df) < 1
+        return nothing
+    end
+    
+    color_palette = palette(palette_to_use)
+    
+    for i in 1:nrow(sub_df)
+
+        row = @view(sub_df[i,:])
+        θindices = zeros(Int,2); 
+        for j in 1:2; θindices[j] = row.θindices[j] end
+        
+        full_boundary = model.biv_profiles_dict[row.row_ind].confidence_boundary
+        boundary = @view(full_boundary[θindices, :])
+        profile_type = row.profile_type
+
+        title=string("Profile type: ", profile_type, 
+                    "\nMethod: ", row.method,
+                    "\nConfidence level: ", row.conf_level)
+        
+        parMLEs = model.core.θmle[θindices]
+        θnames = model.core.θnames[θindices]
+        
+        min_vals = minimum(boundary, dims=2)
+        max_vals = maximum(boundary, dims=2)
+        ranges = max_vals .- min_vals
+
+        plt = plot(dpi=200)
+
+        addMLE!(plt, parMLEs; 
+            markercolor=color_palette[end],
+            xlabel=string(θnames[1]), ylabel=string(θnames[2]),
+            xlims=[min_vals[1]-ranges[1]*xlim_scaler, 
+                    max_vals[1]+ranges[1]*xlim_scaler],
+            ylims=[min_vals[2]-ranges[2]*ylim_scaler, 
+            max_vals[2]+ranges[2]*ylim_scaler],
+            title=title,
+            titlefontsize=10, kwargs...)
+
+        plot2Dboundary!(plt, @view(boundary[:,1:row.method.initial_num_points-1]), 
+                        use_lines=false,
+                        markershape=profile2Dmarkershape(profile_type, true),
+                        markercolor=color_palette[profilecolor(profile_type)],
+                        # linecolor=color_palette[profilecolor(profile_type)],
+                        markeralpha=markeralpha
+                        # linealpha=markeralpha
+                        )
+        
+        anim = @animate for k in (row.method.initial_num_points):row.num_points
+            plot2Dboundary!(plt, @view(boundary[:,k]), 
+                            use_lines=false,
+                            label=nothing,
+                            markershape=profile2Dmarkershape(profile_type, true),
+                            markercolor=color_palette[profilecolor(profile_type)],
+                            # linecolor=color_palette[profilecolor(profile_type)],
+                            markeralpha=markeralpha
+                            # linealpha=markeralpha
+                            )
+            
+        end
+
+        filename = string("iterative_boundary_", θnames[1],"_",θnames[2], ".gif")
+        save_location = isnothing(save_folder) ? filename : joinpath(save_folder, filename) 
+        gif(anim, save_location, fps=15)
+
+        # if include_internal_points && !row.not_evaluated_internal_point
+        #     internal_points = for_dim_samples ? @view(model.dim_samples_dict[row.row_ind].points[θindices, :]) : @view(model.biv_profiles_dict[row.row_ind].internal_points.points[θindices, :])
+            
+        #     num_internal_points = size(internal_points, 2)
+
+        #     internal_points = @view(internal_points[:, sample(1:num_internal_points, min(1000, num_internal_points), replace=false, ordered=true)])
+        #     plot2Dboundary!(profile_plots[i], 
+        #                     internal_points,
+        #                     "internal points", 
+        #                     use_lines=!for_dim_samples && row.method isa ContinuationMethod,
+        #                     markershape=profile2Dmarkershape(profile_type, false), 
+        #                     markercolor=color_palette[profilecolor(profile_type)], 
+        #                     linecolor=color_palette[profilecolor(profile_type)],
+        #                     markeralpha=markeralpha*0.4,
+        #                     linealpha=markeralpha*0.5)
+        # end
+
+        
+    end
+
+    return nothing
+end
+
 function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                                     xlim_scaler::Real=0.2,
                                     ylim_scaler::Real=0.2;
