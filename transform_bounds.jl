@@ -1,3 +1,10 @@
+function checkforInf(x::AbstractVector{<:Real})
+    if any(isinf.(x))
+        @warn "the specified transformation causes some of the returned bounds to be +/-Inf. It is recommended to prevent this from occurring by altering the initial bounds."
+    end
+    return nothing
+end
+
 """
 parameters are vectors of ints - i.e. call using vectors of ints directly or look up position of parameter
 from a symbol vector using a lookup table.
@@ -22,6 +29,8 @@ function transformbounds(transformfun::Function, lb::AbstractVector{<:Real}, ub:
 
         newlb[:] .= minimum(potentialbounds, dims=1)[:]
         newub[:] .= maximum(potentialbounds, dims=1)[:]
+
+        checkforInf.((newlb, newub))
         return newlb, newub
     end
 
@@ -68,6 +77,7 @@ function transformbounds(transformfun::Function, lb::AbstractVector{<:Real}, ub:
         newlb[i] = currentMin * 1.0
     end
 
+    checkforInf.((newlb, newub))
     return newlb, newub
 end
 
@@ -116,7 +126,7 @@ end
 function transformbounds_NLopt(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64})
 
     function bounds_transform(x)
-        return minOrMax * transformfun((((1 .- x) .* lb) .+ (x .* ub)) )[NLP_transformIndex]
+        return minOrMax * transformfun( (((1.0 .- x) .* lb) .+ (x .* ub)) )[NLP_transformIndex]
     end
     
     # variables will be binary integer automatically due to how the obj function is setup
@@ -135,11 +145,12 @@ function transformbounds_NLopt(transformfun::Function, lb::Vector{<:Float64}, ub
         NLP_transformIndex += 1
         
         minOrMax = -1.0
-        newlb[i] = optimise(bounds_transform, initialGuess, NLPlb, NLPub)[2]
+        newlb[i] = optimise(bounds_transform, initialGuess, NLPlb, NLPub)[2] * -1.0
         
         minOrMax = 1.0
         newub[i] = optimise(bounds_transform, initialGuess, NLPlb, NLPub)[2]
     end
-    
+
+    checkforInf.((newlb, newub))
     return newlb, newub
 end
