@@ -81,6 +81,9 @@ function internal_angle_from_pi!(vertex_internal_angle_objs, indexes::UnitRange,
 end
 
 function internal_angle_from_pi(index::Int, boundary, edge_clock, edge_anti, relative_magnitude)
+    if index == edge_clock[index] && index == edge_anti[index]
+        return 0.0
+    end 
     return AngleBetweenVectors.angle((boundary[:,index] .- boundary[:, edge_clock[index]])./ SA[relative_magnitude, 1.0],
                                         (boundary[:,edge_anti[index]] .- boundary[:, index])./ SA[relative_magnitude, 1.0]) 
 end
