@@ -43,9 +43,9 @@ bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApproxAnalytical()
 
 bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), confidence_level=0.95, method=ContinuationMethod(1, 0.1, 0.0), existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(0.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.5, 1.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodIterativeBoundary(10, 20, 10, 0.5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodIterativeBoundary(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
 bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 

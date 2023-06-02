@@ -154,6 +154,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 num_points, consistent, ind1, ind2,
                                 method.initial_num_points, method.angle_points_per_iter,
                                 method.edge_points_per_iter, method.radial_start_point_shift,
+                                method.ellipse_sqrt_distortion, method.use_ellipse,
                                 mle_targetll, save_internal_points)
     end
     

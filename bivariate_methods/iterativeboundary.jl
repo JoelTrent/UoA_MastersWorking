@@ -10,8 +10,9 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
                                     ind1::Int, 
                                     ind2::Int,
                                     bound_warning::Bool,
-                                    radial_start_point_shift)
+                                    radial_start_point_shift::Float64)
 
+    mle_point = model.core.θmle[[ind1, ind2]]
     external = zeros(2,num_points)
     point_is_on_bounds = falses(num_points)
     
@@ -23,20 +24,25 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
 
     radial_dirs = find_m_spaced_radialdirections(num_points, start_point_shift=radial_start_point_shift)
 
-    x,y = model.core.θmle[[ind1,ind2]] .* 1.0
     for i in 1:num_points
         dir_vector = [relative_magnitude * cospi(radial_dirs[i]), sinpi(radial_dirs[i]) ]
-        external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, [x,y], dir_vector, ind1, ind2, true)
+        external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
 
         # if bound point is a point inside the boundary, note that this is the case
         p.pointa .= external[:,i]
-
-        if bivariate_optimiser(0.0, p) > 0
+        g = bivariate_optimiser(0.0, p)
+        if g ≥ 0
             point_is_on_bounds[i] = true
 
             if bound_warning
                 @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
                 bound_warning = false
+            end
+        else
+            # make bracket a tiny bit smaller
+            if isinf(g)
+                v_bar = external[:,i] .- mle_point
+                external[:,i] .= mle_point .+ ((1.0-1e-12) .* v_bar)
             end
         end
     end
@@ -97,6 +103,8 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                                 initial_num_points::Int,
                                 biv_opt_is_ellipse_analytical::Bool,
                                 radial_start_point_shift::Float64,
+                                ellipse_sqrt_distortion::Float64,
+                                use_ellipse::Bool,
                                 save_internal_points::Bool)
 
     boundary = zeros(2, num_points)
@@ -108,8 +116,14 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     # warn if bound prevents reaching boundary
     bound_warning=true
 
-    external, point_is_on_bounds_external, bound_warning = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
-                                                            initial_num_points, ind1, ind2, bound_warning, radial_start_point_shift)
+    if use_ellipse
+        _, _, _, external, point_is_on_bounds_external, bound_warning = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
+                                                                initial_num_points, ind1, ind2, 
+                                                                0.1, radial_start_point_shift,ellipse_sqrt_distortion)
+    else
+        external, point_is_on_bounds_external, bound_warning = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
+                                                                initial_num_points, ind1, ind2, bound_warning, radial_start_point_shift)
+    end
 
     point_is_on_bounds[1:initial_num_points] .= point_is_on_bounds_external[:]
 
@@ -182,8 +196,6 @@ function iterativeboundary_init(bivariate_optimiser::Function,
 
     vertex_internal_angle_objs = zeros(num_points)
     internal_angle_from_pi!(vertex_internal_angle_objs, 1:num_vertices, boundary, edge_clock, edge_anti, relative_magnitude)
-
-    # println(vertex_internal_angle_objs)
   
     angle_heap = TrackingHeap(Float64, S=NoTrainingWheels, O=MaxHeapOrder, N = 2, init_val_coll=vertex_internal_angle_objs)
 
@@ -256,7 +268,7 @@ function newboundarypoint!(p::NamedTuple,
             if biv_opt_is_ellipse_analytical || g < 0.0
                 # make bracket a tiny bit smaller
                 
-                lb = isinf(g) ? 1e-8 * v_bar_norm : 0.0
+                lb = isinf(g) ? 1e-12 * v_bar_norm : 0.0
 
                 Ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
 
@@ -308,21 +320,21 @@ function newboundarypoint!(p::NamedTuple,
 
             Ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); p=p)
 
-            if isnan(Ψ) || isinf(Ψ) || isapprox(Ψ, 0.0, atol=1e-12)
+            boundarypoint = p.pointa + Ψ*p.uhat
+
+            if isnan(Ψ) || isinf(Ψ) || isapprox(boundarypoint, p.pointa)
                 # failure=true
                 f(x) = bivariate_optimiser(x, p)
                 Ψs = find_zeros(f, 0.0, v_bar_norm; p=p)
-
                 if length(Ψs) == 0
                     failure=true
                 elseif length(Ψs) == 1
-                    if isapprox(Ψs[1], 0.0, atol=1e-8)
+                    boundarypoint = p.pointa + Ψs[1]*p.uhat
+                    if isapprox(boundarypoint, p.pointa)
                         failure=true
-                    else
-                        Ψ = Ψs[1]
                     end
                 else
-                    Ψ = Ψs[end]
+                    boundarypoint = p.pointa + Ψs[end]*p.uhat
                 end
             end
                 
@@ -330,7 +342,6 @@ function newboundarypoint!(p::NamedTuple,
                 return num_vertices, internal_count, failure, bound_warning, edge_vertex
             end
 
-            boundarypoint = p.pointa + Ψ*p.uhat
             boundary[:, num_vertices] .= boundarypoint
             boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
             bivariate_optimiser(Ψ, p)
@@ -442,6 +453,9 @@ function heapupdates_failure!(edge_heap::TrackingHeap,
                                 ve1::Int,
                                 ve2::Int,
                                 opposite_edge_ve1::Int,
+                                model::LikelihoodModel,
+                                ind1::Int, 
+                                ind2::Int,
                                 relative_magnitude::Float64)
 
     opposite_edge_ve2 = edge_anti[opposite_edge_ve1] * 1
@@ -500,6 +514,8 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 angle_points_per_iter::Int,
                                                 edge_points_per_iter::Int,
                                                 radial_start_point_shift::Float64,
+                                                ellipse_sqrt_distortion::Float64,
+                                                use_ellipse::Bool,
                                                 mle_targetll::Float64,
                                                 save_internal_points::Bool)
 
@@ -518,8 +534,10 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                     θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
     end
 
-    return_tuple = iterativeboundary_init(bivariate_optimiser, model, num_points, p, ind1, ind2, initial_num_points, biv_opt_is_ellipse_analytical, radial_start_point_shift,
-    save_internal_points)
+    return_tuple = iterativeboundary_init(bivariate_optimiser, model, num_points, p, ind1, ind2,
+                                            initial_num_points, biv_opt_is_ellipse_analytical,
+                                            radial_start_point_shift, ellipse_sqrt_distortion,
+                                            use_ellipse, save_internal_points)
 
     if return_tuple[1]
         return return_tuple[2], return_tuple[3]
@@ -558,7 +576,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                 num_vertices -= 1
                 
                 termination, return_args = heapupdates_failure!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds,
-                                                                boundary, num_vertices, ve1, ve2, opposite_edge_ve1,
+                                                                boundary, num_vertices, ve1, ve2, opposite_edge_ve1, model, ind1, ind2,
                                                                 relative_magnitude)
                 if termination; return return_args end
                 continue
@@ -596,7 +614,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                 num_vertices -= 1
                 
                 termination, return_args = heapupdates_failure!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds,
-                                                                boundary, num_vertices, ve1, ve2, opposite_edge_ve1,
+                                                                boundary, num_vertices, ve1, ve2, opposite_edge_ve1, model, ind1, ind2,
                                                                 relative_magnitude)
                 if termination; return return_args end
                 continue
@@ -630,17 +648,17 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
 end
 
 
-polygon = [0 3 2 2 -1; 0 1 2 4 2]*1.0
+# polygon = [0 3 2 2 -1; 0 1 2 4 2]*1.0
 
-edges = [1 2 3 4 5; 2 3 4 5 1]
+# edges = [1 2 3 4 5; 2 3 4 5 1]
 
-edge_vectors = polygon[:, edges[2,:]] .- polygon[:, edges[1,:]]
+# edge_vectors = polygon[:, edges[2,:]] .- polygon[:, edges[1,:]]
 
 
-@time angles = rad2deg.([AngleBetweenVectors.angle(edge_vectors[:, i], edge_vectors[:,j]) for (i,j) in [(1,2),(2,3),(3,4),(4,5),(5,1)]])
+# @time angles = rad2deg.([AngleBetweenVectors.angle(edge_vectors[:, i], edge_vectors[:,j]) for (i,j) in [(1,2),(2,3),(3,4),(4,5),(5,1)]])
 
-@time rad2deg.([(abs(∠(Point(polygon[:,i]), Point(polygon[:,i+1]), Point(polygon[:,i+2])))) for i in 1:3])
+# @time rad2deg.([(abs(∠(Point(polygon[:,i]), Point(polygon[:,i+1]), Point(polygon[:,i+2])))) for i in 1:3])
 
-@time ∠(Point(polygon[:,1]), Point(polygon[:,2]), Point(polygon[:,3]))
-@time AngleBetweenVectors.angle(edge_vectors[:,1], edge_vectors[:,2])
-@time ∠(Vec(edge_vectors[:,1]), Vec(edge_vectors[:,2]))
+# @time ∠(Point(polygon[:,1]), Point(polygon[:,2]), Point(polygon[:,3]))
+# @time AngleBetweenVectors.angle(edge_vectors[:,1], edge_vectors[:,2])
+# @time ∠(Vec(edge_vectors[:,1]), Vec(edge_vectors[:,2]))

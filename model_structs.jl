@@ -143,13 +143,16 @@ struct BracketingMethodIterativeBoundary <: AbstractBivariateVectorMethod
     angle_points_per_iter::Int
     edge_points_per_iter::Int
     radial_start_point_shift::Float64
-    function BracketingMethodIterativeBoundary(w,x,y,z=rand())
+    ellipse_sqrt_distortion::Float64
+    use_ellipse::Bool
+    function BracketingMethodIterativeBoundary(w,x,y,z=rand(),a=1.0; use_ellipse::Bool=false)
         w > 0 || throw(DomainError("initial_num_points must be greater than zero"))
         x ≥ 0 || throw(DomainError("angle_points_per_iter must be greater than or equal to zero"))
         y ≥ 0 || throw(DomainError("edge_points_per_iter must be greater than or equal zero"))
         x > 0 || y > 0 || throw(DomainError("at least one of angle_points_per_iter and edge_points_per_iter must be greater than zero"))
         (0.0 <= z && z <= 1.0) || throw(DomainError("radial_start_point_shift must be in the closed interval [0.0,1.0]"))
-        return new(w,x,y,z)
+        (0.0 <= a && a <= 1.0) || throw(DomainError("ellipse_sqrt_distortion must be in the closed interval [0.0,1.0]"))
+        return new(w,x,y,z, a, use_ellipse)
     end
 end
 

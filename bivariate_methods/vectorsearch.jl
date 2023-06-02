@@ -231,7 +231,7 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
 
         p.pointa .= external[:,i]
         g = bivariate_optimiser(0.0, p)
-        if !(g < 0)
+        if g ≥ 0
             point_is_on_bounds[i] = true
 
             if bound_warning
@@ -249,7 +249,7 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
 
     internal_all = zeros(model.core.num_pars, 0)
     ll_values = zeros(0)
-    return internal, internal_all, ll_values, external, point_is_on_bounds
+    return internal, internal_all, ll_values, external, point_is_on_bounds, bound_warning
 end
 
 function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function, 
@@ -282,7 +282,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
     end
 
     if ellipse_confidence_level !== -1.0
-        internal, internal_all, ll_values, external, point_is_on_bounds = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
+        internal, internal_all, ll_values, external, point_is_on_bounds, _ = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
                                                                                             ellipse_confidence_level, ellipse_start_point_shift, ellipse_sqrt_distortion)
 
     else
