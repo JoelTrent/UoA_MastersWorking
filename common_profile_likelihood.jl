@@ -7,6 +7,21 @@ function setθmagnitudes!(model::LikelihoodModel,
     return nothing
 end
 
+function setbounds!(model::LikelihoodModel;
+                    lb::AbstractVector{<:Real}=Float64[],
+                    ub::AbstractVector{<:Real}=Float64[])
+
+    if !isempty(lb)
+        length(lb) == model.core.num_pars || throw(ArgumentError(string("lb must have the same length as the number of model parameters (", model.core.num_pars, ")")))
+        model.core.θlb .= lb
+    end
+    if !isempty(ub)
+        length(ub) == model.core.num_pars || throw(ArgumentError(string("ub must have the same length as the number of model parameters (", model.core.num_pars, ")")))
+        model.core.θub .= ub
+    end
+    return nothing
+end
+
 function convertθnames_toindices(model::LikelihoodModel, 
                                     θnames_to_convert::Vector{<:Symbol})
 
