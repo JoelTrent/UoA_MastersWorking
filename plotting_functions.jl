@@ -72,7 +72,6 @@ function plot2Dboundary!(plt, parBoundarySamples, label="boundary"; use_lines=fa
     
     plot_func! = use_lines ? plot! : scatter!
     plot_func!(plt, parBoundarySamples[1,:], parBoundarySamples[2,:], 
-                            markersize=3,
                             msw=0, ms=5,
                             label=label;
                             kwargs...)
@@ -81,7 +80,7 @@ end
 
 function addMLE!(plt, parMLEs; kwargs...)
     scatter!(plt, [parMLEs[1]], [parMLEs[2]],
-            markersize=3, markershape=:circle,
+            markershape=:circle,
             msw=0, ms=5,
             label="MLE point"; kwargs...)
     return plt
