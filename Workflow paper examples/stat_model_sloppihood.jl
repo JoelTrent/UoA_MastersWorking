@@ -47,6 +47,8 @@ bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=Br
 
 bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodIterativeBoundary(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
+bivariate_confidenceprofiles!(model, 500, profile_type=EllipseApprox(), method=BracketingMethodIterativeBoundary(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+
 bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
@@ -60,6 +62,8 @@ for i in eachindex(plots); display(plots[i]) end
 
 plot_bivariate_profiles_iterativeboundary_gif(model, 0.2, 0.2, markeralpha=0.5, save_folder="Workflow paper examples")
 
+plots = plot_bivariate_profiles_comparison(model, 0.2, 0.2, compare_within_methods=true)
+for i in eachindex(plots); display(plots[i]) end
 
 df=2
 llstar95=exp(-quantile(Chisq(df),0.95)/2)
