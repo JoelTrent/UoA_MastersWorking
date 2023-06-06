@@ -12,7 +12,18 @@ abstract type AbstractPredictionStruct end
 abstract type AbstractProfileType end
 abstract type AbstractEllipseProfileType <: AbstractProfileType end
 
+"""
+    AbstractBivariateMethod
+
+Supertype for bivariate boundary finding methods. These include [`BracketingMethodIterativeBoundary`](@ref), [`BracketingMethodRadialRandom`](@ref), [`BracketingMethodRadialMLE`](@ref), [`BracketingMethodSimultaneous`](@ref), [`BracketingMethodFix1Axis`](@ref), [`ContinuationMethod`](@ref) and [`AnalyticalEllipseMethod`](@ref).
+"""
 abstract type AbstractBivariateMethod end
+
+"""
+    AbstractBivariateVectorMethod <: AbstractBivariateMethod
+
+Supertype for bivariate boundary finding methods that . These include [`BracketingMethodIterativeBoundary`](@ref), [`BracketingMethodRadialRandom`](@ref), [`BracketingMethodRadialMLE`](@ref) and [`BracketingMethodSimultaneous`](@ref).
+"""
 abstract type AbstractBivariateVectorMethod <: AbstractBivariateMethod end
 
 abstract type AbstractSampleType end
@@ -128,13 +139,33 @@ struct BracketingMethodRadialRandom <: AbstractBivariateVectorMethod
     BracketingMethodRadialRandom(x) = x < 1 ? throw(DomainError("num_radial_directions must be greater than zero")) : new(x)
 end
 
+"""
+    BracketingMethodRadialMLE(ellipse_start_point_shift::Float64, ellipse_sqrt_distortion::Float64)::BracketingMethodRadialMLE
+
+Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the loglikelihood function around the MLE, `e`, using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+
+# Arguments
+- `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that, by default, every time this function is called a different set of points will be generated.
+- `ellipse_sqrt_distortion`: a number ∈ [0.0,1.0]. Default is `0.01`. 
+
+# Details
+
+For additional information on arguments see the keyword arguments for `generate_N_clustered_points` in [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+
+Recommended for use with the [`EllipseApprox`](@ref) profile type. Will produce reasonable results for the [`LogLikelihood`](@ref) profile type when bivariate profile boundaries are convex. Otherwise, [`BracketingMethodIterativeBoundary`](@ref), which can use a starting solution from [`BracketingMethodRadialMLE`](@ref), is preferred as it iteratively improves the quality of the boundary and can discover regions not explored by this method.
+
+# Supertype Hiearachy
+
+BracketingMethodRadialMLE <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any
+"""
 struct BracketingMethodRadialMLE <: AbstractBivariateVectorMethod
     ellipse_start_point_shift::Float64
     ellipse_sqrt_distortion::Float64
-    function BracketingMethodRadialMLE(x=rand(),y=0.01) 
-        (0.0 <= x && x <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
-        (0.0 <= y && y <= 1.0) || throw(DomainError("ellipse_sqrt_distortion must be in the closed interval [0.0,1.0]"))
-        return new(x,y)
+
+    function BracketingMethodRadialMLE(ellipse_start_point_shift=rand(), ellipse_sqrt_distortion=0.01) 
+        (0.0 <= ellipse_start_point_shift && ellipse_start_point_shift <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
+        (0.0 <= ellipse_sqrt_distortion && ellipse_sqrt_distortion <= 1.0) || throw(DomainError("ellipse_sqrt_distortion must be in the closed interval [0.0,1.0]"))
+        return new(ellipse_start_point_shift, ellipse_sqrt_distortion)
     end
 end
 
@@ -155,6 +186,7 @@ struct BracketingMethodIterativeBoundary <: AbstractBivariateVectorMethod
         return new(w,x,y,z, a, use_ellipse)
     end
 end
+
 
 struct BracketingMethodSimultaneous <: AbstractBivariateVectorMethod end
 struct BracketingMethodFix1Axis <: AbstractBivariateMethod end

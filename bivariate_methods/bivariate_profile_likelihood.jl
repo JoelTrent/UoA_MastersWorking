@@ -162,6 +162,18 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
 end
 
 """
+    bivariate_confidenceprofiles!(model::LikelihoodModel, 
+                                    θcombinations::Vector{Vector{Int}}, 
+                                    num_points::Int; 
+                                    confidence_level::Float64=0.95, 
+                                    profile_type::AbstractProfileType=LogLikelihood(),
+                                    method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                    θcombinations_is_unique::Bool=false,
+                                    save_internal_points::Bool=true,
+                                    existing_profiles::Symbol=:merge,
+                                    show_progress::Bool=model.show_progress)
+
+
 num_points is the number of points to compute for a given method, that are on the boundary and/or inside the boundary.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
