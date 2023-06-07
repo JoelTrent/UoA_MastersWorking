@@ -29,7 +29,7 @@ end
 function get_bivariate_opt_func(profile_type::AbstractProfileType, method::AbstractBivariateMethod)
     if method isa AnalyticalEllipseMethod
         return bivariateΨ_ellipse_analytical
-    elseif method isa BracketingMethodFix1Axis
+    elseif method isa Fix1AxisMethod
         if profile_type isa EllipseApproxAnalytical
             return bivariateΨ_ellipse_analytical
         elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox
@@ -107,24 +107,26 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                             model.core.num_pars, initGuess,
                             θranges, λranges)
            
-    elseif method isa BracketingMethodFix1Axis
+    elseif method isa Fix1AxisMethod
         boundary, internal = bivariate_confidenceprofile_fix1axis(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
                                 mle_targetll, save_internal_points)
         
-    elseif method isa BracketingMethodSimultaneous
+    elseif method isa SimultaneousMethod
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
                                 mle_targetll, save_internal_points)
-    elseif method isa BracketingMethodRadialRandom
+
+    elseif method isa RadialRandomMethod
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
                                 mle_targetll, save_internal_points,
                                 num_radial_directions=method.num_radial_directions)
-    elseif method isa BracketingMethodRadialMLE
+
+    elseif method isa RadialMLEMethod
         boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                 bivariate_optimiser, model, 
                                 num_points, consistent, ind1, ind2,
@@ -132,6 +134,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 ellipse_confidence_level=0.1,
                                 ellipse_start_point_shift=method.ellipse_start_point_shift,
                                 ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
+
     elseif method isa ContinuationMethod
         if profile_type isa EllipseApproxAnalytical
             bivariate_optimiser_gradient = bivariateΨ_ellipse_analytical_gradient
@@ -148,7 +151,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 method.num_level_sets,
                                 method.level_set_spacing,
                                 mle_targetll, save_internal_points)
-    elseif method isa BracketingMethodIterativeBoundary
+    
+    elseif method isa IterativeBoundaryMethod
         boundary, internal = bivariate_confidenceprofile_iterativeboundary(
                                 bivariate_optimiser, model,
                                 num_points, consistent, ind1, ind2,
@@ -167,7 +171,7 @@ end
                                     num_points::Int; 
                                     confidence_level::Float64=0.95, 
                                     profile_type::AbstractProfileType=LogLikelihood(),
-                                    method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                    method::AbstractBivariateMethod=RadialRandomMethod(3),
                                     θcombinations_is_unique::Bool=false,
                                     save_internal_points::Bool=true,
                                     existing_profiles::Symbol=:merge,
@@ -181,7 +185,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_points::Int; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                        method::AbstractBivariateMethod=RadialRandomMethod(3),
                                         θcombinations_is_unique::Bool=false,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
@@ -303,7 +307,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_points::Int;
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                        method::AbstractBivariateMethod=RadialRandomMethod(3),
                                         θcombinations_is_unique::Bool=false,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
@@ -326,7 +330,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_points::Int;
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                        method::AbstractBivariateMethod=RadialRandomMethod(3),
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         show_progress::Bool=model.show_progress)
@@ -351,7 +355,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_points::Int; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=BracketingMethodFix1Axis(),
+                                        method::AbstractBivariateMethod=RadialRandomMethod(3),
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         show_progress::Bool=model.show_progress)

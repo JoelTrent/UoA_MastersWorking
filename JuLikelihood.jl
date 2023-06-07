@@ -23,9 +23,15 @@ using ProgressMeter
 global const PROGRESS__METER__DT = 1.0
 
 include("NLopt_optimiser.jl")
-include("model_structs.jl")
+
+include("types/bivariate_methods.jl")
+include("types/levelsets.jl")
+include("types/predictions.jl")
+include("types/profiletype.jl")
+include("types/likelihoodmodel.jl")
+
 include("model_initialiser.jl")
-include("combination_relationships.jl")
+# include("combination_relationships.jl")
 include("transform_bounds.jl")
 include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")

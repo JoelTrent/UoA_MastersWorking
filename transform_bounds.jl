@@ -1,3 +1,11 @@
+"""
+    checkforInf(x::AbstractVector{<:Real})
+
+Warns via a message if any of the bounds returned given the provided forward transformation are +/-Inf.
+
+# Arguments
+- `x`: vector of transformed bounds. 
+"""
 function checkforInf(x::AbstractVector{<:Real})
     if any(isinf.(x))
         @warn "the specified transformation causes some of the returned bounds to be +/-Inf. It is recommended to prevent this from occurring by altering the initial bounds."
@@ -123,7 +131,11 @@ end
 #     return newlb, newub
 # end
 
-function transformbounds_NLopt(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64})
+"""
+    transformbounds_NLopt(transformfun::Function, lb::AbstractVector{<:Real}, ub::AbstractVector{<:Real})
+
+"""
+function transformbounds_NLopt(transformfun::Function, lb::AbstractVector{<:Real}, ub::AbstractVector{<:Real})
 
     function bounds_transform(x)
         return minOrMax * transformfun( (((1.0 .- x) .* lb) .+ (x .* ub)) )[NLP_transformIndex]
