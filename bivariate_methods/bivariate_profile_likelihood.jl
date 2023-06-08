@@ -96,7 +96,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                     num_points, consistent.data_analytic.Γmle, 
                                     consistent.data_analytic.θmle, ind1, ind2,
                                     confidence_level=confidence_level,
-                                    sqrt_distortion=0.01)
+                                    start_point_shift=method.ellipse_start_point_shift,
+                                    sqrt_distortion=method.ellipse_sqrt_distortion)
 
         _, _, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
 
@@ -166,19 +167,21 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
 end
 
 """
-    bivariate_confidenceprofiles!(model::LikelihoodModel, 
-                                    θcombinations::Vector{Vector{Int}}, 
-                                    num_points::Int; 
-                                    confidence_level::Float64=0.95, 
-                                    profile_type::AbstractProfileType=LogLikelihood(),
-                                    method::AbstractBivariateMethod=RadialRandomMethod(3),
-                                    θcombinations_is_unique::Bool=false,
-                                    save_internal_points::Bool=true,
-                                    existing_profiles::Symbol=:merge,
-                                    show_progress::Bool=model.show_progress)
+    bivariate_confidenceprofiles!(model::LikelihoodModel, θcombinations::Vector{Vector{Int}}, num_points::Int; <keyword arguments>)
 
+    Finds `num_points` `profile_type` boundary points at a specified confidence level for each combination of interest parameters using a specified `method`, optionally saving any found internal points. 
+    
+# Arguments
+
+# Keyword Arguments
+`method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
+
+# Details
+
+Modifies model in place.
 
 num_points is the number of points to compute for a given method, that are on the boundary and/or inside the boundary.
+
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         θcombinations::Vector{Vector{Int}}, 
@@ -301,7 +304,11 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     return nothing
 end
 
-# profile just provided θcombinations_symbols
+"""
+    bivariate_confidenceprofiles!(model::LikelihoodModel, θcombinations_symbols::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}}, num_points::Int; <keyword arguments>)
+
+Profiles just the provided `θcombinations_symbols` parameter pairs, provided as either a vector of vectors or a vector of tuples.
+"""
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         θcombinations_symbols::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}}, 
                                         num_points::Int;
@@ -324,7 +331,11 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     return nothing
 end
 
-# profile m random combinations of parameters (sampling without replacement), where 0 < m ≤ binomial(model.core.num_pars,2)
+"""
+    bivariate_confidenceprofiles!(model::LikelihoodModel, profile_m_random_combinations::Int, num_points::Int; <keyword arguments>)
+
+Profiles m random two-way combinations of model parameters (sampling without replacement), where 0 < m ≤ binomial(model.core.num_pars,2).
+"""
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         profile_m_random_combinations::Int, 
                                         num_points::Int;
@@ -350,7 +361,11 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     return nothing
 end
 
-# profile all combinations
+"""
+    bivariate_confidenceprofiles!(model::LikelihoodModel, num_points::Int; <keyword arguments>)
+
+Profiles all two-way combinations of model parameters.
+"""
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         num_points::Int; 
                                         confidence_level::Float64=0.95, 

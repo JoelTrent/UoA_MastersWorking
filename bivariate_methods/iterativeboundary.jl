@@ -119,7 +119,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     if use_ellipse
         _, _, _, external, point_is_on_bounds_external, bound_warning = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
                                                                 initial_num_points, ind1, ind2, 
-                                                                0.1, radial_start_point_shift,ellipse_sqrt_distortion)
+                                                                0.1, radial_start_point_shift, ellipse_sqrt_distortion)
     else
         external, point_is_on_bounds_external, bound_warning = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
                                                                 initial_num_points, ind1, ind2, bound_warning, radial_start_point_shift)
@@ -203,6 +203,17 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     return false, boundary, boundary_all, internal_all, ll_values, internal_count, point_is_on_bounds, edge_anti_on_bounds, bound_warning, mle_point, num_vertices, edge_clock, edge_anti, edge_heap, angle_heap, relative_magnitude
 end
 
+
+"""
+newboundarypoint!(p::NamedTuple, point_is_on_bounds::BitVector, edge_anti_on_bounds::BitVector, boundary::Matrix{Float64}, 
+    boundary_all::Matrix{Float64}, internal_all::Matrix{Float64}, ll_values::Vector{Float64}, internal_count::Int,
+    bivariate_optimiser::Function, model::LikelihoodModel, edge_anti::Vector{Int}, num_vertices::Int, ind1::Int, ind2::Int,
+    biv_opt_is_ellipse_analytical::Bool, ve1::Int, ve2::Int, relative_magnitude::Float64, bound_warning::Bool, save_internal_points::Bool)
+
+
+    
+
+"""
 function newboundarypoint!(p::NamedTuple,
                             point_is_on_bounds::BitVector,
                             edge_anti_on_bounds::BitVector,
@@ -443,6 +454,15 @@ function polygon_break_and_rejoin!(edge_clock::Vector{Int},
     return nothing
 end
 
+"""
+This function is used in the event that no boundary points are found using [`newboundarypoint`](@ref). Failure means it is likely that multiple level sets exist. If so, we break the edges of the candidate point and `e_intersect` and reconnect the vertexes such that we now have multiple boundary polygons.
+		
+If we only have one or two points on one of these boundary polygons we will display an info message as no additional points can be found from the method directly.
+		
+If we have three or more points on these boundary polygons, then there should be no problems finding other parts of these polygons.
+
+If the largest polygon has less than two points the method will display a warning message and terminate, returning the boundary found up until then. 
+"""
 function heapupdates_failure!(edge_heap::TrackingHeap,
                                 angle_heap::TrackingHeap, 
                                 edge_clock::Vector{Int},
