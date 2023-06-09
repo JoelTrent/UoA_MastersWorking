@@ -104,6 +104,10 @@ For the initial boundary, it uses a 1D bracketing algorithm between the MLE poin
 
 This method is unlikely to find boundaries that do not contain the MLE point (if they exist), but it can find them. If a boundary that does not contain the MLE point is found, it is not guaranteed to be explored. In this case the the method will inform the user that multiple boundaries likely exist for this combination of model parameters.
 
+## Impact of parameter bounds
+
+If a parameter bound is in the way of reaching the boundary in a given search direction, the point on that bound will be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the loglikelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. 
+
 # Internal Points
 
 Finds between 0 and `num_points - initial_num_points` internal points - internal points are found when the edge being considered's midpoint is inside the boundary. 
@@ -155,6 +159,10 @@ Uses a 1D bracketing algorithm between the MLE point and the point on the user-p
 
 This method is unlikely to find boundaries that do not contain the MLE point (if they exist).
 
+## Impact of parameter bounds
+
+If a parameter bound is in the way of reaching the boundary in a given search direction, the point on that bound will be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the loglikelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. 
+
 # Internal Points
 
 Finds no internal points.
@@ -198,9 +206,13 @@ Uses a 1D bracketing algorithm between an internal point and the point on the us
 
 This method can find multiple boundaries (if they exist).
 
+## Impact of parameter bounds
+
+If a parameter bound is in the way of reaching the boundary in a given search direction, in contrast to [`RadialMLEMethod`](@ref), the point on that bound will not be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the loglikelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. The method will fail if the interest parameter bounds are fully contained by the boundary.
+
 # Internal Points
 
-Finds a minimum of `div(num_points, num_radial_directions, RoundUp )` internal points.
+Finds a minimum of `div(num_points, num_radial_directions, RoundUp)` internal points.
 
 # Supertype Hiearachy
 
@@ -233,6 +245,10 @@ Uses a 1D bracketing algorithm between a valid point pair to find the boundary a
 
 This method can find multiple boundaries (if they exist).
 
+## Impact of parameter bounds
+
+If a parameter bound is in the way of reaching the boundary, points will not be put on that bound. Additionally, if the true boundary is very close to a parameter bound, the method will struggle to find this region of the boundary. This is because finding the boundary in this location requires generating a random point between the boundary and the parameter bound, which becomes more difficult the closer they are. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary will make finding internal points very difficult, requiring a lot of computational effort. Similarly, the inverse will be true if external points are hard to find. The method will fail if the interest parameter bounds are fully contained by the boundary.
+
 # Internal Points
 
 Finds `num_points` internal points.
@@ -262,6 +278,10 @@ The method finds the desired number of boundary points by fixing the first and s
 Uses a 1D bracketing algorithm between a valid point pair, which are parallel to the x or y axis, to find the boundary at the desired confidence level.  
 
 This method can find multiple boundaries (if they exist).
+
+## Impact of parameter bounds
+
+If a parameter bound is in the way of reaching the boundary, points will not be put on that bound. Additionally, if the true boundary is very close to a parameter bound, the method will struggle to find this region of the boundary. This is because finding the boundary in this location requires generating a random point between the boundary and the parameter bound, which becomes more difficult the closer they are. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary will make finding internal points very difficult, requiring a lot of computational effort. Similarly, the inverse will be true if external points are hard to find. The method will fail if the interest parameter bounds are fully contained by the boundary.
 
 # Internal Points
 
