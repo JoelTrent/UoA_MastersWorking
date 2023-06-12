@@ -3,8 +3,9 @@
 
 using Distributed
 # addprocs(3)
+@everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
-@everywhere include(joinpath("..", "JuLikelihood.jl"))
+@everywhere using PlaceholderLikelihood
 
 # Workflow functions ##########################################################################
 
@@ -110,22 +111,22 @@ getMLE_ellipse_approximation!(model)
 @time univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
 # get_points_in_interval!(model, 50, additional_width=0.3)
 
-# @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodFix1Axis(), existing_profiles=:overwrite, save_internal_points=true)
-# @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodSimultaneous(), existing_profiles=:overwrite, save_internal_points=true)
-bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
 
-@time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=BracketingMethodIterativeBoundary(10, 10, 10), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
-# @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(0.1, 2, 0.0), existing_profiles=:overwrite)
-bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.0), save_internal_points=true, existing_profiles=:overwrite)
+@time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 10, 10), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+# @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(2, 0.1, 0.0), existing_profiles=:overwrite)
+bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0), save_internal_points=true, existing_profiles=:overwrite)
 
-bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(5, 0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
+# bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(5, 0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
-# @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
+@time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 
 dimensional_likelihood_sample!(model, 2, 300, sample_type=UniformGridSamples())
 dimensional_likelihood_sample!(model, 2, 30000, sample_type=UniformRandomSamples())
-dimensional_likelihood_sample!(model, 2, 200000)
+# dimensional_likelihood_sample!(model, 2, 200000)
 
 prediction_locations = collect(LinRange(t[1], t[end], 50))
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])

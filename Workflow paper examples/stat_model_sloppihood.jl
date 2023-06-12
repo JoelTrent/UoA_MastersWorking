@@ -1,5 +1,6 @@
+using Revise
 using DifferentialEquations, Random, Distributions, StaticArrays
-include(joinpath("..", "JuLikelihood.jl"))
+using PlaceholderLikelihood
 
 # ---------------------------------------------
 # ---- User inputs in original 'x,y' param ----
@@ -39,17 +40,17 @@ full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=50)
 
-bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApproxAnalytical(), method=BracketingMethodRadialRandom(3), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 100, profile_type=EllipseApproxAnalytical(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
 
 bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), confidence_level=0.95, method=ContinuationMethod(1, 0.1, 0.0), existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.5, 1.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=RadialMLEMethod(0.5, 1.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodIterativeBoundary(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 500, profile_type=EllipseApprox(), method=BracketingMethodIterativeBoundary(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+# bivariate_confidenceprofiles!(model, 500, profile_type=EllipseApprox(), method=IterativeBoundaryMethod(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=BracketingMethodRadialRandom(5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=RadialRandomMethod(5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
 gr()
@@ -144,7 +145,7 @@ function star_obj(centers, points)
         for vi in 1:n
             intersects_polygon=false
             
-            internal_segment = Segment(Point(c_point), Point(points[:,vi]))
+            internal_segment = Segment(Point(c_point...), Point(points[:,vi]...))
             # println()
             # println("Vi=", vi)
             # println(internal_segment)
@@ -156,7 +157,7 @@ function star_obj(centers, points)
             # println("v2s:", v2s)
 
             for ei in eachindex(v1s)
-                edge_segment = Segment(Point(points[:,v1s[ei]]), Point(points[:,v2s[ei]])) 
+                edge_segment = Segment(Point(points[:,v1s[ei]]...), Point(points[:,v2s[ei]]...)) 
                 # println(edge_segment)
                 # segment_plot(internal_segment, edge_segment, xlim=[-0.1,4.1], ylim=[-0.1, 6.1])
                 if intersection(internal_segment, edge_segment).type != IntersectionType(0) 
@@ -240,7 +241,7 @@ full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=300)
 
-bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=RadialMLEMethod(), existing_profiles=:overwrite, save_internal_points=true)
 
 plots = plot_univariate_profiles(model, 0.05, 0.3, palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end

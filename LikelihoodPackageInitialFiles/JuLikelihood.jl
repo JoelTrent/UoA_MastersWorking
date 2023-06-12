@@ -4,6 +4,7 @@ using ForwardDiff
 using Random
 using StatsBase
 using Combinatorics
+using Distributions
 using DataStructures
 using LinearAlgebra
 using EllipseSampling
