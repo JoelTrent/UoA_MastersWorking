@@ -111,7 +111,7 @@ nodes = transpose(reduce(hcat, hull95.vertices))
 
 using Meshes
 points = model.biv_profiles_dict[3].confidence_boundary
-minimum_perimeter_polygon!(points)
+PlaceholderLikelihood.minimum_perimeter_polygon!(points)
 n = size(points,2)
 mesh = SimpleMesh([(points[1,i], points[2,i]) for i in 1:n], [connect(tuple(1:n...))])
 

@@ -3,4 +3,4 @@ A repository for investigating the Julia implementation of profile likelihood an
 
 Contains files used to fulfil the requirements of a Masters of Engineering at The University of Auckland by Joel Trent between March 2023 and February 2024.
 
-Supervised by Oliver Maclaren and Ruanui Nicholson.
+Supervised by Oliver Maclaren, Ruanui Nicholson and Matthew Simpson.
