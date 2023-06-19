@@ -1,7 +1,7 @@
 using Distributed
 # addprocs(6)
 @everywhere using DifferentialEquations, Random, Distributions, StaticArrays
-@everywhere include(joinpath("..", "JuLikelihood.jl"))
+@everywhere using PlaceholderLikelihood
 
 # Workflow functions ##########################################################################
 # Section 2: Define ODE model
@@ -80,8 +80,8 @@ univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 get_points_in_interval!(model, 100, additional_width=0.3)
 
 bivariate_confidenceprofiles!(model, 200, method=AnalyticalEllipseMethod())
-bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApprox(), method=BracketingMethodRadialMLE(), save_internal_points=true)
-bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=BracketingMethodRadialMLE(0.1,0.0), save_internal_points=true, existing_profiles=:overwrite)
+bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApprox(), method=RadialMLEMethod(), save_internal_points=true)
+bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=RadialMLEMethod(0.1,0.0), save_internal_points=true, existing_profiles=:overwrite)
 # bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=ContinuationMethod(4,0.1,0.0), save_internal_points=true, existing_profiles=:overwrite)
 
 dimensional_likelihood_sample!(model, 3, 10000)

@@ -108,17 +108,22 @@ getMLE_ellipse_approximation!(model)
 
 # @time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical(), existing_profiles=:overwrite, num_points_in_interval=0)
 # @time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
-@time univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=100)
+univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=0)
 # get_points_in_interval!(model, 50, additional_width=0.3)
 
+
+bivariate_confidenceprofiles!(model, [[:K, :C0]], 200)
+
 @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
 bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
 @time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
 
 @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 10, 10), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(2, 0.1, 0.0), existing_profiles=:overwrite)
-bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0), save_internal_points=true, existing_profiles=:overwrite)
+bivariate_confidenceprofiles!(model, 50, confidence_level=0.95, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0, 0.1), save_internal_points=true, existing_profiles=:overwrite)
+
+bivariate_confidenceprofiles!(model, 50, confidence_level=0.95, profile_type=EllipseApproxAnalytical(), method=AnalyticalEllipseMethod(0.0, 0.1), save_internal_points=true, existing_profiles=:overwrite)
 
 # bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(5, 0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
@@ -126,7 +131,7 @@ bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=Lo
 
 dimensional_likelihood_sample!(model, 2, 300, sample_type=UniformGridSamples())
 dimensional_likelihood_sample!(model, 2, 30000, sample_type=UniformRandomSamples())
-# dimensional_likelihood_sample!(model, 2, 200000)
+dimensional_likelihood_sample!(model, 2, 200000)
 
 prediction_locations = collect(LinRange(t[1], t[end], 50))
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])
@@ -146,11 +151,11 @@ gr()
 
 
 # Profiles ################################################################
-# plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
-# for i in eachindex(plots); display(plots[i]) end
+plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
+for i in eachindex(plots); display(plots[i]) end
 
-# plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
-# for i in eachindex(plots); display(plots[i]) end
+plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
+for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
 for i in eachindex(plots); display(plots[i]) end
