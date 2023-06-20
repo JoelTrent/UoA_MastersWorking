@@ -106,6 +106,6 @@ end
 
 gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
 
-coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, θtrue, 4000, collect(1:3), show_progress=true, distributed_over_parameters=false)
-
+coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 10000, θtrue, collect(1:3), show_progress=true)
+println(coverage_df)
 rmprocs(workers())
