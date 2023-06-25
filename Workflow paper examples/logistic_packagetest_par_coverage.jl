@@ -3,7 +3,7 @@
 
 using Distributed
 using PlaceholderLikelihood
-# addprocs(10)
+if nprocs()==1; addprocs(10) end
 # @everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere using PlaceholderLikelihood
@@ -63,14 +63,18 @@ par_magnitudes = [0.005, 10, 10]
 
 model = initialiseLikelihoodModel(likelihoodFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
+# DATA GENERATION FUNCTION AND ARGUMENTS
 @everywhere function data_generator(θtrue, generator_args::NamedTuple)
     yobs = generator_args.ytrue .+ rand(generator_args.dist, length(generator_args.t))
     data = (yobs=yobs, generator_args...)
     return data
 end
-
 gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
 
-coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 10000, θtrue, collect(1:3), show_progress=true)
-println(coverage_df)
-rmprocs(workers())
+# PARAMETER COVERAGE CHECKS
+uni_coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 100, θtrue, collect(1:3), show_progress=true)
+println(uni_coverage_df)
+
+biv_coverage_df = check_bivariate_parameter_coverage(data_generator, gen_args, model, 500, 100, θtrue, [[1, 2], [1, 3], [2, 3]], show_progress=true, distributed_over_parameters=true)
+println(biv_coverage_df)
+# rmprocs(workers())

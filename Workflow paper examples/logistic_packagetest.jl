@@ -3,7 +3,8 @@
 
 using Distributed
 # addprocs(3)
-@everywhere using Revise
+using PlaceholderLikelihood
+# @everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere using PlaceholderLikelihood
 
@@ -106,18 +107,21 @@ full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 # they're missing and call this function on model if so.
 getMLE_ellipse_approximation!(model)
 
-# @time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical(), existing_profiles=:overwrite, num_points_in_interval=0)
-# @time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
+@time univariate_confidenceintervals!(model, confidence_level=0.95, profile_type=EllipseApproxAnalytical(), existing_profiles=:overwrite, num_points_in_interval=0)
+@time univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=0)
-# get_points_in_interval!(model, 50, additional_width=0.3)
+get_points_in_interval!(model, 50, additional_width=0.3)
 
 
 bivariate_confidenceprofiles!(model, [[:K, :C0]], 200)
 
-@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
-bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
-@time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
+# @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true)
+# @time bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0,0.0), existing_profiles=:overwrite, save_internal_points=true)
+sample_bivariate_internal_points!(model, 10)
+
+
+# @time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
 
 @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 10, 10), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(2, 0.1, 0.0), existing_profiles=:overwrite)
