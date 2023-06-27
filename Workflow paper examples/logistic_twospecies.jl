@@ -4,8 +4,8 @@
 ##############################################################################
 
 using Distributed
-# if nprocs()==1; addprocs(8) end
 using PlaceholderLikelihood
+if nprocs()==1; addprocs(8, exeflags=`--threads 1`) end
 @everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere using PlaceholderLikelihood
@@ -69,14 +69,24 @@ par_magnitudes = [0.01, 0.01, 0.01, 10, 1, 1, 1]
 
 model = initialiseLikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes)
 
-# full_likelihood_sample!(model, 5000000, sample_type=LatinHypercubeSamples())
+@everywhere function loglhood2(θ, data) # function to evaluate the loglikelihood for the data given parameters θ
+    (y1, y2) = ODEmodel(data.t, θ)
+    dist = Normal(0.0, data.σ)
+    e = loglikelihood(dist, data.data11 - y1) + loglikelihood(dist, data.data12 - y2)
+    return e
+end
+
+data2 = (data..., σ=model.core.θmle[7])
+model = initialiseLikelihoodModel(loglhood2, predictFunc, data2, θnames[1:6], θG[1:6], lb[1:6], ub[1:6], par_magnitudes[1:6])
+
+full_likelihood_sample!(model, 500000, sample_type=LatinHypercubeSamples(), use_distributed=false)
 
 # univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 univariate_confidenceintervals!(model, profile_type=LogLikelihood())
-get_points_in_interval!(model, 50, additional_width=0.3)
+get_points_in_interval!(model, 100, additional_width=0.3)
 
-bivariate_confidenceprofiles!(model, 5, 20, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 0, 5, 0.0, use_ellipse=false))
+# bivariate_confidenceprofiles!(model, 5, 20, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 0, 5, 0.0, use_ellipse=false))
 
 bivariate_confidenceprofiles!(model, 5, 20, profile_type=LogLikelihood(), method=RadialRandomMethod(3))
 
@@ -104,8 +114,14 @@ end
 
 
 prediction_locations = collect(LinRange(t[1], t[end], 50))
-generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])
-generate_predictions_dim_samples!(model, prediction_locations, 0.1)
+generate_predictions_univariate!(model, prediction_locations, 0.2, profile_types=[EllipseApprox(), LogLikelihood()])
+generate_predictions_dim_samples!(model, prediction_locations, 0.2)
 
 union_plot = plot_predictions_union(model, prediction_locations, 1, for_dim_samples=false, include_lower_confidence_levels=true, compare_to_full_sample_type=LatinHypercubeSamples())
+display(union_plot)
+
+union_plot = plot_predictions_union(model, prediction_locations, 2, for_dim_samples=true, include_lower_confidence_levels=true, compare_to_full_sample_type=LatinHypercubeSamples())
+display(union_plot)
+
+union_plot = plot_predictions_union(model, prediction_locations, 6, for_dim_samples=true, include_lower_confidence_levels=true)
 display(union_plot)
