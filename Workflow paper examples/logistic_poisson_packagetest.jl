@@ -1,5 +1,5 @@
 using Distributed
-# addprocs(3)
+# if nprocs()==1; addprocs(3) end
 @everywhere using DifferentialEquations, Random, Distributions, StaticArrays
 @everywhere include(joinpath("..", "JuLikelihood.jl"))
 
