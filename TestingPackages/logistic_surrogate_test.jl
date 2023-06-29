@@ -1,6 +1,6 @@
 # Section 1: set up packages and parameter values
 # using BenchmarkTools
-
+using Revise
 using Distributed
 using PlaceholderLikelihood
 using Surrogates

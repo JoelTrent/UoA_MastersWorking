@@ -8,6 +8,9 @@ if nprocs()==1; addprocs(10) end
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere using PlaceholderLikelihood
 
+@everywhere using Logging
+@everywhere Logging.disable_logging(Logging.Warn) # Disable debug and info
+
 # Workflow functions ##########################################################################
 
 @everywhere function solvedmodel(t, a)
@@ -72,9 +75,20 @@ end
 gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
 
 # PARAMETER COVERAGE CHECKS
-uni_coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 100, θtrue, collect(1:3), show_progress=true)
-println(uni_coverage_df)
+# uni_coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 100, θtrue, collect(1:3), show_progress=true)
+# println(uni_coverage_df)
 
-biv_coverage_df = check_bivariate_parameter_coverage(data_generator, gen_args, model, 500, 100, θtrue, [[1, 2], [1, 3], [2, 3]], show_progress=true, distributed_over_parameters=true)
+# biv_coverage_df = check_bivariate_parameter_coverage(data_generator, gen_args, model, 500, 100, θtrue, [[1, 2], [1, 3], [2, 3]], show_progress=true, distributed_over_parameters=true)
+# println(biv_coverage_df)
+
+# BIVARIATE THEORETICAL BOUNDARY COVERAGE CHECKS
+biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=ConvexHullMethod())
 println(biv_coverage_df)
+
+biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=ConcaveHullMethod())
+println(biv_coverage_df)
+
+biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=MPPHullMethod())
+println(biv_coverage_df)
+
 # rmprocs(workers())
