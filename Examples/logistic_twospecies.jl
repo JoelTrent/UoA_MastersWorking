@@ -79,35 +79,36 @@ end
 data2 = (data..., σ=model.core.θmle[7])
 model = initialiseLikelihoodModel(loglhood2, predictFunc, data2, θnames[1:6], θG[1:6], lb[1:6], ub[1:6], par_magnitudes[1:6]);
 
-full_likelihood_sample!(model, 5000000, sample_type=LatinHypercubeSamples(), use_distributed=false)
+# full_likelihood_sample!(model, 5000000, sample_type=LatinHypercubeSamples(), use_distributed=false)
 
-# univariate_confidenceintervals!(model, profile_type=EllipseApprox())
+univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
+univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 univariate_confidenceintervals!(model, profile_type=LogLikelihood())
-# get_points_in_interval!(model, 100, additional_width=0.3)
+get_points_in_interval!(model, 100, additional_width=0.5)
 
 # bivariate_confidenceprofiles!(model, 5, 20, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 0, 5, 0.0, use_ellipse=false))
 
-bivariate_confidenceprofiles!(model, 1, 20, profile_type=LogLikelihood(), method=RadialRandomMethod(3))
-bivariate_confidenceprofiles!(model, [[1,2]], 100, profile_type=LogLikelihood(), method=SimultaneousMethod(0.01))
+# bivariate_confidenceprofiles!(model, 1, 20, profile_type=LogLikelihood(), method=RadialRandomMethod(3))
+# bivariate_confidenceprofiles!(model, [[1,2]], 100, profile_type=LogLikelihood(), method=SimultaneousMethod(0.01))
 # bivariate_confidenceprofiles!(model, [[1,2]], 5, profile_type=LogLikelihood(), method=ContinuationMethod(2, 0.1), existing_profiles=:overwrite)
 
 # dimensional_likelihood_sample!(model, 2, 500)
 println()
 
-# plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
-# for i in eachindex(plots)
-#     display(plots[i])
-# end
-
-# plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
-# for i in eachindex(plots)
-#     display(plots[i])
-# end
-
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
 for i in eachindex(plots)
     display(plots[i])
 end
+
+plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
+for i in eachindex(plots)
+    display(plots[i])
+end
+
+# plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+# for i in eachindex(plots)
+#     display(plots[i])
+# end
 
 # plots = plot_bivariate_profiles(model, 0.2, 0.2, for_dim_samples=true, include_internal_points=true, markeralpha=0.9)
 # for i in eachindex(plots)
