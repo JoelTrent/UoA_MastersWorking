@@ -61,13 +61,15 @@ model = initialiseLikelihoodModel(logged_loglhood, logged_predictFunc, data, θn
 
 univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, profile_type=EllipseApprox())
-univariate_confidenceintervals!(model, profile_type=LogLikelihood())
+# univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 get_points_in_interval!(model, 200, additional_width=0.5)
 
-bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=AnalyticalEllipseMethod(0.0, 0.1))
+# bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=AnalyticalEllipseMethod(0.0, 0.1))
 bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=IterativeBoundaryMethod(20, 0, 10, 0.0))
-bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=IterativeBoundaryMethod(20, 0, 10, 0.0), profile_type=EllipseApprox())
+bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=SimultaneousMethod(), profile_type=EllipseApprox())
+bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=SimultaneousMethod(), profile_type=EllipseApproxAnalytical())
 
+generate_predictions_bivariate!(model, collect(t), 0.1)
 
 using Plots
 gr()

@@ -101,16 +101,58 @@ confLevel = 0.95
 # initialisation. model is a mutable struct that is currently intended to hold all model information
 model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
-# full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
+icdf = -quantile(Chisq(1),0.95)/2
+# prediction for t=200
+# find values of f(θ,t=200) that make PPL approximately == model.core.maximisedmle + icdf
+function VPL_to_max(θ, data, z::Real, t::Real, SD::Real)
+    return loglhood(θ, data) - ((z-solvedmodel(t, θ))/SD)^2
+end
+
+function VPL(z, t_interest, SD)
+    function f(θ) return VPL_to_max(θ, data, zi, t_interest, SD) end
+
+    zi=0.0
+    vpls = zeros(length(z))
+
+    for i in eachindex(z)
+        zi = z[i]
+        (_, vpls[i]) = optimise(f, θG, lb, ub)
+    end
+    return vpls
+end
+function VPL_to_PPL(z, t_interest, SD)
+    function f(θ) return VPL_to_max(θ, data, zi, t_interest, SD) end
+
+    zi=0.0
+    ppls = zeros(length(z))
+
+    for i in eachindex(z)
+        zi = z[i]
+        (xopt, fopt) = optimise(f, θG, lb, ub)
+        ppls[i] = fopt - 0.5 * (solvedmodel(t_interest, xopt) - zi)^2 / SD^2
+    end
+    return ppls
+end
+z = collect(10:0.5:80) 
+vpls = VPL(z, 200, σ)
+plot(z, vpls, label="VPL")
+
+ppls = VPL_to_PPL(z, 200, σ)
+plot!(z, ppls, label="PPL")
+hline!([model.core.maximisedmle + icdf], label="confidence threshold")
+
+plot(z, ppls .- (model.core.maximisedmle + icdf), label="Rescaled PPL")
+
+full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
 # not strictly required - functions that rely on these being computed will check if 
 # they're missing and call this function on model if so.
-getMLE_ellipse_approximation!(model)
+# getMLE_ellipse_approximation!(model)
 
-@time univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
+# @time univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 # @time univariate_confidenceintervals!(model, profile_type=EllipseApprox(), use_distributed=false)
-# univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=0)
-get_points_in_interval!(model, 50, additional_width=0.3)
+univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite, num_points_in_interval=0)
+# get_points_in_interval!(model, 50, additional_width=0.3)
 
 
 # bivariate_confidenceprofiles!(model, [[:K, :C0]], 200)
@@ -120,14 +162,20 @@ get_points_in_interval!(model, 50, additional_width=0.3)
 # bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0,0.0), existing_profiles=:overwrite, save_internal_points=true)
 # sample_bivariate_internal_points!(model, 100, hullmethod=MPPHullMethod())
 
+# bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=RadialRandomMethod(3))
+# bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=SimultaneousMethod(1))
+# bivariate_confidenceprofiles!(model, 10, profile_type=EllipseApprox(), method=Fix1AxisMethod())
 
-# @time bivariate_confidenceprofiles!(model, 200, profile_type=EllipseApprox(), method=RadialRandomMethod(3), existing_profiles=:overwrite, save_internal_points=true)
+# combine_bivariate_boundaries!(model, not_evaluated_predictions=false)
+
+# bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=Fix1AxisMethod())
+# println()
 
 # @time bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 10, 10), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(2, 0.1, 0.0), existing_profiles=:overwrite, use_distributed=true)
 # bivariate_confidenceprofiles!(model, 50, confidence_level=0.95, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0, 0.1), save_internal_points=true, existing_profiles=:overwrite)
 
-bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApproxAnalytical(), method=AnalyticalEllipseMethod(0.0, 0.1))
+# bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApproxAnalytical(), method=AnalyticalEllipseMethod(0.0, 0.1))
 
 # bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(5, 0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
@@ -137,10 +185,10 @@ bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApproxAnalytical(),
 # dimensional_likelihood_sample!(model, 2, 30000, sample_type=UniformRandomSamples())
 # dimensional_likelihood_sample!(model, 2, 200000)
 
-# prediction_locations = collect(LinRange(t[1], t[end], 50))
+prediction_locations = collect(LinRange(t[1], t[end], 30))
 # generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])
 # generate_predictions_bivariate!(model, prediction_locations, 0.1, profile_types=[LogLikelihood()])
-# generate_predictions_dim_samples!(model, prediction_locations, 0.1)
+generate_predictions_dim_samples!(model, prediction_locations, 0.1)
 
 using Plots
 gr()
@@ -155,14 +203,14 @@ gr()
 
 
 # Profiles ################################################################
-plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
-for i in eachindex(plots); display(plots[i]) end
+# plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
+# for i in eachindex(plots); display(plots[i]) end
 
 # plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
 # for i in eachindex(plots); display(plots[i]) end
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
-for i in eachindex(plots); display(plots[i]) end
+# plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+# for i in eachindex(plots); display(plots[i]) end
 
 # plots = plot_bivariate_profiles(model, 0.2, 0.2, for_dim_samples=true, include_internal_points=true, markeralpha=0.9)
 # for i in eachindex(plots); display(plots[i]) end
@@ -177,8 +225,9 @@ for i in eachindex(plots); display(plots[i]) end
 # plots = plot_predictions_individual(model, prediction_locations)
 # for i in eachindex(plots); display(plots[i]) end
 
-# plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120]; for_dim_samples=true)
-# for i in eachindex(plots); display(plots[i]) end
+plots = plot_predictions_individual(model, prediction_locations, 3, ylims=[0,120]; for_dim_samples=true)
+for i in eachindex(plots); display(plots[i]) end
+vline!([200])
 
 # plots = plot_predictions_individual(model, prediction_locations, 2, ylims=[0,120], profile_types=[LogLikelihood()])
 # for i in eachindex(plots); display(plots[i]) end

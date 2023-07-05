@@ -7,31 +7,36 @@ using ForwardDiff
 gr()
 
 Random.seed!(12348)
-fileDirectory = joinpath("Workflow paper examples", "Logistic Model Num Opt", "Plots")
+fileDirectory = joinpath("Examples", "Logistic Model Num Opt", "Plots")
 include(joinpath("..", "plottingFunctions.jl"))
 
 # Workflow functions ##########################################################################
 
 # Section 2: Define ODE model
-function DE!(dC, C, p, t)
-    λ,K=p
-    dC[1]= λ * C[1] * (1.0 - C[1]/K)
-end
+# function DE!(dC, C, p, t)
+#     λ,K=p
+#     dC[1]= λ * C[1] * (1.0 - C[1]/K)
+# end
 
 # Section 3: Solve ODE model
-function odesolver(t, λ, K, C0)
-    p=(λ,K)
-    tspan=(0.0, maximum(t))
-    prob=ODEProblem(DE!, [C0], tspan, p)
-    sol=solve(prob, saveat=t)
-    return sol[1,:]
-end
+# function odesolver(t, λ, K, C0)
+#     p=(λ,K)
+#     tspan=(0.0, maximum(t))
+#     prob=ODEProblem(DE!, [C0], tspan, p)
+#     sol=solve(prob, saveat=t)
+#     return sol[1,:]
+# end
 
 # Section 4: Define function to solve ODE model 
+# function model(t, a, σ)
+#     y=odesolver(t, a[1],a[2],a[3])
+#     return y
+# end
+
 function model(t, a, σ)
-    y=odesolver(t, a[1],a[2],a[3])
-    return y
+    return (a[2]*a[3]) ./ ((a[2]-a[3]) .* (exp.(-a[1] .* t)) .+ a[3])
 end
+
 
 # Section 6: Define loglikelihood function
 function loglhood(data, a, σ)
@@ -58,6 +63,7 @@ function optimise(fun, θ₀, lb, ub;
     opt.max_objective = tomax
     opt.lower_bounds = lb       # Lower bound
     opt.upper_bounds = ub       # Upper bound
+    opt.maxeval = 6000
     opt.local_optimizer = Opt(:LN_NELDERMEAD, length(θ₀))
     res = optimize(opt, θ₀)
     return res[[2,1]]
@@ -167,7 +173,7 @@ CUF = maximum(CtraceF, dims=2)
 CLF = minimum(CtraceF, dims=2)
 
 # plot the family of curves, lower and upper confidence bounds and maximum likelihood solution given data
-qq1 = plotPrediction(tt, CtraceF, (CUF, CLF), confColor=:gold, xlabel="t", 
+qq1 = plotprediction(tt, CtraceF, (CUF, CLF), confColor=:gold, xlabel="t", 
             ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 ##############################################################################################
@@ -198,7 +204,7 @@ for i in 1:M
     global ff[i] = univariateλ(λrange[i])[1]
 end
 
-q1 = plot1DProfile(λrange, ff, llstar, λmle, xlims=(λmin,0.04), ylims=(-3,0.),
+q1 = plot1Dprofile(λrange, ff, llstar, λmle, xlims=(λmin,0.04), ylims=(-3,0.),
                     xlabel="λ", ylabel="ll")
 display(q1)
  
@@ -232,7 +238,7 @@ end
 CU1 = maximum(CUnivariatetrace1, dims=2)
 CL1 = minimum(CUnivariatetrace1, dims=2)
 
-pp1 = plotPrediction(tt, CUnivariatetrace1, (CU1, CL1), confColor=:red, xlabel="t", 
+pp1 = plotprediction(tt, CUnivariatetrace1, (CU1, CL1), confColor=:red, xlabel="t", 
             ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(pp1)
@@ -263,7 +269,7 @@ for i in 1:M
     global ff[i]=univariateK(Krange[i])[1]
 end
 
-q2 = plot1DProfile(Krange, ff, llstar, Kmle, xlims=(80,120), ylims=(-3,0.),
+q2 = plot1Dprofile(Krange, ff, llstar, Kmle, xlims=(80,120), ylims=(-3,0.),
                     xlabel="K", ylabel="ll")
 display(q2)
 
@@ -301,7 +307,7 @@ for i in 1:length(tt)
     CL2[i] = minimum(CUnivariatetrace2[i,:])
 end
 
-pp1 = plotPrediction(tt, CUnivariatetrace2, (CU2, CL2), confColor=:red, xlabel="t", 
+pp1 = plotprediction(tt, CUnivariatetrace2, (CU2, CL2), confColor=:red, xlabel="t", 
             ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(pp1)
@@ -330,7 +336,7 @@ for i in 1:M
     global ff[i]=univariateC0(C0range[i])[1]
 end
 
-q3= plot1DProfile(C0range, ff, llstar, C0mle, xlims=(C0min,30), ylims=(-3,0.),
+q3= plot1Dprofile(C0range, ff, llstar, C0mle, xlims=(C0min,30), ylims=(-3,0.),
                     xlabel="C(0)", ylabel="ll")
 display(q3)
    
@@ -372,7 +378,7 @@ for i in 1:length(tt)
     CL3[i] = minimum(CUnivariatetrace3[i,:])
 end
     
-pp1 = plotPrediction(tt, CUnivariatetrace3, (CU3, CL3), confColor=:red, xlabel="t", 
+pp1 = plotprediction(tt, CUnivariatetrace3, (CU3, CL3), confColor=:red, xlabel="t", 
             ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(pp1)
@@ -384,7 +390,7 @@ savefig(pp1, joinpath(fileDirectory, "UnivariatePredictionC0.pdf"))
 CU = max.(CU1, CU2, CU3)
 CL = max.(CL1, CL2, CL3)
 
-qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU, CL), ymle.(tt),
+qq1 = plotprediction_comparison(tt, CtraceF, (CUF, CLF), (CU, CL), ymle.(tt),
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
@@ -436,7 +442,6 @@ while count < N
     # the two points
     if g(x,y0)*g(x,y1) < 0 
         global count+=1
-        println(count)
 
         y1 = find_zero(h, (y0, y1), atol=ϵ, Roots.Brent(); p=x)
 
@@ -459,8 +464,6 @@ while count < N
     #horizontal line separating the two points   
     if g(x0,y)*g(x1,y) < 0 
         global count+=1
-        println(count)
-
         x1 = find_zero(h, (x0, x1), atol=ϵ, Roots.Brent(); p=y)
 
         λsamples_boundary[N+count]=x1;
@@ -470,7 +473,7 @@ while count < N
 end 
 
 # Plot the MLE and the 2N points identified on the boundary
-a1 = plot2DBoundary((λsamples_boundary, Ksamples_boundary), (λmle, Kmle), N, 
+a1 = plot2Dboundary((λsamples_boundary, Ksamples_boundary), (λmle, Kmle), N, 
                     xticks=[0,0.015,0.03], yticks=[80, 100, 120],
                     xlims=(0,0.03), ylims=(80,120), xlabel="λ", ylabel="K", legend=false)
 
@@ -478,7 +481,7 @@ display(a1)
 
 # ls = ellipse_loglike.(λrange, fill(Kmle, M), fill(C0mle,M))
 
-# plot1DProfile(λrange, ls, llstar, λmle, xlims=(λmin,0.04), ylims=(-3,0.),
+# plot1Dprofile(λrange, ls, llstar, λmle, xlims=(λmin,0.04), ylims=(-3,0.),
 #                     xlabel="λ", ylabel="ll")
 
 
@@ -493,7 +496,7 @@ end
 CU1_boundary = maximum(Ctrace1_boundary, dims=2)
 CL1_boundary = minimum(Ctrace1_boundary, dims=2)
 
-pp1 = plotPrediction(tt, Ctrace1_boundary, (CU1_boundary, CL1_boundary), confColor=:red,
+pp1 = plotprediction(tt, Ctrace1_boundary, (CU1_boundary, CL1_boundary), confColor=:red,
                     xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
                     yticks=[0,50,100], legend=false)
 pp3 = plot(a1, pp1, layout=(1,2))
@@ -566,7 +569,7 @@ end
 CU1_grid = maximum(Ctrace_withingrid1, dims=2)
 CL1_grid = minimum(Ctrace_withingrid1, dims=2)
 
-pp1 = plotPrediction(tt, Ctrace_withingrid1, (CU1_grid, CL1_grid), confColor=:red,
+pp1 = plotprediction(tt, Ctrace_withingrid1, (CU1_grid, CL1_grid), confColor=:red,
                     xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
                     yticks=[0,50,100], legend=false)
 pp3 = plot(aa1, pp1, layout=(1,2))
@@ -607,7 +610,6 @@ while count < N
             
     if g(x,y0)*g(x,y1) < 0 
         global count+=1
-        println(count)
         
         y1 = find_zero(h, (y0, y1), atol=ϵ, Roots.Brent(); p=x)
         
@@ -628,7 +630,6 @@ while count < N
                 
     if g(x0,y)*g(x1,y) < 0 
         global count+=1
-        println(count)
                 
         x1 = find_zero(h, (x0, x1), atol=ϵ, Roots.Brent(); p=y)             
                 
@@ -638,7 +639,7 @@ while count < N
     end
 end 
 
-a2 = plot2DBoundary((λsamples_boundary, C0samples_boundary), (λmle, C0mle), N, 
+a2 = plot2Dboundary((λsamples_boundary, C0samples_boundary), (λmle, C0mle), N, 
                     xlims=(0.0,0.03), ylims=(0,35), xticks=[0,0.015,0.03], yticks=[0,15,30], xlabel="λ", ylabel="C(0)", legend=false)
 display(a2)
 
@@ -653,7 +654,7 @@ end
 CU2_boundary = maximum(Ctrace2_boundary, dims=2)
 CL2_boundary = minimum(Ctrace2_boundary, dims=2)
 
-pp1 = plotPrediction(tt, Ctrace2_boundary, (CU2_boundary, CL2_boundary), confColor=:red,
+pp1 = plotprediction(tt, Ctrace2_boundary, (CU2_boundary, CL2_boundary), confColor=:red,
                     xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
                     yticks=[0,50,100], legend=false)
 pp3=plot(a2, pp1, layout=(1,2))
@@ -723,7 +724,7 @@ end
 CU2_grid = maximum(Ctrace_withingrid2, dims=2)
 CL2_grid = minimum(Ctrace_withingrid2, dims=2)
     
-pp1 = plotPrediction(tt, Ctrace_withingrid2, (CU2_grid, CL2_grid), confColor=:red,
+pp1 = plotprediction(tt, Ctrace_withingrid2, (CU2_grid, CL2_grid), confColor=:red,
                     xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
                     yticks=[0,50,100], legend=false)
 pp3=plot(aa2, pp1, layout=(1,2))
@@ -763,7 +764,6 @@ while count < N
             
     if g(x,y0)*g(x,y1) < 0 
         global count+=1
-        println(count)
 
         y1 = find_zero(h, (y0, y1), atol=ϵ, Roots.Brent(); p=x)
             
@@ -784,7 +784,6 @@ while count < N
         
     if g(x0,y)*g(x1,y) < 0 
         global count+=1
-        println(count)
 
         x1 = find_zero(h, (x0, x1), atol=ϵ, Roots.Brent(); p=y)
 
@@ -794,7 +793,7 @@ while count < N
     end
 end 
     
-a3 = plot2DBoundary((Ksamples_boundary, C0samples_boundary), (Kmle, C0mle), N, 
+a3 = plot2Dboundary((Ksamples_boundary, C0samples_boundary), (Kmle, C0mle), N, 
                     xlims=(80, 120), ylims=(C0min,35), xticks=[80,100,120], yticks=[0,15,30], xlabel="K", ylabel="C(0)", legend=false)
       
 display(a3)
@@ -811,7 +810,7 @@ end
 CU3_boundary = maximum(Ctrace3_boundary, dims=2)
 CL3_boundary = minimum(Ctrace3_boundary, dims=2)
 
-pp1 = plotPrediction(tt, Ctrace3_boundary, (CU3_boundary, CL3_boundary), confColor=:red,
+pp1 = plotprediction(tt, Ctrace3_boundary, (CU3_boundary, CL3_boundary), confColor=:red,
                     xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
                     yticks=[0,50,100], legend=false)
 pp3=plot(a3, pp1, layout=(1,2))
@@ -881,7 +880,7 @@ end
 CU3_grid = maximum(Ctrace_withingrid3, dims=2)
 CL3_grid = minimum(Ctrace_withingrid3, dims=2)
 
-pp1 = plotPrediction(tt, Ctrace_withingrid3, (CU3_grid, CL3_grid), confColor=:red,
+pp1 = plotprediction(tt, Ctrace_withingrid3, (CU3_grid, CL3_grid), confColor=:red,
                     xlabel="t", ylabel="C(t)", ylims=(0,120), xticks=[0,500,1000], 
                     yticks=[0,50,100], legend=false)
 pp1=plot(aa3, pp1, layout=(1,2))
@@ -902,7 +901,7 @@ CU_boundary = max.(CU1_boundary, CU2_boundary, CU3_boundary)
 CL_boundary = min.(CL1_boundary, CL2_boundary, CL3_boundary)
 
 # Plot the family of predictions made using the boundary tracing method, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihoods 
-qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU_boundary, CL_boundary), ymle.(tt),
+qq1 = plotprediction_comparison(tt, CtraceF, (CUF, CLF), (CU_boundary, CL_boundary), ymle.(tt),
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
@@ -910,9 +909,66 @@ display(qq1)
 savefig(qq1, joinpath(fileDirectory, "Bivariatecomparison_boundary.pdf"))
 
 # Plot the family of predictions made using the grid, the MLE and the prediction intervals defined by the full log-liklihood and the union of the three bivariate profile likelihood s
-qq1 = plotPredictionComparison(tt, CtraceF, (CUF, CLF), (CU_grid, CL_grid), ymle.(tt),
+qq1 = plotprediction_comparison(tt, CtraceF, (CUF, CLF), (CU_grid, CL_grid), ymle.(tt),
                                 xlabel="t", ylabel="C(t)", ylims=(0,120),
                                 xticks=[0,500,1000], yticks=[0,50,100], legend=false)
 
 display(qq1)
 savefig(qq1, joinpath(fileDirectory, "Bivariatecomparison_grid.pdf"))
+
+############################################################################################
+# Construct profile prediction intervals (for the mean)
+icdf = -quantile(Chisq(1),0.95)/2
+# find values of f(θ,t=200) that make PPL approximately == model.core.maximisedmle + icdf
+function VPL_to_max(a, z::Real, t_interest::Real)
+    return loglhood(data, a, σ) - ((z-model(t_interest, a, σ))/σ)^2
+end
+function VPL(z, t_interest)
+    function f(a) return VPL_to_max(a, zi, t_interest) end
+
+    zi=0.0
+    vpls = zeros(length(z))
+
+    for i in eachindex(z)
+        zi = z[i]
+        (_, vpls[i]) = optimise(f, θG, lb, ub)
+    end
+    return vpls
+end
+function VPL_to_PPL(z, t_interest)
+    function f(a) return VPL_to_max(a, zi, t_interest) end
+
+    zi=0.0
+    ppls = zeros(length(z))
+
+    for i in eachindex(z)
+        zi = z[i]
+        (xopt, fopt) = optimise(f, θG, lb, ub)
+        ppls[i] = fopt - 0.5 * (model(t_interest, xopt, σ) - zi)^2 / σ^2
+    end
+    return ppls
+end
+z = collect(0.0:0.1:120) 
+
+PPI_l = zeros(length(t))
+PPI_u = zeros(length(t))
+for (i, t_interest) in enumerate(t)
+    PPLS = VPL_to_PPL(z, t_interest) .- (fmle + icdf)
+    above_threshold = PPLS .> 0.0
+    zi1, zi2 = findfirst(above_threshold), findlast(above_threshold)
+    PPI_l[i], PPI_u[i] = z[zi1], z[zi2]
+end
+
+ymle_t = ymle.(t)
+ppi = plotprediction_intervals(tt, ymle.(tt), t, ymle_t, ymle_t .- PPI_l, PPI_u .- ymle_t, 
+                                xlabel="t", ylabel="C(t)", ylims=(0, 120),
+                                xticks=[0, 500, 1000], yticks=[0, 50, 100], legend=false)
+display(ppi)
+savefig(ppi, joinpath(fileDirectory, "profileprediction_intervals.pdf"))
+
+ppi = plotprediction_intervals_comparison(tt, CtraceF, (CUF, CLF), ymle.(tt), 
+                                t, ymle_t, ymle_t .- PPI_l, PPI_u .- ymle_t,
+                                xlabel="t", ylabel="C(t)", ylims=(0, 120),
+                                xticks=[0, 500, 1000], yticks=[0, 50, 100], legend=false)
+display(ppi)
+savefig(ppi, joinpath(fileDirectory, "profileprediction_intervals_comparison.pdf"))

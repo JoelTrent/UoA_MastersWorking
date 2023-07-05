@@ -81,3 +81,22 @@ function plotprediction_comparison(tt, predictionsFull, confFull, confEstimate, 
 
     return predictionPlot
 end
+
+function plotprediction_intervals(tt, ymle_tt, t, ymle_t, error_l, error_u;  kwargs...)
+
+    predictionPlot = scatter(t, ymle_t, color=:black, yerror=(error_l, error_u); kwargs...)
+    predictionPlot = plot!(tt, ymle, lw=3, color=:turquoise1)
+
+    return predictionPlot
+end
+
+function plotprediction_intervals_comparison(tt, predictionsFull, confFull, ymle_tt, t, ymle_t, error_l, error_u; kwargs...)
+
+    predictionPlot = plot(tt, predictionsFull[:, :], color=:grey; kwargs...)
+    predictionPlot = plot!(tt, confFull[1], lw=3, color=:gold)
+    predictionPlot = plot!(tt, confFull[2], lw=3, color=:gold)
+    predictionPlot = scatter!(t, ymle_t, color=:black, yerror=(error_l, error_u))
+    predictionPlot = plot!(tt, ymle, lw=3, color=:turquoise1)
+
+    return predictionPlot
+end
