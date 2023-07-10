@@ -27,7 +27,7 @@ end
 # true parameters
 k1=0.75; k2=0.25; s=1
 σ=1.0
-t=LinRange(0,30,31)
+t=LinRange(0,30,30)
 θ=[k1, k2, s]
 
 # true data
@@ -61,15 +61,17 @@ model = initialiseLikelihoodModel(logged_loglhood, logged_predictFunc, data, θn
 
 univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, profile_type=EllipseApprox())
-# univariate_confidenceintervals!(model, profile_type=LogLikelihood())
+univariate_confidenceintervals!(model, profile_type=LogLikelihood())
 get_points_in_interval!(model, 200, additional_width=0.5)
 
-# bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=AnalyticalEllipseMethod(0.0, 0.1))
+bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=AnalyticalEllipseMethod(0.0, 0.1))
 bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=IterativeBoundaryMethod(20, 0, 10, 0.0))
 bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=SimultaneousMethod(), profile_type=EllipseApprox())
 bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=SimultaneousMethod(), profile_type=EllipseApproxAnalytical())
 
-generate_predictions_bivariate!(model, collect(t), 0.1)
+dimensional_likelihood_sample!(model, 2, 10000)
+
+# generate_predictions_bivariate!(model, collect(t), 0.1)
 
 using Plots
 gr()
@@ -79,7 +81,18 @@ for i in eachindex(plots)
     display(plots[i])
 end
 
-plots = plot_bivariate_profiles_comparison(model, 0.05, 0.05, markeralpha=0.9)
+plots = plot_bivariate_profiles(model, 0.05, 0.05, markeralpha=0.9, for_dim_samples=true)
 for i in eachindex(plots)
     display(plots[i])
 end
+
+plots = plot_bivariate_profiles_comparison(model, 0.05, 0.05, markeralpha=0.9, include_dim_samples=true)
+for i in eachindex(plots)
+    display(plots[i])
+end
+
+display(model.ellipse_MLE_approx.Hmle)
+display(model.ellipse_MLE_approx.Γmle)
+
+inv(model.ellipse_MLE_approx.Hmle)
+pinv(model.ellipse_MLE_approx.Hmle)
