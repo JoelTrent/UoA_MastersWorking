@@ -78,17 +78,26 @@ gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
 # uni_coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 100, θtrue, collect(1:3), show_progress=true)
 # println(uni_coverage_df)
 
-# biv_coverage_df = check_bivariate_parameter_coverage(data_generator, gen_args, model, 500, 100, θtrue, [[1, 2], [1, 3], [2, 3]], show_progress=true, distributed_over_parameters=true)
+# biv_coverage_df = check_bivariate_parameter_coverage(data_generator, gen_args, model, 100, 50, θtrue, [[1, 2], [1, 3], [2, 3]], show_progress=true, distributed_over_parameters=true)
+# println(biv_coverage_df)
+
+# biv_coverage_df = check_bivariate_parameter_coverage(data_generator, gen_args, model, 100, [20, 30], θtrue, [[1, 2], [1, 3], [2, 3]], 
+#     method=[RadialMLEMethod(0.0), RadialRandomMethod(3, false)], show_progress=true, distributed_over_parameters=true)
 # println(biv_coverage_df)
 
 # BIVARIATE THEORETICAL BOUNDARY COVERAGE CHECKS
-biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=ConvexHullMethod())
+biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 10, 50, -1, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=ConvexHullMethod())
 println(biv_coverage_df)
 
-biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=ConcaveHullMethod())
-println(biv_coverage_df)
+# biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 100, [20, 30], 2000, θtrue, [[1, 2], [1, 3], [2, 3]], 
+#     method=[IterativeBoundaryMethod(15, 0, 5), RadialRandomMethod(2, false)], show_progress=true, distributed_over_parameters=true, 
+#     hullmethod=ConvexHullMethod())
+# println(biv_coverage_df)
 
-biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=MPPHullMethod())
-println(biv_coverage_df)
+# biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=ConcaveHullMethod())
+# println(biv_coverage_df)
+
+# biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=MPPHullMethod())
+# println(biv_coverage_df)
 
 # rmprocs(workers())

@@ -57,6 +57,7 @@ gr()
 
 plots = plot_univariate_profiles(model, 0.05, 0.3, palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end
+sleep(10)
 
 plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
 for i in eachindex(plots); display(plots[i]) end
