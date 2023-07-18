@@ -162,8 +162,8 @@ get_points_in_intervals!(model, 30, additional_width=0.2)
 bivariate_confidenceprofiles!(model, 50, method=RadialMLEMethod(0.0), existing_profiles=:overwrite)
 
 @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true)
-# @time bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
-# bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0,0.0), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
+bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0,0.0), existing_profiles=:overwrite, save_internal_points=true)
 sample_bivariate_internal_points!(model, 200, hullmethod=MPPHullMethod(), sample_type=LatinHypercubeSamples())
 sample_bivariate_internal_points!(model, 100, hullmethod=MPPHullMethod(), sample_type=UniformRandomSamples())
 
@@ -210,8 +210,8 @@ gr()
 
 
 # Profiles ################################################################
-# plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
-# for i in eachindex(plots); display(plots[i]) end
+plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
+for i in eachindex(plots); display(plots[i]) end
 
 # plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
 # for i in eachindex(plots); display(plots[i]) end
