@@ -46,11 +46,11 @@ bivariate_confidenceprofiles!(model, 100, profile_type=LogLikelihood(), confiden
 
 bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=RadialMLEMethod(0.5, 1.0), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+# bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
 # bivariate_confidenceprofiles!(model, 500, profile_type=EllipseApprox(), method=IterativeBoundaryMethod(20, 20, 20, 0.5, 0.01, use_ellipse=true), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
-bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=RadialRandomMethod(5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
+# bivariate_confidenceprofiles!(model, 500, profile_type=LogLikelihood(), method=RadialRandomMethod(5), confidence_level=0.95, existing_profiles=:overwrite, save_internal_points=true)
 
 using Plots
 gr()

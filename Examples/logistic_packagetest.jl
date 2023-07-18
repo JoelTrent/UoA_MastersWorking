@@ -99,7 +99,7 @@ ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 confLevel = 0.95
 
 # initialisation. model is a mutable struct that is currently intended to hold all model information
-model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
+model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes, find_zero_atol=0.001);
 
 icdf = -quantile(Chisq(1),0.95)/2
 # prediction for t=200
@@ -157,11 +157,11 @@ PlaceholderLikelihood.TimerOutputs.enable_debug_timings(PlaceholderLikelihood)
 PlaceholderLikelihood.TimerOutputs.reset_timer!(PlaceholderLikelihood.timer)
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite)
 display(PlaceholderLikelihood.timer)
-get_points_in_intervals!(model, 3000, additional_width=0.2)
+get_points_in_intervals!(model, 30, additional_width=0.2)
 
-bivariate_confidenceprofiles!(model, 50, method=RadialMLEMethod(0.0))
+bivariate_confidenceprofiles!(model, 50, method=RadialMLEMethod(0.0), existing_profiles=:overwrite)
 
-# @time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true)
 # @time bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
 # bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0,0.0), existing_profiles=:overwrite, save_internal_points=true)
 sample_bivariate_internal_points!(model, 200, hullmethod=MPPHullMethod(), sample_type=LatinHypercubeSamples())
