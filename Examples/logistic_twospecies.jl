@@ -67,7 +67,10 @@ ub = [0.01, 0.01, 0.01, 90.0, 1.0, 1.0, 3.0]; #upper bound
 par_magnitudes = [0.01, 0.01, 0.01, 10, 1, 1, 1]
 θnames = [:λ1, :λ2, :δ, :KK, :C01, :CO2, :σ]
 
-model = initialiseLikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes)
+using ForwardDiff
+using FiniteDiff
+optim_settings=OptimizationSettings(AutoFiniteDiff(), NLopt.LD_LBFGS(), (xtol_rel=1e-9,))
+model = initialiseLikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=optim_settings)
 
 @everywhere function loglhood2(θ, data) # function to evaluate the loglikelihood for the data given parameters θ
     (y1, y2) = ODEmodel(data.t, θ)
@@ -84,7 +87,7 @@ model = initialiseLikelihoodModel(loglhood2, predictFunc, data2, θnames[1:6], �
 univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 univariate_confidenceintervals!(model, profile_type=EllipseApprox())
 univariate_confidenceintervals!(model, profile_type=LogLikelihood())
-get_points_in_interval!(model, 100, additional_width=0.5)
+get_points_in_intervals!(model, 100, additional_width=0.5)
 
 # bivariate_confidenceprofiles!(model, 5, 20, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 0, 5, 0.0, use_ellipse=false))
 

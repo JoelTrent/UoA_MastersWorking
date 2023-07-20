@@ -2,6 +2,7 @@
 # using BenchmarkTools
 
 using Distributed
+using Revise
 # if nprocs()==1; addprocs(10) end
 using PlaceholderLikelihood
 @everywhere using Revise
@@ -99,7 +100,13 @@ ymle(t) = Kmle*C0mle/((Kmle-C0mle)*exp(-λmle*t)+C0mle) # full solution
 confLevel = 0.95
 
 # initialisation. model is a mutable struct that is currently intended to hold all model information
-model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes, find_zero_atol=0.001);
+# using FiniteDiff
+# using ReverseDiff
+using Tracker
+# optim_settings=OptimizationSettings(AutoTracker(), NLopt.LD_LBFGS(), (xtol_rel=1e-9,))
+optim_settings=default_OptimizationSettings()
+# optim_settings=OptimizationSettings(SciMLBase.NoAD(), NLopt.LN_BOBYQA(), NamedTuple())
+model = initialise_LikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes, find_zero_atol=0.001, optimizationsettings=optim_settings);
 
 icdf = -quantile(Chisq(1),0.95)/2
 # prediction for t=200
@@ -150,18 +157,18 @@ full_likelihood_sample!(model, 100, sample_type=UniformGridSamples(), use_distri
 # they're missing and call this function on model if so.
 # getMLE_ellipse_approximation!(model)
 
-# @time univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
-# @time univariate_confidenceintervals!(model, profile_type=EllipseApprox(), use_distributed=false)
+@time univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
+@time univariate_confidenceintervals!(model, profile_type=EllipseApprox(), use_distributed=false)
 PlaceholderLikelihood.TimerOutputs.enable_debug_timings(PlaceholderLikelihood)
-# PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)
+PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)
 PlaceholderLikelihood.TimerOutputs.reset_timer!(PlaceholderLikelihood.timer)
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite)
 display(PlaceholderLikelihood.timer)
-get_points_in_intervals!(model, 30, additional_width=0.2)
+@time get_points_in_intervals!(model, 101, additional_width=0.2, use_threads=true)
 
-bivariate_confidenceprofiles!(model, 50, method=RadialMLEMethod(0.0), existing_profiles=:overwrite)
+@time bivariate_confidenceprofiles!(model, 500, profile_type=EllipseApproxAnalytical(),  method=RadialMLEMethod(0.0), existing_profiles=:overwrite, use_distributed=false)
 
-@time bivariate_confidenceprofiles!(model, 200, profile_type=LogLikelihood(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true)
+@time bivariate_confidenceprofiles!(model, 500, profile_type=EllipseApproxAnalytical(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true, use_distributed=false)
 @time bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
 bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0,0.0), existing_profiles=:overwrite, save_internal_points=true)
 sample_bivariate_internal_points!(model, 200, hullmethod=MPPHullMethod(), sample_type=LatinHypercubeSamples())
@@ -180,21 +187,21 @@ sample_bivariate_internal_points!(model, 100, hullmethod=MPPHullMethod(), sample
 # @time bivariate_confidenceprofiles!(model, 200, confidence_level=0.95, profile_type=EllipseApprox(), method=ContinuationMethod(2, 0.1, 0.0), existing_profiles=:overwrite, use_distributed=true)
 # bivariate_confidenceprofiles!(model, 50, confidence_level=0.95, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0, 0.1), save_internal_points=true, existing_profiles=:overwrite)
 
-# bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApproxAnalytical(), method=AnalyticalEllipseMethod(0.0, 0.1))
+bivariate_confidenceprofiles!(model, 52, profile_type=EllipseApproxAnalytical(), method=AnalyticalEllipseMethod(0.0, 0.1), existing_profiles=:overwrite)
 
 # bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, profile_type=LogLikelihood(), method=ContinuationMethod(5, 0.1, 0.0), save_internal_points=true, existing_profiles=:overwrite)
 
 # @time bivariate_confidenceprofiles!(model, 100, confidence_level=0.95, method=AnalyticalEllipseMethod())
 
-dimensional_likelihood_samples!(model, 1, 300, sample_type=UniformGridSamples())
-# dimensional_likelihood_samples!(model, 2, 30000, sample_type=UniformRandomSamples())
-# dimensional_likelihood_samples!(model, 2, 200000)
+dimensional_likelihood_samples!(model, 1, 300, sample_type=UniformGridSamples(), use_threads=true)
+dimensional_likelihood_samples!(model, 2, 3000, sample_type=UniformRandomSamples(), use_threads=true)
+dimensional_likelihood_samples!(model, 2, 2000, use_threads=true)
 
-dimensional_likelihood_samples!(model, 3, 20000, use_threads=false)
+# dimensional_likelihood_samples!(model, 3, 20000, use_threads=false)
 
 prediction_locations = collect(LinRange(t[1], t[end], 30))
 generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])
-generate_predictions_bivariate!(model, prediction_locations, 0.1, profile_types=[LogLikelihood()])
+generate_predictions_bivariate!(model, prediction_locations, 0.1)
 generate_predictions_dim_samples!(model, prediction_locations, 0.1)
 
 using Plots
@@ -210,10 +217,10 @@ gr()
 
 
 # Profiles ################################################################
-plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
-for i in eachindex(plots); display(plots[i]) end
+# plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
+# for i in eachindex(plots); display(plots[i]) end
 
-# plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, profile_types=[EllipseApproxAnalytical(), EllipseApprox(), LogLikelihood()], palette_to_use=:Spectral_8)
+# plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, palette_to_use=:Spectral_8)
 # for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
@@ -229,7 +236,7 @@ for i in eachindex(plots); display(plots[i]) end
 # for i in eachindex(plots); display(plots[i]) end
 
 # # Predictions ############################################################
-plots = plot_predictions_individual(model, prediction_locations)
+plots = plot_predictions_individual(model, prediction_locations, 2, profile_types=[EllipseApproxAnalytical()])
 for i in eachindex(plots); display(plots[i]) end
 
 plots = plot_predictions_individual(model, prediction_locations, 3, ylims=[0,120]; for_dim_samples=true)

@@ -5,16 +5,14 @@ using Distributions, Random
 # rosenbrock(x, p) = (p[1] - x[1])^2 + p[2] * (x[2] - x[1]^2)^2
 # x0 = zeros(2)
 # _p = [1.0, 100.0]
-global count = 0
 
 @inline function solvedmodel(_t, θ)
     return (θ[2] * θ[3]) ./ ((θ[2] - θ[3]) .* (exp.(-θ[1] .* _t)) .+ θ[3])
 end
 
 function loglhood(θ, p)
-    global count+=1
-    yobs, t, dist = p
-    return -sum(loglikelihood(dist, yobs .- solvedmodel(t, θ)))
+    # yobs, t, dist = p
+    return -sum(loglikelihood(p.dist, p.yobs .- solvedmodel(p.t, θ)))
 end
 
 @inline function ll_l2norm(θ, p)
@@ -39,8 +37,8 @@ ub = [λmax, Kmax, C0max]
 ytrue = solvedmodel(t, _θ)
 Random.seed!(12348)
 yobs = ytrue + σ * randn(length(t))
-# _data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
-_data = (yobs, t, Normal(0, σ))
+_data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
+# _data = (yobs, t, Normal(0, σ))
 
 loglhood(θG, _data)
 _p = (yobs, t)
@@ -69,8 +67,15 @@ optf = OptimizationFunction(loglhood, AutoForwardDiff())
 prob = OptimizationProblem(optf, θG, _data, lb=lb, ub=ub)
 sol = solve(prob, NLopt.LD_LBFGS, xtol_rel=1e-9)
 
-fixedtheta1(x, p) = loglhood([0.11, x[1], x[2]], p)
-optf = OptimizationFunction(fixedtheta1, AutoForwardDiff())
+Psi = 0.11
+function fixedtheta1(x, p) 
+    θs = zeros(eltype(x),3)
+    θs[1] = Psi
+    θs[2:3] .= x
+    return loglhood(θs, p)
+end
+using ReverseDiff
+optf = OptimizationFunction(fixedtheta1, AutoReverseDiff())
 prob = OptimizationProblem(optf, θG[2:3], _data, lb=lb[2:3], ub=ub[2:3])
 sol = solve(prob, NLopt.LD_LBFGS())
 sol = solve(prob, NLopt.LN_BOBYQA)
