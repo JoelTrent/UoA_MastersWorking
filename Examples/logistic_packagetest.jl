@@ -166,12 +166,12 @@ univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_pr
 display(PlaceholderLikelihood.timer)
 @time get_points_in_intervals!(model, 101, additional_width=0.2, use_threads=true)
 
-@time bivariate_confidenceprofiles!(model, 500, profile_type=EllipseApproxAnalytical(),  method=RadialMLEMethod(0.0), existing_profiles=:overwrite, use_distributed=false)
+@time bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0), existing_profiles=:overwrite, use_distributed=false)
 
 @time bivariate_confidenceprofiles!(model, 500, profile_type=EllipseApproxAnalytical(), method=Fix1AxisMethod(), existing_profiles=:overwrite, save_internal_points=true, use_distributed=false)
-@time bivariate_confidenceprofiles!(model, 20, profile_type=LogLikelihood(), method=SimultaneousMethod(), existing_profiles=:overwrite, save_internal_points=true)
-bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0,0.0), existing_profiles=:overwrite, save_internal_points=true)
-sample_bivariate_internal_points!(model, 200, hullmethod=MPPHullMethod(), sample_type=LatinHypercubeSamples())
+@time bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(30, 5, 5, 0.0), existing_profiles=:overwrite, save_internal_points=true, use_distributed=false)
+bivariate_confidenceprofiles!(model, 60, profile_type=LogLikelihood(), method=ContinuationMethod(2,0.1), existing_profiles=:overwrite, save_internal_points=true)
+@time sample_bivariate_internal_points!(model, 200, hullmethod=ConvexHullMethod(), sample_type=LatinHypercubeSamples(), use_threads=false)
 sample_bivariate_internal_points!(model, 100, hullmethod=MPPHullMethod(), sample_type=UniformRandomSamples())
 
 # bivariate_confidenceprofiles!(model, 10, profile_type=LogLikelihood(), method=RadialRandomMethod(3))

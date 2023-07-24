@@ -69,8 +69,8 @@ par_magnitudes = [0.01, 0.01, 0.01, 10, 1, 1, 1]
 
 using ForwardDiff
 using FiniteDiff
-optim_settings=OptimizationSettings(AutoFiniteDiff(), NLopt.LD_LBFGS(), (xtol_rel=1e-9,))
-model = initialiseLikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=optim_settings)
+optim_settings=OptimizationSettings(AutoFiniteDiff(), NLopt.LN_BOBYQA(), NamedTuple())
+model = initialise_LikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes)
 
 @everywhere function loglhood2(θ, data) # function to evaluate the loglikelihood for the data given parameters θ
     (y1, y2) = ODEmodel(data.t, θ)
@@ -80,7 +80,7 @@ model = initialiseLikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb,
 end
 
 data2 = (data..., σ=model.core.θmle[7])
-model = initialiseLikelihoodModel(loglhood2, predictFunc, data2, θnames[1:6], θG[1:6], lb[1:6], ub[1:6], par_magnitudes[1:6]);
+model = initialise_LikelihoodModel(loglhood2, predictFunc, data2, θnames[1:6], θG[1:6], lb[1:6], ub[1:6], par_magnitudes[1:6]);
 
 # full_likelihood_sample!(model, 5000000, sample_type=LatinHypercubeSamples(), use_distributed=false)
 
@@ -91,7 +91,8 @@ get_points_in_intervals!(model, 100, additional_width=0.5)
 
 # bivariate_confidenceprofiles!(model, 5, 20, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(10, 0, 5, 0.0, use_ellipse=false))
 
-# bivariate_confidenceprofiles!(model, 1, 20, profile_type=LogLikelihood(), method=RadialRandomMethod(3))
+bivariate_confidenceprofiles!(model, [[2,6]], 20, profile_type=EllipseApprox(), method=RadialRandomMethod(3))
+@time sample_bivariate_internal_points!(model, 200, hullmethod=ConvexHullMethod(), sample_type=LatinHypercubeSamples(), use_threads=true)
 # bivariate_confidenceprofiles!(model, [[1,2]], 100, profile_type=LogLikelihood(), method=SimultaneousMethod(0.01))
 # bivariate_confidenceprofiles!(model, [[1,2]], 5, profile_type=LogLikelihood(), method=ContinuationMethod(2, 0.1), existing_profiles=:overwrite)
 
@@ -108,10 +109,10 @@ for i in eachindex(plots)
     display(plots[i])
 end
 
-# plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
-# for i in eachindex(plots)
-#     display(plots[i])
-# end
+plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+for i in eachindex(plots)
+    display(plots[i])
+end
 
 # plots = plot_bivariate_profiles(model, 0.2, 0.2, for_dim_samples=true, include_internal_points=true, markeralpha=0.9)
 # for i in eachindex(plots)
