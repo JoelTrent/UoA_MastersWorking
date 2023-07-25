@@ -26,7 +26,8 @@ end
 # Data setup #################################################################################
 # true parameters
 k1=0.75; k2=0.25; s=1
-σ=0.2 #1.0
+# σ=0.2 #1.0
+σ=1.0
 t=LinRange(0,30,30)
 θ=[k1, k2, s]
 
@@ -57,6 +58,8 @@ par_magnitudes = [1, 1, 1]
     return loglhood(exp10.(Θ), data)
 end
 
+optim_settings = create_OptimizationSettings(solve_kwargs=(maxtime=15, ))
+
 model = initialise_LikelihoodModel(logged_loglhood, logged_predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
 univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
@@ -66,8 +69,8 @@ get_points_in_intervals!(model, 200, additional_width=0.5)
 
 bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=AnalyticalEllipseMethod(0.0, 0.1))
 bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=IterativeBoundaryMethod(20, 0, 10, 0.0))
-bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=SimultaneousMethod(), profile_type=EllipseApprox())
-bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=SimultaneousMethod(), profile_type=EllipseApproxAnalytical())
+bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=RadialRandomMethod(30), profile_type=EllipseApprox(), find_zero_atol=0.0)
+bivariate_confidenceprofiles!(model, [[1,2], [2,3]], 30, method=RadialRandomMethod(30), profile_type=EllipseApproxAnalytical(), find_zero_atol=0.0)
 
 dimensional_likelihood_samples!(model, 2, 10000)
 
@@ -76,15 +79,15 @@ dimensional_likelihood_samples!(model, 2, 10000)
 using Plots
 gr()
 
-plots = plot_univariate_profiles_comparison(model, 0.1, 0.1, θs_to_plot=[1,2,3], palette_to_use=:Spectral_8)
+plots = plot_univariate_profiles(model, 0.1, 0.1, θs_to_plot=[1,2,3])
 for i in eachindex(plots)
     display(plots[i])
 end
 
-plots = plot_bivariate_profiles(model, 0.05, 0.05, markeralpha=0.9, for_dim_samples=true)
-for i in eachindex(plots)
-    display(plots[i])
-end
+# plots = plot_bivariate_profiles(model, 0.05, 0.05, markeralpha=0.9, for_dim_samples=true)
+# for i in eachindex(plots)
+#     display(plots[i])
+# end
 
 plots = plot_bivariate_profiles_comparison(model, 0.05, 0.05, markeralpha=0.9, include_dim_samples=true)
 for i in eachindex(plots)
