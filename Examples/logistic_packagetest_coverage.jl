@@ -3,8 +3,9 @@
 
 using Distributed
 using PlaceholderLikelihood
-if nprocs()==1; addprocs(10) end
-# @everywhere using Revise
+# if nprocs()==1; addprocs(10) end
+if nprocs()==1; addprocs(4) end
+@everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere using PlaceholderLikelihood
 
@@ -61,10 +62,10 @@ lb = [λmin, Kmin, C0min]
 ub = [λmax, Kmax, C0max]
 par_magnitudes = [0.005, 10, 10]
 
-@everywhere likelihoodFunc = loglhood
 θnames = [:λ, :K, :C0]
+@everywhere function predictFunc(θ, data, t=data.t); solvedmodel(t, θ) end
 
-model = initialiseLikelihoodModel(likelihoodFunc, data, θnames, θG, lb, ub, par_magnitudes);
+model = initialise_LikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
 @everywhere function data_generator(θtrue, generator_args::NamedTuple)
@@ -75,7 +76,7 @@ end
 gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
 
 # PARAMETER COVERAGE CHECKS
-# uni_coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 100, θtrue, collect(1:3), show_progress=true)
+# uni_coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 100, θtrue, collect(1:3), show_progress=true, distributed_over_parameters=false)
 # println(uni_coverage_df)
 
 # biv_coverage_df = check_bivariate_parameter_coverage(data_generator, gen_args, model, 100, 50, θtrue, [[1, 2], [1, 3], [2, 3]], show_progress=true, distributed_over_parameters=true)
@@ -86,8 +87,8 @@ gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
 # println(biv_coverage_df)
 
 # BIVARIATE THEORETICAL BOUNDARY COVERAGE CHECKS
-biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 10, 50, -1, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=ConvexHullMethod())
-println(biv_coverage_df)
+# biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 10, 50, -1, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=ConvexHullMethod())
+# println(biv_coverage_df)
 
 # biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 100, [20, 30], 2000, θtrue, [[1, 2], [1, 3], [2, 3]], 
 #     method=[IterativeBoundaryMethod(15, 0, 5), RadialRandomMethod(2, false)], show_progress=true, distributed_over_parameters=true, 
@@ -99,5 +100,16 @@ println(biv_coverage_df)
 
 # biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=MPPHullMethod())
 # println(biv_coverage_df)
+Random.seed!(1)
+uni_prediction_coverage_df = check_univariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 10, θtrue, [1,2], num_points_in_interval=100, show_progress=true, distributed_over_parameters=false)
+println(uni_prediction_coverage_df)
 
+Random.seed!(1)
+biv_prediction_coverage_df = check_bivariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 50, [20, 30], θtrue, [[1, 2], [1, 3], [2, 3]], 
+    method=[RadialMLEMethod(0.0), RadialRandomMethod(3, false)], hullmethod=ConvexHullMethod(), num_internal_points=100, show_progress=true, distributed_over_parameters=false)
+display(biv_prediction_coverage_df)
+
+Random.seed!(1)
+dim_prediction_coverage_df = check_dimensional_prediction_coverage(data_generator, gen_args, collect(tt), model, 1000, 50000, θtrue, [[1, 2, 3]], show_progress=true, distributed_over_parameters=false)
+display(dim_prediction_coverage_df)
 # rmprocs(workers())
