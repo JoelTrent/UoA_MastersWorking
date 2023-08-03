@@ -48,7 +48,7 @@ end
 # Section 8: Function to be optimised for MLE
 # note this function pulls in the globals, data and σ and would break if used outside of 
 # this file's scope
-@everywhere function funmle(a); return loglhood(a, data) end 
+@everywhere function funmle(a,_); return loglhood(a, data) end 
 
 # Data setup #################################################################################
 # true parameters
@@ -81,7 +81,8 @@ par_magnitudes = [0.005, 10, 10]
 # Section 9: Find MLE by numerical optimisation, visually compare data and MLE solution
 # Use Nelder-Mead algorithm to estimate maximum likelihood solution for parameters given 
 # noisy data
-(xopt, fopt) = optimise(funmle, θG, lb, ub)
+function funmle_max(θ,_); -funmle(θ,0); end
+(xopt, fopt) = optimise(funmle_max, default_OptimizationSettings(), θG, lb, ub)
 fmle=fopt
 λmle, Kmle, C0mle = xopt .* 1.0
 θmle = [λmle, Kmle, C0mle]
@@ -102,7 +103,7 @@ confLevel = 0.95
 # initialisation. model is a mutable struct that is currently intended to hold all model information
 # using FiniteDiff
 # using ReverseDiff
-using Tracker
+# using Tracker
 # optim_settings=OptimizationSettings(AutoTracker(), NLopt.LD_LBFGS(), (xtol_rel=1e-9,))
 optim_settings=default_OptimizationSettings()
 # optim_settings=OptimizationSettings(SciMLBase.NoAD(), NLopt.LN_BOBYQA(), NamedTuple())
@@ -217,8 +218,8 @@ gr()
 
 
 # Profiles ################################################################
-# plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
-# for i in eachindex(plots); display(plots[i]) end
+plots = plot_univariate_profiles(model, 0.5, 0.6, palette_to_use=:Spectral_8)
+for i in eachindex(plots); display(plots[i]) end
 
 # plots = plot_univariate_profiles_comparison(model, 0.2, 0.2, palette_to_use=:Spectral_8)
 # for i in eachindex(plots); display(plots[i]) end
@@ -317,6 +318,7 @@ end
 newlb, newub = transformbounds(forward_parameter_transformLog, lb, ub, collect(1:3), Int[])
 exp.(newlb)
 exp.(newub)
+newlb, newub = transformbounds_NLopt(forward_parameter_transformLog, lb, ub)
 
 λmin, λmax = (0.001, 0.05)
 Kmin, Kmax = (50., 150.)
@@ -340,6 +342,7 @@ end
 newlb, newub = transformbounds(forward_parameter_transformKminusC0, lb, ub, Int[1,3], Int[2])
 newθmle = forward_parameter_transformKminusC0(θmle)
 
+newlb, newub = transformbounds_NLopt(forward_parameter_transformKminusC0, lb, ub)
 
 # REMOVE WORKER PROCESSORS WHEN FINISHED #######################################
 rmprocs(workers())

@@ -3,14 +3,14 @@
 
 using Distributed
 using PlaceholderLikelihood
-# if nprocs()==1; addprocs(10) end
-if nprocs()==1; addprocs(4) end
+if nprocs()==1; addprocs(10) end
+# if nprocs()==1; addprocs(4) end
 @everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
 @everywhere using PlaceholderLikelihood
 
 @everywhere using Logging
-@everywhere Logging.disable_logging(Logging.Warn) # Disable debug and info
+@everywhere Logging.disable_logging(Logging.Warn) # Disable debug, info and warn
 
 # Workflow functions ##########################################################################
 
@@ -36,7 +36,8 @@ end
 
 # Data setup #################################################################################
 # true parameters
-λ=0.01; K=100.0; C0=10.0; t=0:100:1000; σ=10.0;
+λ=0.01; K=100.0; C0=10.0; t=0:100:1000; 
+@everywhere σ=10.0;
 tt=0:5:1000
 a=[λ, K, C0]
 θtrue=[λ, K, C0]
@@ -64,8 +65,12 @@ par_magnitudes = [0.005, 10, 10]
 
 θnames = [:λ, :K, :C0]
 @everywhere function predictFunc(θ, data, t=data.t); solvedmodel(t, θ) end
+@everywhere function errorFunc(predictions, θ, bcl); normal_error_σ_known(predictions, θ, bcl, σ) end
 
-model = initialise_LikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
+model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes);
+
+univariate_confidenceintervals!(model)
+generate_predictions_univariate!(model, tt, 1.0)
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
 @everywhere function data_generator(θtrue, generator_args::NamedTuple)
@@ -99,17 +104,28 @@ gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
 # println(biv_coverage_df)
 
 # biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=MPPHullMethod())
-# println(biv_coverage_df)
+# # println(biv_coverage_df)
+
+# PREDICTION COVERAGE
+# FOR THE MEAN/MEDIAN
 Random.seed!(1)
-uni_prediction_coverage_df = check_univariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 10, θtrue, [1,2], num_points_in_interval=100, show_progress=true, distributed_over_parameters=false)
+uni_prediction_coverage_df = check_univariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 100, θtrue, collect(1:3), num_points_in_interval=100, show_progress=true, distributed_over_parameters=false)
 println(uni_prediction_coverage_df)
 
-Random.seed!(1)
-biv_prediction_coverage_df = check_bivariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 50, [20, 30], θtrue, [[1, 2], [1, 3], [2, 3]], 
-    method=[RadialMLEMethod(0.0), RadialRandomMethod(3, false)], hullmethod=ConvexHullMethod(), num_internal_points=100, show_progress=true, distributed_over_parameters=false)
+# Random.seed!(1)
+biv_prediction_coverage_df = check_bivariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 100, [20, 30], θtrue, [[1, 2], [1, 3], [2, 3]], 
+    method=[RadialMLEMethod(0.0), RadialRandomMethod(3, false)], hullmethod=ConvexHullMethod(), num_internal_points=100, show_progress=true, distributed_over_parameters=true)
 display(biv_prediction_coverage_df)
 
-Random.seed!(1)
-dim_prediction_coverage_df = check_dimensional_prediction_coverage(data_generator, gen_args, collect(tt), model, 1000, 50000, θtrue, [[1, 2, 3]], show_progress=true, distributed_over_parameters=false)
-display(dim_prediction_coverage_df)
+# Random.seed!(1)
+# dim_prediction_coverage_df = check_dimensional_prediction_coverage(data_generator, gen_args, collect(tt), model, 50, 5000, θtrue, [[3], [1,2], [2,3], [1, 2, 3]], show_progress=true, distributed_over_parameters=false)
+# display(dim_prediction_coverage_df)
 # rmprocs(workers())
+
+
+# args=([1,2,3],)::Union{Tuple{Int}, Tuple{Vector{Int}}}
+
+# univariate_confidenceintervals!(model, args..., existing_profiles=:overwrite)
+
+# args=(2,)
+# bivariate_confidenceprofiles!(model, args..., existing_profiles=:overwrite)
