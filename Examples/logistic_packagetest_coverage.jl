@@ -75,10 +75,13 @@ generate_predictions_univariate!(model, tt, 1.0)
 # DATA GENERATION FUNCTION AND ARGUMENTS
 @everywhere function data_generator(θtrue, generator_args::NamedTuple)
     yobs = generator_args.ytrue .+ rand(generator_args.dist, length(generator_args.t))
+    if generator_args.is_test_set
+        return yobs
+    end
     data = (yobs=yobs, generator_args...)
     return data
 end
-gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
+gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ), is_test_set=false)
 
 # PARAMETER COVERAGE CHECKS
 # uni_coverage_df = check_univariate_parameter_coverage(data_generator, gen_args, model, 100, θtrue, collect(1:3), show_progress=true, distributed_over_parameters=false)
@@ -106,26 +109,33 @@ gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ))
 # biv_coverage_df = check_bivariate_boundary_coverage(data_generator, gen_args, model, 500, 50, 2000, θtrue, [[1, 2], [1, 3], [2, 3]], method=IterativeBoundaryMethod(30, 0, 10), show_progress=true, distributed_over_parameters=true, hullmethod=MPPHullMethod())
 # # println(biv_coverage_df)
 
-# PREDICTION COVERAGE
+# PREDICTION COVERAGE ###############################################################################################################################
 # FOR THE MEAN/MEDIAN
-Random.seed!(1)
-uni_prediction_coverage_df = check_univariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 100, θtrue, collect(1:3), num_points_in_interval=100, show_progress=true, distributed_over_parameters=false)
-println(uni_prediction_coverage_df)
+# Random.seed!(1)
+# uni_prediction_coverage_df = check_univariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 100, θtrue, collect(1:3), num_points_in_interval=100, show_progress=true, distributed_over_parameters=false)
+# display(uni_prediction_coverage_df)
 
 # Random.seed!(1)
-biv_prediction_coverage_df = check_bivariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 100, [20, 30], θtrue, [[1, 2], [1, 3], [2, 3]], 
-    method=[RadialMLEMethod(0.0), RadialRandomMethod(3, false)], hullmethod=ConvexHullMethod(), num_internal_points=100, show_progress=true, distributed_over_parameters=true)
-display(biv_prediction_coverage_df)
+# biv_prediction_coverage_df = check_bivariate_prediction_coverage(data_generator, gen_args, collect(tt), model, 100, [20, 30], θtrue, [[1, 2], [1, 3], [2, 3]], 
+#     method=[RadialMLEMethod(0.0), RadialRandomMethod(3, false)], hullmethod=ConvexHullMethod(), num_internal_points=100, show_progress=true, distributed_over_parameters=true)
+# display(biv_prediction_coverage_df)
 
 # Random.seed!(1)
 # dim_prediction_coverage_df = check_dimensional_prediction_coverage(data_generator, gen_args, collect(tt), model, 50, 5000, θtrue, [[3], [1,2], [2,3], [1, 2, 3]], show_progress=true, distributed_over_parameters=false)
 # display(dim_prediction_coverage_df)
-# rmprocs(workers())
 
+# FOR REALISATIONS
+test_gen_args = (ytrue=ytrue, σ=σ, t=t, dist=Normal(0, σ), is_test_set=true)
+Random.seed!(1)
+uni_prediction_coverage_df = check_univariate_prediction_realisations_coverage(data_generator, gen_args, test_gen_args, collect(t), model, 1000, θtrue, collect(1:3), num_points_in_interval=100, show_progress=true, distributed_over_parameters=false)
+display(uni_prediction_coverage_df)
 
-# args=([1,2,3],)::Union{Tuple{Int}, Tuple{Vector{Int}}}
+Random.seed!(1)
+biv_prediction_coverage_df = check_bivariate_prediction_realisations_coverage(data_generator, gen_args, test_gen_args, collect(t), model, 200, [20, 30], θtrue, [[1, 2], [1, 3], [2, 3]], 
+    method=[RadialMLEMethod(0.0), RadialRandomMethod(3, false)], hullmethod=ConvexHullMethod(), num_internal_points=100, show_progress=true, distributed_over_parameters=false)
+display(biv_prediction_coverage_df)
 
-# univariate_confidenceintervals!(model, args..., existing_profiles=:overwrite)
-
-# args=(2,)
-# bivariate_confidenceprofiles!(model, args..., existing_profiles=:overwrite)
+Random.seed!(1)
+dim_prediction_coverage_df = check_dimensional_prediction_realisations_coverage(data_generator, gen_args, test_gen_args, collect(t), model, 1000, 100000, θtrue, [[1, 2, 3]], show_progress=true, distributed_over_parameters=false)
+display(dim_prediction_coverage_df)
+rmprocs(workers())
