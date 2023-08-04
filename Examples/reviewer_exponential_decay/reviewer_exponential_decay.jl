@@ -55,8 +55,18 @@ ub = [0.1, 0.1]
 par_magnitudes = [1, 1]
 θnames = [:θ1, :θ2]
 
+
 optimsettings = create_OptimizationSettings(solve_kwargs=NamedTuple())
-model = initialise_LikelihoodModel(loglhood,  data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=optimsettings);
+model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=optimsettings);
+
+x = LinRange(lb[1], ub[1], 500)
+y = LinRange(lb[2], ub[2], 500)
+p_contour = contourf(x, y, (x,y)->loglhood([x,y], data) - model.core.maximisedmle, levels=collect(LinRange(-120, 0, 30)), fill=true, c=:dense, lw=0, colorbar_ticks=collect(LinRange(-150, 0, 10)), cbar=false, dpi=300)
+xlabel!(p_contour, "θ1")
+ylabel!(p_contour, "θ2")
+title!(p_contour, "Lp_hat for full likelihood between -120 and 0. Darker is closer to 0 (MLE)", titlefontsize=10)
+savefig(p_contour, joinpath(fileDirectory, "full_likelihood_contour.pdf"))
+savefig(p_contour, joinpath(fileDirectory, "full_likelihood_contour.png"))
 
 univariate_confidenceintervals!(model)
 get_points_in_intervals!(model, 200, additional_width=1.0)
