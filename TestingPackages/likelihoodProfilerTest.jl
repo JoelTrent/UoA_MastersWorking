@@ -1,5 +1,5 @@
 using LikelihoodProfiler
-using DifferentialEquations, Distributions
+using DifferentialEquations, Distributions, Random
 using NLopt, Roots
 
 
@@ -42,10 +42,9 @@ end
 # Section 6: Define loglikelihood function
 function loglhood(data, a, σ)
   y=model(t, a)
-  e=0
   dist=Normal(0, σ);
-  e=loglikelihood(dist, data-y) 
-  return sum(e)
+  e=sum(loglikelihood(dist, data-y))
+  return e
 end
 
 # Section 7: Numerical optimisation 
