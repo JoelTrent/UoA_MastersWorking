@@ -62,15 +62,27 @@ end
 λ1g=0.002; λ2g=0.002; δg=0.0; KKg=80.0; C0g=[1.0, 1.0]; σg=1.0; 
 
 θG = [λ1g, λ2g, δg, KKg, C0g[1], C0g[2], σg] #parameter estimates
-lb = [0.0001, 0.0001, 0.0, 60.0, 0.0001, 0.0001, 0.0001]; #lower bound
-ub = [0.01, 0.01, 0.01, 90.0, 1.0, 1.0, 3.0]; #upper bound
+# lb = [0.001, 0.001, 0.0, 60.0, 0.001, 0.001, 0.001]; #lower bound
+# ub = [0.01, 0.01, 0.01, 90.0, 1.0, 1.0, 3.0]; #upper bound
+
+
+lb = [0.00, 0.00, 0.00, 60.0, 0.0, 0.0, 0.0] ./ 1.5; #lower bound
+ub = [0.015, 0.015, 0.015, 135.0, 1.0, 1.0, 3.0]; #upper bound
+
 par_magnitudes = [0.01, 0.01, 0.01, 10, 1, 1, 1]
 θnames = [:λ1, :λ2, :δ, :KK, :C01, :CO2, :σ]
 
-using ForwardDiff
-using FiniteDiff
-optim_settings=OptimizationSettings(AutoFiniteDiff(), NLopt.LN_BOBYQA(), NamedTuple())
-model = initialise_LikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes)
+# using ForwardDiff
+# using FiniteDiff
+optim_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=5,))
+model = initialise_LikelihoodModel(loglhood, predictFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings = optim_settings)
+
+univariate_confidenceintervals!(model, profile_type=LogLikelihood(), find_zero_atol=0.0)
+get_points_in_intervals!(model, 10, additional_width=0.5)
+plots = plot_univariate_profiles(model, 0.2, 0.2, palette_to_use=:Spectral_8)
+for i in eachindex(plots)
+    display(plots[i])
+end
 
 @everywhere function loglhood2(θ, data) # function to evaluate the loglikelihood for the data given parameters θ
     (y1, y2) = ODEmodel(data.t, θ)
