@@ -8,6 +8,7 @@ function birth_death_firstreact(t_max, β, δ=1., N0=1, t_init=0.0)
 
     t = [t_init*1]
     N = [N0*1]
+    δ_total = [0]
 
     N_total = N0*1
 
@@ -21,16 +22,18 @@ function birth_death_firstreact(t_max, β, δ=1., N0=1, t_init=0.0)
         if delta_t_birth <= delta_t_death 
             N_total += 1
             delta_t = delta_t_birth
+            push!(δ_total, δ_total[end])
         else
             N_total -= 1
             delta_t = delta_t_death
+            push!(δ_total, δ_total[end]+1)
         end
 
         push!(t, t[end] + delta_t)
         push!(N, N_total*1)
     end 
 
-    return t, N
+    return t, N, δ_total
 end
 
 function stochastic_at_t(t_interest, t, N)
@@ -56,6 +59,10 @@ function stochastic_at_t(t_interest, t, N)
     return N_interest
 end
 
+function stochastic_at_t(t_interest, t, N, δ_total)
+    return vcat(stochastic_at_t(t_interest[1:Int(len_t/2)], t, N), stochastic_at_t(t_interest[Int(len_t/2)+1:end], t, δ_total))
+end
+
 function birth_death_deterministic(t, β, δ=1., N0=1)
     return N0 .* exp.((β-δ) .* t)
 end
@@ -72,6 +79,7 @@ end
 # plot!(t, birth_death_deterministic(t, birth_rate, death_rate, N0), label="deterministic")
 
 t = LinRange(0.1, 3, 100)
+t = vcat(t, t)
 len_t = length(t)
 birth_rate = 0.5; death_rate = 0.4; N0 = 1000
 yobs = stochastic_at_t(t, birth_death_firstreact(t[end], birth_rate, death_rate, N0)...)
@@ -132,23 +140,5 @@ get_points_in_intervals!(model, 30, additional_width =0.2)
 
 using Plots; gr()
 
-plots = plot_univariate_profiles(model, 0.2, 0.4, palette_to_use=:Spectral_8)
-for i in eachindex(plots); display(plots[i]) end
-
-##########################################################
-# Well informed direction
-xytoXY_sip(xy) = [xy[1]-xy[2]; xy[1]+xy[2]]
-XYtoxy_sip(XY) = [(XY[1]+XY[2])/2.; (XY[2]-XY[1])/2.]
-
-function loglhood_XYtoxy_sip(Θ,data); loglhood(XYtoxy_sip(Θ), data) end
-
-θnames_sip = [:β_minus_δ, :β_plus_δ]
-θG_sip = xytoXY_sip(θG)
-lb_sip, ub_sip = transformbounds_NLopt(xytoXY_sip, lb, ub)
-
-model_sip = initialise_LikelihoodModel(loglhood_XYtoxy_sip, data, θnames_sip, θG_sip, lb_sip, ub_sip);
-univariate_confidenceintervals!(model_sip)
-get_points_in_intervals!(model_sip, 30, additional_width=0.2)
-
-plots = plot_univariate_profiles(model_sip, 0.2, 0.4, palette_to_use=:Spectral_8)
+plots = plot_univariate_profiles_comparison(model, 0.2, 0.4, palette_to_use=:Spectral_8, opacity=0.5)
 for i in eachindex(plots); display(plots[i]) end
