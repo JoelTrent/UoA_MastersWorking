@@ -6,32 +6,51 @@ using BSON
 
 # Model functions
 ###########################################################################
-function birth_death_firstreact(t_max, β, δ=1., N0=1, t_init=0.0)
-    t = [t_init*1]
-    N = [N0*1]
+function birth_death_firstreact(t, β, δ=1.0, N0=1, t_init=0.0)
 
-    N_total = N0*1
+    t_current = t_init * 1
+    t_max = t[end]
+    N = zeros(length(t))
+    δ_total = zeros(length(t))
 
-    while t[end] < t_max && N_total != 0
-        h_i = [β*N_total, δ*N_total]
+    N_prev = -1
+    N_current = N0 * 1
+    δ_current = 1
+
+    i = 1
+    max_i = length(t)
+    while t_current < t_max && N_current != 0
+        h_i = [β * N_current, δ * N_current]
 
         # delta t's for each process
-        delta_t_birth = rand(Exponential(1/h_i[1]))
-        delta_t_death = rand(Exponential(1/h_i[2]))
+        delta_t_birth = rand(Exponential(1 / h_i[1]))
+        delta_t_death = rand(Exponential(1 / h_i[2]))
 
-        if delta_t_birth <= delta_t_death 
-            N_total += 1
+        if delta_t_birth <= delta_t_death
+            N_prev = N_current*1
+            N_current += 1
             delta_t = delta_t_birth
         else
-            N_total -= 1
+            N_prev = N_current*1
+            N_current -= 1
+            δ_current += 1
             delta_t = delta_t_death
         end
 
-        push!(t, t[end] + delta_t)
-        push!(N, N_total*1)
-    end 
+        t_current += delta_t
 
-    return t, N
+        while i <= max_i && t_current > t[i]
+            if N_prev == -1
+                N[i] = N_current*1
+            else
+                N[i] = N_prev*1 
+            end
+            δ_total[i] = δ_current*1 
+            i+=1
+        end
+    end
+
+    return N, δ_total
 end
 
 function stochastic_at_t(t_interest, t, N)
@@ -71,8 +90,8 @@ function generate_surrogate(t, N0, lb, ub, num_points, num_dims, len_t)
 
     y_stochastic = zeros(len_t, num_points)
 
-    for i in 1:num_points
-        y_stochastic[:, i] .= stochastic_at_t(t, birth_death_firstreact(t[end], grid[:,i]..., N0)...)
+    Threads.@threads for i in 1:num_points
+        y_stochastic[:, i] .= birth_death_firstreact(t, grid[:,i]..., N0)[1]
     end
 
     Y = vcat(y_stochastic, grid)
@@ -158,7 +177,7 @@ function data_setup(t, θ_true, N0, generate_new_data=false)
     if !generate_new_data && isfile(data_location)
         t, y_obs = eachcol(CSV.read(data_location, DataFrame))
     else
-        y_obs = stochastic_at_t(t, birth_death_firstreact(t[end], θ_true..., N0)...)
+        y_obs, _ = birth_death_firstreact(t, θ_true..., N0)
 
         println(y_obs)
         data_df = DataFrame(t=t, y_obs=y_obs)
@@ -181,7 +200,7 @@ function parameter_and_data_setup()
     # surrogate arguments
     lb = [0.1, 0.1]
     ub = [1.6, 1.0]
-    num_points = 10000
+    num_points = 50000
     num_dims=2
 
     if new_data || !isfile(surrogate_location)
