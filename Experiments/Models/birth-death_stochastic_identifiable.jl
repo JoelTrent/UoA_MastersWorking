@@ -61,14 +61,14 @@ struct SurrogateTerms
     dist::MvNormal
 end
 
-function generate_surrogate(t, N0, lb, ub, num_points, num_dims, len_t)
+function generate_surrogate(t_single, N0, lb, ub, num_points, num_dims, len_t)
     scale_range = [(lb[i], ub[i]) for i in 1:num_dims]
     grid = permutedims(scaleLHC(randomLHC(num_points, num_dims), scale_range))
 
     y_stochastic = zeros(len_t, num_points)
 
     Threads.@threads for i in 1:num_points
-        y_stochastic[:, i] .= birth_death_firstreact(t, grid[:,i]..., N0)[1]
+        y_stochastic[:, i] .= vcat(birth_death_firstreact(t_single, grid[:, i]..., N0)...)
     end
 
     Y = vcat(y_stochastic, grid)
@@ -111,7 +111,9 @@ end
 # predicts the mean of the data distribution
 @everywhere function predictFunc(θ, data, t=data.t)
     μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
-    return model_mean(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
+    μ_εgθ = model_mean(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
+    half_len = Int(length(μ_εgθ) / 2)
+    return hcat(μ_εgθ[1:half_len], μ_εgθ[(end-half_len+1):end])
 end
 
 @everywhere function errorFunc(predictions, θ, bcl, dist=data.surrogate_terms[5])
@@ -121,10 +123,13 @@ end
     # find pointwise HDR - note each individual sample is itself a normal distribution 
     # take a large number of samples from the MvNormal distribution
     samples = permutedims(rand(dist, 10000))
-    for i in eachindex(predictions)
-        norm_dist = fit_mle(Normal, samples[:,i])
-        lq[i] = predictions[i] + quantile(norm_dist, THalpha / 2.0)
-        uq[i] = predictions[i] + quantile(norm_dist, 1 - (THalpha / 2.0))
+    for j in axes(predictions, 2)
+        for i in axes(predictions, 1)
+            norm_dist = fit_mle(Normal, samples[:, Int(j + (i-1)*size(predictions, 2))])
+
+            lq[i,j] = predictions[i,j] + quantile(norm_dist, THalpha / 2.0)
+            uq[i,j] = predictions[i,j] + quantile(norm_dist, 1 - (THalpha / 2.0))
+        end
     end
 
     return lq, uq
@@ -148,15 +153,15 @@ function loglhood_XYtoxy_sip(Θ,data); loglhood(XYtoxy_sip(Θ), data) end
 # Data setup ###########################################################################
 using CSV, DataFrames
 using Random, Distributions, Statistics, LatinHypercubeSampling
-data_location = joinpath("Experiments", "Models", "Data", "birth-death_stochastic.csv")
-surrogate_location = joinpath("Experiments", "Models", "Data", "surrogate_terms.bson")
-function data_setup(t, θ_true, N0, generate_new_data=false)
+data_location = joinpath("Experiments", "Models", "Data", "birth-death_stochastic_identifiable.csv")
+surrogate_location = joinpath("Experiments", "Models", "Data", "surrogate_terms_identifiable.bson")
+function data_setup(t, t_single, θ_true, N0, generate_new_data=false)
     new_data = false
     if !generate_new_data && isfile(data_location)
         t, y_obs = eachcol(CSV.read(data_location, DataFrame))
     else
         Random.seed!(12348)
-        y_obs, _ = birth_death_firstreact(t, θ_true..., N0)
+        y_obs = vcat(birth_death_firstreact(t_single, θ_true..., N0)...)
 
         println(y_obs)
         data_df = DataFrame(t=t, y_obs=y_obs)
@@ -172,9 +177,10 @@ function parameter_and_data_setup()
     birth_rate = 0.5; death_rate = 0.4; 
     global N0 = 1000
     θ_true = [birth_rate, death_rate]
-    t = LinRange(0.1, 3, 100)
+    t_single = LinRange(0.1, 3, 100)
+    t = vcat(t_single, t_single)
     len_t = length(t)
-    t, y_obs, new_data = data_setup(t, θ_true, N0)
+    t, y_obs, new_data = data_setup(t, t_single, θ_true, N0)
 
     # surrogate arguments
     lb = [0.1, 0.1]
@@ -183,7 +189,7 @@ function parameter_and_data_setup()
     num_dims=2
 
     if new_data || !isfile(surrogate_location)
-        surrogate_terms = generate_surrogate(t, N0, lb, ub, num_points, num_dims, len_t)
+        surrogate_terms = generate_surrogate(t_single, N0, lb, ub, num_points, num_dims, len_t)
     else
         st = BSON.load(surrogate_location, @__MODULE__)[:s]
         display(st)
@@ -202,13 +208,9 @@ function parameter_and_data_setup()
     θnames = [:β, :δ]
     par_magnitudes = [1,1]
 
-    θnames_sip = [:β_minus_δ, :β_plus_δ]
-    θG_sip = xytoXY_sip(θG)
-    lb_sip, ub_sip = transformbounds_NLopt(xytoXY_sip, lb, ub)
-
     return data, training_gen_args, testing_gen_args, θ_true, t_pred, θnames, 
-        θG, lb, ub, par_magnitudes, θnames_sip, θG_sip, lb_sip, ub_sip
+        θG, lb, ub, par_magnitudes
 end
 
 data, training_gen_args, testing_gen_args, θ_true, t_pred, θnames, 
-    θG, lb, ub, par_magnitudes, θnames_sip, θG_sip, lb_sip, ub_sip = parameter_and_data_setup()
+    θG, lb, ub, par_magnitudes = parameter_and_data_setup()
