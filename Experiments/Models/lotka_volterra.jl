@@ -14,7 +14,7 @@ end
 @everywhere function odesolver(t,α,β,C01,C02)
     p=SA[α,β]
     C0=SA[C01,C02]
-    tspan=(0.0,maximum(t))
+    tspan=(0.0,t[end])
     prob=ODEProblem(lotka_static,C0,tspan,p)
     sol=solve(prob, AutoTsit5(Rosenbrock23()), saveat=t);
     return sol[1,:], sol[2,:]
