@@ -111,7 +111,6 @@ end
 # end
 
 # Data setup ###########################################################################
-using CSV, DataFrames
 data_location = joinpath("Experiments", "Models", "Data", "STAT5.csv")
 function data_setup()
     return eachcol(CSV.read(data_location, DataFrame))

@@ -48,7 +48,6 @@ end
 end
 
 # Data setup ###########################################################################
-using CSV, DataFrames
 using Random
 data_location = joinpath("Experiments", "Models", "Data", "lotka_volterra.csv")
 function data_setup(t, θ_true, generate_new_data=false)

@@ -1,6 +1,7 @@
 using Distributed
 using Revise
-# if nprocs()==1; addprocs(10) end
+using CSV, DataFrames
+if nprocs()==1; addprocs(10) end
 using PlaceholderLikelihood
 @everywhere using Revise
 @everywhere using Random, Distributions

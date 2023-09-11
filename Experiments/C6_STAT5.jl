@@ -1,6 +1,7 @@
 using Distributed
 using Revise
-# if nprocs()==1; addprocs(10) end
+using CSV, DataFrames
+if nprocs()==1; addprocs(10) end
 using PlaceholderLikelihood
 @everywhere using Revise
 @everywhere using DifferentialEquations, LSODA, Random, Distributions
@@ -21,3 +22,6 @@ using Plots; pyplot()
 plots = plot_univariate_profiles(model, 0.2, 0.4, palette_to_use=:Spectral_8)
 for i in eachindex(plots); display(plots[i]) end
 plot = plot_predictions_union(model, t_pred)
+
+uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 100, θ_true, collect(1:9), show_progress=true, distributed_over_parameters=false)
+println(uni_coverage_df)

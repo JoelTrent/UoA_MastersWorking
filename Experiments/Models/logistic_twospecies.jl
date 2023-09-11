@@ -50,7 +50,6 @@ end
 end
 
 # Data setup ###########################################################################
-using CSV, DataFrames
 data_location = joinpath("Experiments", "Models", "Data", "logistic_twospecies.csv")
 function data_setup()
     return eachcol(CSV.read(data_location, DataFrame))

@@ -1,7 +1,8 @@
 using Distributed
 using Revise
+using CSV, DataFrames
 using PlaceholderLikelihood
-if nprocs()==1; addprocs(7) end
+if nprocs()==1; addprocs(10) end
 @everywhere using Revise
 @everywhere using Random, Distributions, DifferentialEquations
 @everywhere using PlaceholderLikelihood

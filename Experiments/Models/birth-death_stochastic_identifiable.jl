@@ -151,7 +151,6 @@ XYtoxy_sip(XY) = [(XY[1]+XY[2])/2.; (XY[2]-XY[1])/2.]
 function loglhood_XYtoxy_sip(Θ,data); loglhood(XYtoxy_sip(Θ), data) end
 
 # Data setup ###########################################################################
-using CSV, DataFrames
 using Random, Distributions, Statistics, LatinHypercubeSampling
 data_location = joinpath("Experiments", "Models", "Data", "birth-death_stochastic_identifiable.csv")
 surrogate_location = joinpath("Experiments", "Models", "Data", "surrogate_terms_identifiable.bson")
