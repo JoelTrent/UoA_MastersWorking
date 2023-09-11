@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-if nprocs()==1; addprocs(10) end
+# if nprocs()==1; addprocs(10) end
 using PlaceholderLikelihood
 @everywhere using Revise
 @everywhere using Random, Distributions
@@ -13,7 +13,7 @@ output_location = joinpath("Experiments", "Outputs", "stochastic_identifiable")
 # do experiments
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
-# univariate_confidenceintervals!(model)
+univariate_confidenceintervals!(model)
 # get_points_in_intervals!(model, 30, additional_width=0.2)
 
 # generate_predictions_univariate!(model, t_pred, 1.0, use_distributed=false)

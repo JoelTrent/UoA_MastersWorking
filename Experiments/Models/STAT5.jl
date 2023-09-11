@@ -103,12 +103,15 @@ end
 end
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
-# @everywhere function data_generator(θtrue, generator_args::NamedTuple)
-#     y_obs = generator_args.y_true .+ rand(generator_args.dist, length(generator_args.t), 2)
-#     if generator_args.is_test_set; return y_obs end
-#     data = (y_obs=y_obs, generator_args...)
-#     return data
-# end
+@everywhere function data_generator(θtrue, generator_args::NamedTuple)
+    y_obs = zeros(size(generator_args.y_true))
+    for (i, dist) in enumerate((generator_args.dist1, generator_args.dist2, generator_args.dist3))
+        y_obs[:,i] = generator_args.y_true[:,i] .+ rand(dist, length(generator_args.t))
+    end
+    if generator_args.is_test_set; return y_obs end
+    data = (y_obs=y_obs, generator_args...)
+    return data
+end
 
 # Data setup ###########################################################################
 data_location = joinpath("Experiments", "Models", "Data", "STAT5.csv")

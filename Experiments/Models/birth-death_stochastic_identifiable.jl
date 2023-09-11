@@ -137,7 +137,7 @@ end
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
 @everywhere function data_generator(θtrue, generator_args::NamedTuple)
-    y_obs = stochastic_at_t(t, birth_death_firstreact(t[end], θ_true..., N0)...)
+    y_obs = vcat(birth_death_firstreact(generator_args.t_single, θ_true..., N0)...)
     if generator_args.is_test_set; return y_obs end
     data = (y_obs=y_obs, generator_args...)
     return data
@@ -198,8 +198,8 @@ function parameter_and_data_setup()
     data = (t=t, y_obs=y_obs, surrogate_terms=surrogate_terms)
 
     # Named tuple of all data required within the log-likelihood function
-    training_gen_args = (t=t, surrogate_terms=surrogate_terms, is_test_set=false)
-    testing_gen_args = (t=t, surrogate_terms=surrogate_terms, is_test_set=true)
+    training_gen_args = (t=t, t_single=t_single, surrogate_terms=surrogate_terms, is_test_set=false)
+    testing_gen_args  = (t=t, t_single=t_single, surrogate_terms=surrogate_terms, is_test_set=true)
 
     t_pred=LinRange(0.1, 3, 100)
 

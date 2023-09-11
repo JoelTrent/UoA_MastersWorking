@@ -17,7 +17,7 @@ end
     C0=[C01, C02]
     tspan=(0.0, maximum(t))
     prob=ODEProblem(DE!, C0, tspan, p)
-    sol=solve(prob, saveat=t)
+    sol=solve(prob, saveat=t, reltol=1e-7, abstol=1e-7)
     return sol[1,:], sol[2,:]
 end
 
