@@ -17,7 +17,7 @@ end
     C0=[C01, C02]
     tspan=(0.0, maximum(t))
     prob=ODEProblem(DE!, C0, tspan, p)
-    sol=solve(prob, saveat=t, reltol=1e-7, abstol=1e-7)
+    sol=solve(prob, saveat=t)
     return sol[1,:], sol[2,:]
 end
 
@@ -66,6 +66,17 @@ function parameter_and_data_setup()
     θ_true = [0.00293, 0.00315, 0.00164, 78.8, 0.289, 0.0293, 1.83]
     y_true = predictFunc(θ_true, data)
     training_gen_args = (y_true=y_true, t=t, dist=Normal(0, θ_true[7]), is_test_set=false)
+    t_more = LinRange(t[1], t[end], length(t)*2)
+
+    n=2
+    t_more = zeros(length(t)*(n+1) - n)
+    t_more[1:(n+1):end] .= t
+    for i in 1:(n+1):length(t_more)-n, j=i+(n+1)
+        t_more[(i+1):(j-1)] .= LinRange(t_more[i], t_more[j], n+2)[2:end-1]
+    end
+
+    y_true_more = predictFunc(θ_true, data, t_more)
+    training_gen_args_more_data = (y_true=y_true_more, t=t_more, dist=Normal(0, θ_true[7]), is_test_set=false)
     testing_gen_args = (y_true=y_true, t=t, dist=Normal(0, θ_true[7]), is_test_set=true)
 
     t_pred=LinRange(t[1], t[end], 400)
@@ -80,9 +91,9 @@ function parameter_and_data_setup()
     θnames = [:λ1, :λ2, :δ, :KK, :C01, :CO2, :σ]
     par_magnitudes = [0.01, 0.01, 0.01, 10, 1, 1, 1]
 
-    return data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
+    return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
         θG, lb, ub, par_magnitudes
 end
 
-data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
+data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
     θG, lb, ub, par_magnitudes = parameter_and_data_setup()
