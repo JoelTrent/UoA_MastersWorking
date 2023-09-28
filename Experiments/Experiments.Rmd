@@ -132,3 +132,46 @@ data_df %>%
         panel.grid.minor.x = element_line(size=0.1, color="grey"))
 
 ```   
+
+```{julia}
+using DataFrames, CSV
+using Plots, StatsPlots; gr()
+using LaTeXStrings
+output_location = joinpath("Outputs", "logistic")
+data_df = CSV.read(joinpath(output_location, "confidence_interval_ll_calls.csv"), DataFrame);
+data_df_zero = filter(row -> row.find_zero_atol == 0.0, data_df)
+
+format=(palette=:Paired, msw=0, size=(430,430), dpi=300, title="")
+
+plt1 = @df data_df_zero scatter(log10.(:opt_abstol), :likelihood_calls; group=:parameter, alpha=0.8, legend_position=:topright, format... );
+# ylabel!("Total Likelihood Calls")
+# savefig(plt, joinpath(output_location, "conf_int_likelihood_calls_vs_abstol.pdf"))
+
+plt2 = @df data_df_zero scatter(log10.(:opt_abstol), :optimisation_calls; group=:parameter, alpha=0.8, legend_position=nothing, format... );
+xlabel!(L"log_{10}(\texttt{abstol})");
+# ylabel!("Total Optimisation Calls\n")
+
+plt=plot(plt1, plt2, layout=grid(2,1))
+savefig(plt, joinpath(output_location, "conf_int_calls_vs_abstol.pdf"))
+
+
+data_df_zero = filter(row -> row.opt_abstol == 0.0, data_df);
+
+plt1 = @df data_df_zero scatter(log10.(:find_zero_atol), :likelihood_calls; group=:parameter, alpha=0.8, legend_position=nothing, format... );
+# xlabel!(L"log_{10}(\texttt{atol})")
+ylabel!("Total Likelihood Calls")
+# savefig(plt, joinpath(output_location, "conf_int_likelihood_calls_vs_atol.pdf"))
+
+plt2 = @df data_df_zero scatter(log10.(:find_zero_atol), :optimisation_calls; group=:parameter, alpha=0.8, legend_position=nothing, format... );
+xlabel!(L"log_{10}(\texttt{atol})");
+ylabel!("Total Optimisation Calls\n")
+# savefig(plt, joinpath(output_location, "conf_int_optimisation_calls_vs_atol.pdf"))
+
+
+plt=plot(plt1, plt2, layout=grid(2,1))
+savefig(plt, joinpath(output_location, "conf_int_calls_vs_atol.pdf"))
+  # ggplot(aes(x=opt_abstol, y=likelihood_calls)) + 
+  # geom_point(aes(colour=parameter)) +
+  # scale_x_continuous(trans="log10") +
+
+```
