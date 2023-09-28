@@ -15,7 +15,7 @@ output_location = joinpath("Experiments", "Outputs", "logistic")
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
 
-if true || isdefined(PlaceholderLikelihood, :find_zero_algo) || !isfile(joinpath(output_location, "confidence_interval_ll_calls_algos.csv"))
+if false || isdefined(PlaceholderLikelihood, :find_zero_algo) || !isfile(joinpath(output_location, "confidence_interval_ll_calls_algos.csv"))
 
     using Roots
     function record_CI_LL_evaluations!(timer_df, algo, algo_key, iter)
@@ -68,7 +68,7 @@ end
 
 if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
-    if true || !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
+    if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
 
         function record_CI_LL_evaluations!(timer_df, find_zero_atol, abstol, iter)
             opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=abstol))
@@ -112,6 +112,57 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         TO.disable_debug_timings(PlaceholderLikelihood)
     end
 
+    if !isfile(joinpath(output_location, "confidence_interval_ll_calls_lower_and_upper.csv"))
+
+        function record_CI_LL_evaluations!(timer_df, lower, upper, iter)
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+            model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+            if lower
+                univariate_confidenceintervals!(model, confidence_level=0.90)
+            end
+            if upper
+                univariate_confidenceintervals!(model, confidence_level=0.99)
+            end
+
+            TO.reset_timer!(PlaceholderLikelihood.timer)
+            for i in 1:model.core.num_pars
+
+                univariate_confidenceintervals!(model, [i], use_existing_profiles=true, existing_profiles=:overwrite)
+
+                timer_df[i+model.core.num_pars*(iter-1), :] .= i, lower, upper, TO.ncalls(
+                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
+                TO.ncalls(
+                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+
+                TO.reset_timer!(PlaceholderLikelihood.timer)
+            end
+            return nothing
+        end
+
+        lower = [false, true]
+        upper = [false, true]
+        len = model.core.num_pars * length(lower) * length(upper)
+        timer_df = DataFrame(parameter=zeros(Int, len),
+            lower_found=falses(len),
+            upper_found=falses(len),
+            optimisation_calls=zeros(Int, len),
+            likelihood_calls=zeros(Int, len))
+
+        TO.enable_debug_timings(PlaceholderLikelihood)
+        TO.reset_timer!(PlaceholderLikelihood.timer)
+
+        iter = 1
+        for l in lower
+            for u in upper
+                record_CI_LL_evaluations!(timer_df, l, u, iter)
+                global iter += 1
+            end
+        end
+
+        CSV.write(joinpath(output_location, "confidence_interval_ll_calls_lower_and_upper.csv"), timer_df)
+        TO.disable_debug_timings(PlaceholderLikelihood)
+    end
+
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
 
@@ -119,5 +170,24 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:3), show_progress=true, distributed_over_parameters=false)
         display(uni_coverage_df)
         CSV.write(joinpath(output_location, "univariate_parameter_coverage.csv"), uni_coverage_df)
+    end
+
+    if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
+
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+        model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+        n=100
+        additional_width=0.2
+        univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
+        univariate_confidenceintervals!(model, profile_type=LogLikelihood(), num_points_in_interval=n, additional_width=additional_width)
+
+        using Plots; gr()
+        format=(size=(400,400), dpi=300, title="", legend_position=nothing)
+        plts = plot_univariate_profiles_comparison(model; format...)
+
+        for (i, plt) in enumerate(plts)
+            savefig(plts[i], joinpath(output_location, "uni_profile_"*string(i)*".pdf"))
+        end
     end
 end
