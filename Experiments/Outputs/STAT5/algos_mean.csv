@@ -1,0 +1,9 @@
+algo_name,mean_like_rank,mean_ll_calls,mean_opt_rank,mean_opt_calls
+FalsePosition{:anderson_bjork}(),3.11,9330,2.67,19.4
+Roots.Brent(),3.22,10600,3,21
+Roots.Chandrapatla(),3.33,10700,3,21.2
+"Roots.ITP{Float64, Int64}(0.2, 2, 1)",4,10600,3.89,23.1
+AlefeldPotraShi(),4.11,11000,4.11,24.6
+A42(),4.33,11100,4.44,24.7
+Roots.Ridders(),6.78,14700,6.67,32.2
+Bisection(),7.11,16000,6.89,32.1

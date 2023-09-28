@@ -1,0 +1,73 @@
+parameter,algo_name,likelihood_calls,like_rank,optimisation_calls,opt_rank
+1,AlefeldPotraShi(),9599,1,22,2
+1,A42(),9896,2,22,2
+1,FalsePosition{:anderson_bjork}(),9925,3,21,1
+1,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",10726,4,26,4
+1,Roots.Chandrapatla(),15364,5,27,5
+1,Roots.Brent(),16283,6,30,6
+1,Roots.Ridders(),16482,7,40,7
+1,Bisection(),20421,8,40,7
+2,Roots.Brent(),3376,1,8,1
+2,FalsePosition{:anderson_bjork}(),3623,2,9,2
+2,Roots.Chandrapatla(),3791,3,9,2
+2,AlefeldPotraShi(),4590,4,10,4
+2,A42(),4651,5,10,4
+2,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",5005,6,11,6
+2,Bisection(),8681,7,18,7
+2,Roots.Ridders(),9875,8,20,8
+3,FalsePosition{:anderson_bjork}(),11055,1,20,1
+3,Roots.Ridders(),11472,2,20,1
+3,AlefeldPotraShi(),12695,3,23,3
+3,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",12910,4,25,4
+3,A42(),14926,5,26,6
+3,Roots.Brent(),15215,6,25,4
+3,Roots.Chandrapatla(),16867,7,28,7
+3,Bisection(),22921,8,37,8
+4,A42(),9075,1,22,1
+4,AlefeldPotraShi(),9077,2,22,1
+4,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",9570,3,22,1
+4,FalsePosition{:anderson_bjork}(),9858,4,24,4
+4,Roots.Brent(),13100,5,31,5
+4,Roots.Chandrapatla(),14885,6,35,6
+4,Bisection(),18566,7,43,7
+4,Roots.Ridders(),19423,8,44,8
+5,Roots.Brent(),5382,1,14,1
+5,Roots.Chandrapatla(),5638,2,14,1
+5,FalsePosition{:anderson_bjork}(),5728,3,15,3
+5,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",7913,4,27,5
+5,Bisection(),8063,5,19,4
+5,Roots.Ridders(),8073,6,28,6
+5,AlefeldPotraShi(),11364,7,40,7
+5,A42(),11912,8,41,8
+6,Roots.Chandrapatla(),10479,1,20,1
+6,A42(),10581,2,22,3
+6,AlefeldPotraShi(),10733,3,22,3
+6,FalsePosition{:anderson_bjork}(),10924,4,21,2
+6,Roots.Brent(),12478,5,23,5
+6,Bisection(),17405,6,33,6
+6,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",17422,7,34,7
+6,Roots.Ridders(),21130,8,42,8
+7,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",10284,1,19,1
+7,Roots.Brent(),10680,2,20,2
+7,Roots.Chandrapatla(),10828,3,20,2
+7,FalsePosition{:anderson_bjork}(),11341,4,21,4
+7,A42(),13506,5,26,5
+7,AlefeldPotraShi(),15215,6,29,6
+7,Roots.Ridders(),16066,7,32,7
+7,Bisection(),17325,8,35,8
+8,Roots.Chandrapatla(),9039,1,18,1
+8,Roots.Brent(),9257,2,19,2
+8,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",10861,3,22,3
+8,FalsePosition{:anderson_bjork}(),11354,4,23,4
+8,A42(),12152,5,26,5
+8,AlefeldPotraShi(),14690,6,30,6
+8,Roots.Ridders(),15053,7,32,7
+8,Bisection(),15398,8,33,8
+9,Roots.Brent(),9457,1,19,1
+9,Roots.Chandrapatla(),9844,2,20,2
+9,FalsePosition{:anderson_bjork}(),10175,3,21,3
+9,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",10607,4,22,4
+9,AlefeldPotraShi(),11241,5,23,5
+9,A42(),13255,6,27,6
+9,Bisection(),14919,7,31,7
+9,Roots.Ridders(),15114,8,32,8

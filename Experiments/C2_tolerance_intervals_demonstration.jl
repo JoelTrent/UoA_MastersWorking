@@ -42,7 +42,7 @@ display(plt[2])
 savefig(plt[1], joinpath(output_location, "theta1_profile.pdf"))
 savefig(plt[2], joinpath(output_location, "theta2_profile.pdf"))
 
-plt = plot_bivariate_profiles(model; for_dim_samples=true, markeralpha=0.4, ylabel=latexstring("\\theta^\\textrm{o}"), xlabel=latexstring("\\theta^M"), format...)
+plt = plot_bivariate_profiles(model; for_dim_samples=true, markeralpha=0.4, max_internal_points=10000, ylabel=latexstring("\\theta^\\textrm{o}"), xlabel=latexstring("\\theta^M"), format...)
 scatter!(plt[1], [θ_true[1]], [θ_true[2]], label="θtrue", color="black", ms=5, msw=0)
 display(plt[1])
 savefig(plt[1], joinpath(output_location, "theta_confidence_set.pdf"))

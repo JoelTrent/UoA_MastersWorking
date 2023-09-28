@@ -1,0 +1,25 @@
+parameter,algo_name,like_rank,likelihood_calls,opt_rank,optimisation_calls
+1,FalsePosition{:anderson_bjork}(),1,1660,1,23
+1,Roots.Brent(),2,1843,5,28
+1,A42(),3,1925,2,26
+1,Roots.Chandrapatla(),4,1926,6,29
+1,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",5,1950,2,26
+1,AlefeldPotraShi(),6,2022,4,27
+1,Bisection(),7,2760,8,40
+1,Roots.Ridders(),8,2976,7,38
+2,Roots.Brent(),1,1527,1,19
+2,Roots.Chandrapatla(),2,1684,2,20
+2,FalsePosition{:anderson_bjork}(),3,1736,3,21
+2,A42(),4,1796,4,22
+2,AlefeldPotraShi(),5,1805,4,22
+2,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",6,2153,6,26
+2,Bisection(),7,2677,7,33
+2,Roots.Ridders(),8,3331,8,42
+3,FalsePosition{:anderson_bjork}(),1,1242,1,20
+3,Roots.Chandrapatla(),2,1412,2,24
+3,Roots.Brent(),3,1565,4,26
+3,"Roots.ITP{Float64, Int64}(0.2, 2, 1)",4,1568,2,24
+3,Roots.Ridders(),5,2138,5,32
+3,Bisection(),6,2305,6,38
+3,AlefeldPotraShi(),7,2370,6,38
+3,A42(),8,2382,6,38

@@ -18,6 +18,68 @@ library(data.table)
 library(ggplot2)
 ```
 
+
+```{r}
+data_df <- read_csv(file=here("Outputs", "logistic", "confidence_interval_ll_calls_algos.csv"))
+algo_df <- read_csv(file=here("Outputs", "logistic", "algos.csv"))
+
+data_df_means <- data_df %>% 
+  arrange(algo_key, parameter) %>%
+  group_by(parameter) %>%
+  mutate(opt_rank =rank(optimisation_calls, ties.method ='min'), like_rank =rank(likelihood_calls, ties.method ='min')) %>%
+  group_by(algo_key) %>%
+  mutate(mean_opt_rank=mean(opt_rank), mean_like_rank=mean(like_rank), mean_opt_calls=mean(optimisation_calls), mean_ll_calls=mean(likelihood_calls)) %>%
+  arrange(desc(-mean_like_rank)) %>%
+  ungroup()
+
+
+data_df %>% left_join(algo_df) %>% 
+  select(-algo_key) %>%
+  arrange(parameter, likelihood_calls, optimisation_calls) %>%
+  group_by(parameter) %>%
+  mutate(opt_rank =rank(optimisation_calls, ties.method ='min'), like_rank =rank(likelihood_calls, ties.method ='min')) %>%
+  ungroup() %>%
+  select(parameter, algo_name, likelihood_calls, like_rank, optimisation_calls, opt_rank) %>%
+  write_csv(file=here("Outputs", "logistic", "algos_parameters.csv"))
+  
+
+data_df_means %>% left_join(algo_df) %>% 
+  select(algo_name, mean_like_rank, mean_ll_calls, mean_opt_rank, mean_opt_calls) %>%
+  unique() %>%
+  mutate_if(is.numeric, signif, digits=3) %>%
+  write_csv(file=here("Outputs", "logistic", "algos_mean.csv"))
+```
+
+```{r}
+data_df <- read_csv(file=here("Outputs", "STAT5", "confidence_interval_ll_calls_algos.csv"))
+
+data_df_means <- data_df %>% 
+  arrange(algo_key, parameter) %>%
+  group_by(parameter) %>%
+  mutate(opt_rank =rank(optimisation_calls, ties.method ='min'), like_rank =rank(likelihood_calls, ties.method ='min')) %>%
+  group_by(algo_key) %>%
+  mutate(mean_opt_rank=mean(opt_rank), mean_like_rank=mean(like_rank), mean_opt_calls=mean(optimisation_calls), mean_ll_calls=mean(likelihood_calls)) %>%
+  arrange(desc(-mean_like_rank)) %>%
+  ungroup()
+
+
+data_df %>% left_join(algo_df) %>% 
+  select(-algo_key) %>%
+  arrange(parameter, likelihood_calls, optimisation_calls) %>%
+  group_by(parameter) %>%
+  mutate(opt_rank =rank(optimisation_calls, ties.method ='min'), like_rank =rank(likelihood_calls, ties.method ='min')) %>%
+  ungroup() %>%
+  select(parameter, algo_name, likelihood_calls, like_rank, optimisation_calls, opt_rank) %>%
+  write_csv(file=here("Outputs", "STAT5", "algos_parameters.csv"))
+  
+
+data_df_means %>% left_join(algo_df) %>% 
+  select(algo_name, mean_like_rank, mean_ll_calls, mean_opt_rank, mean_opt_calls) %>%
+  unique() %>%
+  mutate_if(is.numeric, signif, digits=3) %>%
+  write_csv(file=here("Outputs", "STAT5", "algos_mean.csv"))
+```
+
 Increasing find_zero_atol strictly decreases the number of LL evaluations because it strictly decreases the number of optimisation calls. This occurs after around 1e-14.
 Increasing opt_abstol decreases the number of LL evaluations in general. However, if it gets too high then the optimiser will not find the true profile ll at each location and resultantly the number of optimisation calls may increase, either increasing the number of LL evaluations or making the magnitude of the decrease smaller.
 
