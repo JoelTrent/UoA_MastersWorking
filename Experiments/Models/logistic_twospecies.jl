@@ -88,7 +88,7 @@ function parameter_and_data_setup()
     λ1g=0.002; λ2g=0.002; δg=0.0; KKg=80.0; C0g=[1.0, 1.0]; σg=1.0; 
     θG = [λ1g, λ2g, δg, KKg, C0g[1], C0g[2], σg]
     
-    θnames = [:λ1, :λ2, :δ, :KK, :C01, :CO2, :σ]
+    θnames = [:λ1, :λ2, :δ, :KK, :C01, :C02, :σ]
     par_magnitudes = [0.01, 0.01, 0.01, 10, 1, 1, 1]
 
     return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,

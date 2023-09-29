@@ -179,10 +179,10 @@ savefig(plt, joinpath(output_location, "conf_int_calls_vs_atol.pdf"))
 ```{r}
 data_df <- read_csv(file=here("Outputs", "logistic", "confidence_interval_ll_calls_lower_and_upper.csv"))
 if (is.null(data_df$name)){
-  data_df = data_df %>% mutate(name=case_when(lower_found==F & upper_found==F ~ "None",
-                                  lower_found==T & upper_found==F ~ "L",
-                                  lower_found==F & upper_found==T ~ "U",
-                                  lower_found==T & upper_found==T ~ "L and U"))
+  data_df = data_df %>% mutate(name=case_when(lower_found==F & upper_found==F ~ "Baseline",
+                                  lower_found==T & upper_found==F ~ "Lower",
+                                  lower_found==F & upper_found==T ~ "Higher",
+                                  lower_found==T & upper_found==T ~ "Lower and Higher"))
   write_csv(data_df, file=here("Outputs", "logistic", "confidence_interval_ll_calls_lower_and_upper.csv"))
 }
 ```
@@ -193,13 +193,15 @@ using Plots, StatsPlots; gr()
 using LaTeXStrings
 output_location = joinpath("Outputs", "logistic")
 data_df = CSV.read(joinpath(output_location, "confidence_interval_ll_calls_lower_and_upper.csv"), DataFrame);
-data_df.par_str = string.(data_df.parameter)
+
 
 format=(palette=:Paired, msw=0, size=(430,430), dpi=300, title="");
 
 using CategoricalArrays
+par_names = ["λ", "K", "C0"]
+data_df.par_str = categorical(par_names[data_df.parameter], levels=par_names)
 
-data_df.name_cat .= categorical(data_df.name; levels= ["None", "L", "U", "L and U"])
+data_df.name_cat .= categorical(data_df.name; levels= ["Baseline", "Lower", "Higher", "Lower and Higher"])
 
 plt1 = @df data_df groupedbar(:par_str, :likelihood_calls; bar_position=:dodge, group=:name_cat, legend_position=nothing, format...);
 ylabel!("Total Likelihood Calls")
@@ -210,3 +212,88 @@ ylabel!("Total Optimisation Calls")
 savefig(plt1, joinpath(output_location, "conf_int_like_calls_vs_lu.pdf"))
 savefig(plt2, joinpath(output_location, "conf_int_opt_calls_vs_lu.pdf"))
 ```
+
+# Coverage outputs
+
+## Parameter Confidence Intervals
+```{julia}
+using DataFrames, CSV
+using Plots, StatsPlots; gr()
+using LaTeXStrings
+using CategoricalArrays
+
+format=(msw=1.5, size=(500,400), dpi=300, title="", legend_position=nothing, ylabel="Simulated Coverage");
+locs = ["logistic", "lotka_volterra", "logistic_twospecies"]
+
+loc = locs[1]
+output_location = joinpath("Outputs", loc)
+data_df = CSV.read(joinpath(output_location, "univariate_parameter_coverage.csv"), DataFrame);
+# data_df.θname = categorical(data_df.θname, levels=data_df.θname)
+
+plt = @df data_df plot(:θname, :coverage; st=:bar, color=palette(:Paired)[1:nrow(data_df)], ylimits=(0.8, 1.0),yticks=LinRange(0.8,1.0,5),
+                        yerror=(data_df.coverage .- data_df.coverage_lb, data_df.coverage_ub .- data_df.coverage), format...);
+annotate!(data_df.θname, fill(0.8,nrow(data_df)), text.(data_df.coverage, fill(:bottom,nrow(data_df)), fill(:black,nrow(data_df)), fill(8,nrow(data_df))))
+
+
+savefig(plt, joinpath(output_location, "univariate_parameter_coverage_"*loc*".pdf"))
+
+loc = locs[2]
+output_location = joinpath("Outputs", loc)
+data_df = CSV.read(joinpath(output_location, "univariate_parameter_coverage.csv"), DataFrame);
+# data_df.θname = categorical(data_df.θname, levels=data_df.θname)
+
+plt = @df data_df plot(:θname, :coverage; st=:bar, color=palette(:Paired)[1:nrow(data_df)], bar_position=:stack, ylimits=(0.8, 1.0), yticks=LinRange(0.8,1.0,5),
+                        yerror=(data_df.coverage .- data_df.coverage_lb, data_df.coverage_ub .- data_df.coverage), format...);
+annotate!(data_df.θname, fill(0.8,nrow(data_df)), text.(data_df.coverage, fill(:bottom,nrow(data_df)), fill(:black,nrow(data_df)), fill(8,nrow(data_df))))
+
+savefig(plt, joinpath(output_location, "univariate_parameter_coverage_"*loc*".pdf"))
+
+loc = locs[3]
+output_location = joinpath("Outputs", loc)
+data_df = CSV.read(joinpath(output_location, "univariate_parameter_coverage.csv"), DataFrame);
+# data_df.θname = categorical(data_df.θname, levels=data_df.θname)
+
+plt = @df data_df plot(:θname, :coverage; st=:bar, color=palette(:Paired)[1:nrow(data_df)], bar_position=:stack, ylimits=(0.6, 1.0), yticks=LinRange(0.6,1.0,9),
+                        yerror=(data_df.coverage .- data_df.coverage_lb, data_df.coverage_ub .- data_df.coverage), format...);
+
+annotate!(data_df.θname, fill(0.6,nrow(data_df)), text.(data_df.coverage, fill(:bottom,nrow(data_df)), fill(:black,nrow(data_df)), fill(8,nrow(data_df))))
+savefig(plt, joinpath(output_location, "univariate_parameter_coverage_"*loc*".pdf"))
+
+output_location = joinpath("Outputs", loc)
+data_df = CSV.read(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"), DataFrame);
+# data_df.θname = categorical(data_df.θname, levels=data_df.θname)
+
+plt = @df data_df plot(:θname, :coverage; st=:bar, color=palette(:Paired)[1:nrow(data_df)], bar_position=:stack, ylimits=(0.6, 1.0), yticks=LinRange(0.6,1.0,9),
+                        yerror=(data_df.coverage .- data_df.coverage_lb, data_df.coverage_ub .- data_df.coverage), format...);
+
+annotate!(data_df.θname, fill(0.6,nrow(data_df)), text.(data_df.coverage, fill(:bottom,nrow(data_df)), fill(:black,nrow(data_df)), fill(8,nrow(data_df))))
+
+display(data_df)
+savefig(plt, joinpath(output_location, "univariate_parameter_coverage_"*loc*"_more_data.pdf"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
