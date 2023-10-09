@@ -183,11 +183,73 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         univariate_confidenceintervals!(model, profile_type=LogLikelihood(), num_points_in_interval=n, additional_width=additional_width)
 
         using Plots; gr()
-        format=(size=(400,400), dpi=300, title="", legend_position=nothing)
-        plts = plot_univariate_profiles_comparison(model; format...)
+        format=(size=(400,400), dpi=300, title="", legend_position=:topright)
+        plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
 
         for (i, plt) in enumerate(plts)
+            if i<length(plts); plot!(plts[i], legend_position=nothing) end
             savefig(plts[i], joinpath(output_location, "uni_profile_"*string(i)*".pdf"))
+        end
+    end
+
+    if !isfile(joinpath(output_location, "uni_profile_ellipse_1.pdf"))
+
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+        model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+        n = 100
+        additional_width = 0.2
+        univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
+        univariate_confidenceintervals!(model, profile_type=EllipseApprox(), num_points_in_interval=n, additional_width=additional_width)
+
+        using Plots
+        gr()
+        format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
+        plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
+
+        for (i, plt) in enumerate(plts)
+            if i<length(plts); plot!(plts[i], legend_position=nothing) end
+            savefig(plts[i], joinpath(output_location, "uni_profile_ellipse_" * string(i) * ".pdf"))
+        end
+    end
+    
+    if !isfile(joinpath(output_location, "uni_profile_ellipse_adjustlbup_1.pdf"))
+
+        lb_new = [lb[1:2]..., 5]
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+        model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb_new, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+        n = 100
+        additional_width = 0.2
+        univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
+        univariate_confidenceintervals!(model, [1], profile_type=EllipseApprox(), num_points_in_interval=n, additional_width=additional_width)
+
+        using Plots
+        gr()
+        format = (size=(400, 400), dpi=300, title="")
+        plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
+
+        for (i, plt) in enumerate(plts)
+            plot!(plts[1], legend_position=nothing)
+            savefig(plts[i], joinpath(output_location, "uni_profile_ellipse_adjustlbup_" * string(i) * ".pdf"))
+        end
+
+        lb_new = [lb[1:2]..., -5]
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+        model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb_new, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+        n = 100
+        additional_width = 0.2
+        univariate_confidenceintervals!(model, [1], profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
+        univariate_confidenceintervals!(model, [1], profile_type=EllipseApprox(), num_points_in_interval=n, additional_width=additional_width)
+
+        using Plots
+        gr()
+        plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
+
+        for (i, plt) in enumerate(plts)
+            plot!(plts[1], legend_position=:topright)
+            savefig(plts[i], joinpath(output_location, "uni_profile_ellipse_adjustlbdown_" * string(i) * ".pdf"))
         end
     end
 end
