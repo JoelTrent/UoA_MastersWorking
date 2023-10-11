@@ -23,7 +23,7 @@ true_boundary = hcat(true_boundary, true_boundary[:,1])
 loglhood(θ, data) = PlaceholderLikelihood.ellipse_loglike(θ, (θmle=[0.,0.], Hmle=Hw))
 
 model = initialise_LikelihoodModel(loglhood, (1,), [:θ1, :θ2], [0.0, 0.0], [-10.0, -10.0], [10.0, 10.0], [1.0, 1.0]);
-bivariate_confidenceprofiles!(model, 6, profile_type=EllipseApproxAnalytical(), method=IterativeBoundaryMethod(3,1,1, 0.15, 1.0, use_ellipse=true))
+bivariate_confidenceprofiles!(model, 6, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(3,1,1, 0.15, 1.0, use_ellipse=true))
 
 using Plots; gr()
 
@@ -72,11 +72,11 @@ scatter!([pnts[1, 6]], [pnts[2, 6]], label="New point", markershape=:diamond, co
 ###################### PLOT 4 #########################################
 plt4 = plot(true_boundary[1, :], true_boundary[2, :]; label="True boundary", format...);
 pnts = model.biv_profiles_dict[1].confidence_boundary
-pnts_start = pnts[:, [2, 4, 2, 6, 3, 5, 1]]
+pnts_start = pnts[:, [1, 4, 2, 6, 3, 5, 1]]
 plot!(pnts_start[1, :], pnts_start[2, :], label="Boundary polygon", marker=(:circle), msw=0, ms=5)
 
 
-output_location=joinpath("Bespoke graphics", "iterativeboundaryupdates")
+output_location=joinpath("Bespoke graphics", "iterativeboundaryupdates", "convex")
 for (i, plt) in enumerate((plt1, plt2, plt3, plt4))
     if i!=1; plot!(plt, legend_position=nothing) end
     savefig(plt, joinpath(output_location, "update"*string(i)*".pdf"))

@@ -70,7 +70,7 @@ par_magnitudes = [1,1,1,1]
 θnames = [:α, :β, :x0, :y0]
 
 
-model = initialiseLikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
+model = initialise_LikelihoodModel(likelihoodFunc, predictFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
 full_likelihood_sample!(model, 100000, sample_type=LatinHypercubeSamples())
 full_likelihood_sample!(model, 100000, sample_type=UniformRandomSamples())

@@ -34,7 +34,7 @@ end
 
 function predictFunc_xy(xy, data, t=["n*p"]); [prod(xy)] end
 
-model = initialiseLikelihoodModel(lnlike_xy, predictFunc_xy, data, θnames, xy_initial, xy_lower_bounds, xy_upper_bounds, par_magnitudes);
+model = initialise_LikelihoodModel(lnlike_xy, predictFunc_xy, data, θnames, xy_initial, xy_lower_bounds, xy_upper_bounds, par_magnitudes);
 
 full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
