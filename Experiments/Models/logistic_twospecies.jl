@@ -91,7 +91,7 @@ function parameter_and_data_setup()
     θG = [λ1g, λ2g, δg, KKg, C0g[1], C0g[2], σg]
     
     θnames = [:λ1, :λ2, :δ, :K, :C01, :C02, :σ]
-    par_magnitudes = [0.01, 0.01, 0.01, 10, 1, 1, 1]
+    par_magnitudes = [0.001, 0.001, 0.001, 10, 1, 0.1, 1]
 
     return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
         θG, lb, ub, lb_nuisance, ub_nuisance, par_magnitudes

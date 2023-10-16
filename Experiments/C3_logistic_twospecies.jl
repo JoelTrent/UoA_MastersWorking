@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -12,24 +12,25 @@ include(joinpath("Models", "logistic_twospecies.jl"))
 output_location = joinpath("Experiments", "Outputs", "logistic_twospecies");
 
 # do experiments
-opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,local_method=NLopt.LN_NELDERMEAD()))
+opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD()))
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
 
-if !isfile(joinpath(output_location, "univariate_parameter_coverage_new.csv"))
-    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 500, θ_true, collect(1:7), 
+if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
+    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:7), 
                         θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, show_progress=true, distributed_over_parameters=false,
                         optimizationsettings=opt_settings)
     display(uni_coverage_df)
-    CSV.write(joinpath(output_location, "univariate_parameter_coverage_new.csv"), uni_coverage_df)
+    CSV.write(joinpath(output_location, "univariate_parameter_coverage.csv"), uni_coverage_df)
 end
 
 if !isfile(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"))
-    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 500, θ_true, collect(1:7), show_progress=true, distributed_over_parameters=false)
+    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 1000, θ_true, collect(1:7), 
+                        θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, show_progress=true, distributed_over_parameters=false)
     display(uni_coverage_df)
     CSV.write(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"), uni_coverage_df)
 end
 
-if true || !isfile(joinpath(output_location, "uni_profile_1.pdf"))
+if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
 
     opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD()))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
@@ -37,7 +38,8 @@ if true || !isfile(joinpath(output_location, "uni_profile_1.pdf"))
     n = 40
     additional_width = 0.2
     univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
-    univariate_confidenceintervals!(model, profile_type=LogLikelihood(), θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, use_distributed=false, num_points_in_interval=n, additional_width=additional_width)
+    univariate_confidenceintervals!(model, profile_type=LogLikelihood(), θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, use_distributed=false, num_points_in_interval=n,
+        additional_width=additional_width)
 
     using Plots
     gr()
@@ -54,23 +56,24 @@ end
 
 if !isfile(joinpath(output_location, "biv_profile_1.pdf"))
 
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0, xtol_rel=1.0e-12))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
-    # bivariate_confidenceprofiles!(model, 100, method=AnalyticalEllipseMethod(0.0, 1.0))
-    # bivariate_confidenceprofiles!(model, 50, method=IterativeBoundaryMethod(10, 5, 5, 0.15, 1.0, use_ellipse=true), profile_type=LogLikelihood())
+    bivariate_confidenceprofiles!(model, 100, method=AnalyticalEllipseMethod(0.0, 1.0))
+    bivariate_confidenceprofiles!(model, 50, method=IterativeBoundaryMethod(10, 5, 5, 0.15, 1.0, use_ellipse=true), profile_type=LogLikelihood(),
+        θlb_nuisance = lb_nuisance, θub_nuisance=ub_nuisance)
 
-    # using Plots
-    # gr()
-    # format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
-    # plts = plot_bivariate_profiles_comparison(model; label_only_MLE=true, format...)
+    using Plots
+    gr()
+    format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
+    plts = plot_bivariate_profiles_comparison(model; label_only_MLE=true, format...)
 
-    # for (i, plt) in enumerate(plts)
-    #     if i < length(plts)
-    #         plot!(plts[i], legend_position=nothing)
-    #     end
-    #     savefig(plts[i], joinpath(output_location, "biv_profile_" * string(i) * ".pdf"))
-    # end
+    for (i, plt) in enumerate(plts)
+        if i < length(plts)
+            plot!(plts[i], legend_position=nothing)
+        end
+        savefig(plts[i], joinpath(output_location, "biv_profile_" * string(i) * ".pdf"))
+    end
 end
 
 

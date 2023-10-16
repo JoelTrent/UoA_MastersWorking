@@ -128,10 +128,10 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
 
     function record_bivariate_boundary_coverage(method, method_key, num_points, hullmethods)
         Random.seed!(1234)
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1.0e-12))
         model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
-        biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 10, num_points, 6000, θ_true,
+        biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 100, num_points, 5000, θ_true,
             collect(combinations(1:model.core.num_pars, 2)); method=method, distributed_over_parameters=false, hullmethod=hullmethods,
             coverage_estimate_quantile_level=0.9)
 
@@ -141,7 +141,7 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
     end
 
     methods = [IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true)]
-    num_points_iter = [10, 20, 30, 40, 50]
+    num_points_iter = [10, 20, 30, 40]
     hullmethods = [MPPHullMethod(), ConvexHullMethod()]
     len = length(collect(combinations(1:model.core.num_pars, 2))) * length(methods) * length(num_points_iter)
 
