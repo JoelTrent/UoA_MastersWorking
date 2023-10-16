@@ -1,2 +1,7 @@
 method_key,method_name
 1,Fix1AxisMethod()
+2,"SimultaneousMethod(0.5, true)"
+3,"RadialRandomMethod(5, true)"
+4,"RadialMLEMethod(0.15, 0.1)"
+5,"IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)"
+6,"IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, false)"

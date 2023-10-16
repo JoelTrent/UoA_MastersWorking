@@ -31,14 +31,14 @@ end
 
 model = initialise_LikelihoodModel(loglhood, data, θnames, xy_initial, xy_lower_bounds, xy_upper_bounds, par_magnitudes);
 
-bivariate_confidenceprofiles!(model, 500, method=RadialRandomMethod(3))
+bivariate_confidenceprofiles!(model, 500, method=RadialRandomMethod(3), use_distributed=false)
 true_boundary = model.biv_profiles_dict[1].confidence_boundary
 PlaceholderLikelihood.minimum_perimeter_polygon!(true_boundary)
 true_boundary = hcat(true_boundary, true_boundary[:,1])
 
 model = initialise_LikelihoodModel(loglhood, data, θnames, xy_initial, xy_lower_bounds, xy_upper_bounds, par_magnitudes);
 
-bivariate_confidenceprofiles!(model, 200, method=IterativeBoundaryMethod(3,1,1, 0.15, 1.0, use_ellipse=true))
+bivariate_confidenceprofiles!(model, 200, method=IterativeBoundaryMethod(3,1,1, 0.15, 1.0, use_ellipse=true), use_distributed=false)
 
 using Plots; gr()
 

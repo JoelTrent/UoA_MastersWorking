@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-# if nprocs()==1; addprocs(10) end
+# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise

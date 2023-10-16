@@ -82,18 +82,20 @@ function parameter_and_data_setup()
     t_pred=LinRange(t[1], t[end], 400)
 
     # Bounds on model parameters 
-    lb = [0.00, 0.00, 0.00, 60.0, 0.0, 0.0, 0.0] ./ 1.5
-    ub = [0.015, 0.015, 0.015, 135.0, 1.0, 1.0, 3.0]
+    lb = [0.0001, 0.0001, 0.0, 60.0, 0.01, 0.001, 0.1]
+    ub = [0.01, 0.01, 0.01, 90.0, 1.0, 1.0, 3.0]
+    lb_nuisance = max.(lb, θ_true ./ 2.5)
+    ub_nuisance = min.(ub, θ_true .* 2.5)
     
     λ1g=0.002; λ2g=0.002; δg=0.0; KKg=80.0; C0g=[1.0, 1.0]; σg=1.0; 
     θG = [λ1g, λ2g, δg, KKg, C0g[1], C0g[2], σg]
     
-    θnames = [:λ1, :λ2, :δ, :KK, :C01, :C02, :σ]
+    θnames = [:λ1, :λ2, :δ, :K, :C01, :C02, :σ]
     par_magnitudes = [0.01, 0.01, 0.01, 10, 1, 1, 1]
 
     return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
-        θG, lb, ub, par_magnitudes
+        θG, lb, ub, lb_nuisance, ub_nuisance, par_magnitudes
 end
 
 data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
-    θG, lb, ub, par_magnitudes = parameter_and_data_setup()
+    θG, lb, ub, lb_nuisance, ub_nuisance, par_magnitudes = parameter_and_data_setup()
