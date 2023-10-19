@@ -273,6 +273,7 @@ savefig(plt, joinpath(output_location, "univariate_parameter_coverage_"*loc*"_mo
 ```
 
 ## True Bivariate Boundary
+### Logistic example
 
 Focusing on 95% lower quantile performance, i.e. in 95% of cases it will be at least 'this' good.
 ```{julia}
@@ -382,29 +383,6 @@ end
 pnts_to_reach_coverage_df.coverage_level = categorical(pnts_to_reach_coverage_df.coverage_level, levels=string.(coverage_levels))
 pnts_to_reach_coverage_df.method_name = categorical(pnts_to_reach_coverage_df.method_name, levels=["Fix1AxisMethod", "SimultaneousMethod", "RadialRandomMethod", "RadialMLEMethod", "IterativeBoundaryMethod", "IterativeBoundary_RadialRandom"])
 
-# plots = []
-# for sub_df in groupby(pnts_to_reach_coverage_df, [:θindices, :hullmethod, :quantile])
-#   sub_df_filt = subset(sub_df, :num_points => ByRow(!=(-10)))
-#   plt = @df sub_df_filt groupedbar(:coverage_level, :num_points; group=:method_name, 
-#                                            # ylimits=(0.6, 1.0), 
-#                                            # xticks=coverage_levels, 
-#                                            format...)
-#   push!(plots, plt)
-# end
-# 
-# display(plots[1])
-# display(plots[2])
-# display(plots[3])
-# display(plots[4])
-# display(plots[5])
-# display(plots[6])
-# 
-# display(plots[7])
-# display(plots[8])
-# display(plots[9])
-# display(plots[10])
-# display(plots[11])
-# display(plots[12])
 
 pnts_to_reach_wide = unstack(pnts_to_reach_coverage_df, [:θindices, :method_name, :hullmethod, :quantile], :coverage_level, :num_points)
 sort!(pnts_to_reach_wide, [:quantile, :θindices, :method_name])
@@ -517,11 +495,101 @@ end
 
 ```
 
+### Lotka-volterra example
+
+```{julia}
+using DataFrames, CSV
+using Plots, StatsPlots; gr()
+using LaTeXStrings
+using CategoricalArrays
+
+format=(palette=:seaborn_colorblind, lw=2, size=(500,400), dpi=300, title="", msw=0, mw=4, legend_position=:bottomright, xlabel="Total Boundary Points", minorgrid=true, minorticks=2, yticks=0.86:0.02:1.0, ylims=(0.86, 1.0));
+locs = ["logistic", "lotka_volterra", "logistic_twospecies"];
+
+loc = locs[2];
+output_location = joinpath("Outputs", loc);
+data_df = CSV.read(joinpath(output_location, "bivariate_boundary_coverage.csv"), DataFrame);
+
+data_df[:, :hullmethod] .= [split(name, "(")[1] for name in data_df.hullmethod];
+
+# θnames=["α", "β", "x0", "y0"]
+# data_df.θnames2 = ["("*θnames[inds[1]] *", "*  θnames[inds[2]]*")" for inds in data_df.θindices)
+data_df.θindices = categorical(data_df.θindices, levels=unique(data_df.θindices));
 
 
+plots = []
+for sub_df in groupby(data_df, [:hullmethod])
+  plt = @df sub_df plot(:num_points, :coverage_lb; group=:θindices, marker=(:circle), ylabel="Simulated Area Coverage (0.05 Quantile)", format...)
+  hline!(plt, [0.98], linestyle=:dash, label="98%", color=:black)
+  plt.subplots[1].series_list = [plt.subplots[1].series_list[end]; plt.subplots[1].series_list[1:end-1]]
+  push!(plots, plt)
+end
+
+display(plots[1])
+display(plots[2])
+
+savefig(plots[1], joinpath(output_location, "bivariate_area_coverage_MPP.pdf"))
+savefig(plots[1], joinpath(output_location, "bivariate_area_coverage_ConvexHull.pdf"))
+
+```
+
+## Bivariate Confidence Profiles
+
+```{julia}
+using DataFrames, CSV
+using Plots, StatsPlots; gr()
+using LaTeXStrings
+using CategoricalArrays
+
+format=(msw=1.5, size=(500,400), dpi=300, title="", legend_position=nothing, ylabel="Simulated Coverage");
+locs = ["logistic", "lotka_volterra", "logistic_twospecies"]
+
+loc = locs[1]
+output_location = joinpath("Outputs", loc)
+data_df = CSV.read(joinpath(output_location, "bivariate_parameter_coverage.csv"), DataFrame);
+# data_df.θname = categorical(data_df.θname, levels=data_df.θname)
+
+plt = @df data_df plot(:θindices, :coverage; st=:bar, color=palette(:Paired)[1:nrow(data_df)], ylimits=(0.8, 1.0),yticks=LinRange(0.8,1.0,5),
+                        yerror=(data_df.coverage .- data_df.coverage_lb, data_df.coverage_ub .- data_df.coverage), format...);
+annotate!(data_df.θindices, fill(0.8,nrow(data_df)), text.(data_df.coverage, fill(:bottom,nrow(data_df)), fill(:black,nrow(data_df)), fill(8,nrow(data_df))))
 
 
+savefig(plt, joinpath(output_location, "bivariate_parameter_coverage_"*loc*".pdf"))
 
+loc = locs[2]
+output_location = joinpath("Outputs", loc)
+data_df = CSV.read(joinpath(output_location, "bivariate_parameter_coverage.csv"), DataFrame);
+# data_df.θname = categorical(data_df.θname, levels=data_df.θname)
+
+plt = @df data_df plot(:θindices, :coverage; st=:bar, color=palette(:Paired)[1:nrow(data_df)], bar_position=:stack, ylimits=(0.8, 1.0), yticks=LinRange(0.8,1.0,5),
+                        yerror=(data_df.coverage .- data_df.coverage_lb, data_df.coverage_ub .- data_df.coverage), format...);
+annotate!(data_df.θindices, fill(0.8,nrow(data_df)), text.(data_df.coverage, fill(:bottom,nrow(data_df)), fill(:black,nrow(data_df)), fill(8,nrow(data_df))))
+
+savefig(plt, joinpath(output_location, "bivariate_parameter_coverage_"*loc*".pdf"))
+
+# loc = locs[3]
+# output_location = joinpath("Outputs", loc)
+# data_df = CSV.read(joinpath(output_location, "bivariate_parameter_coverage.csv"), DataFrame);
+# # data_df.θname = categorical(data_df.θname, levels=data_df.θname)
+# 
+# plt = @df data_df plot(:θname, :coverage; st=:bar, color=palette(:Paired)[1:nrow(data_df)], bar_position=:stack, ylimits=(0.6, 1.0), yticks=LinRange(0.6,1.0,9),
+#                         yerror=(data_df.coverage .- data_df.coverage_lb, data_df.coverage_ub .- data_df.coverage), format...);
+# 
+# annotate!(data_df.θname, fill(0.6,nrow(data_df)), text.(data_df.coverage, fill(:bottom,nrow(data_df)), fill(:black,nrow(data_df)), fill(8,nrow(data_df))))
+# savefig(plt, joinpath(output_location, "parameter_coverage_"*loc*".pdf"))
+# 
+# output_location = joinpath("Outputs", loc)
+# data_df = CSV.read(joinpath(output_location, "bivariate_parameter_coverage_more_data.csv"), DataFrame);
+# # data_df.θname = categorical(data_df.θname, levels=data_df.θname)
+# 
+# plt = @df data_df plot(:θname, :coverage; st=:bar, color=palette(:Paired)[1:nrow(data_df)], bar_position=:stack, ylimits=(0.6, 1.0), yticks=LinRange(0.6,1.0,9),
+#                         yerror=(data_df.coverage .- data_df.coverage_lb, data_df.coverage_ub .- data_df.coverage), format...);
+# 
+# annotate!(data_df.θname, fill(0.6,nrow(data_df)), text.(data_df.coverage, fill(:bottom,nrow(data_df)), fill(:black,nrow(data_df)), fill(8,nrow(data_df))))
+# 
+# display(data_df)
+# savefig(plt, joinpath(output_location, "bivariate_parameter_coverage_"*loc*"_more_data.pdf"))
+```
 
 
 

@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -162,5 +162,34 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
             global coverage_df = vcat(coverage_df, record_bivariate_boundary_coverage(new_method, method_key, num_points, hullmethods))
             CSV.write(joinpath(output_location, "bivariate_boundary_coverage.csv"), coverage_df)
         end
+    end
+end
+
+if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
+    using Combinatorics
+    Random.seed!(1234)
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 1000, 30, θ_true, collect(combinations(1:model.core.num_pars, 2)),
+        method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
+        show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
+    display(biv_coverage_df)
+    CSV.write(joinpath(output_location, "bivariate_parameter_coverage.csv"), biv_coverage_df)
+end
+
+if true || !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+
+    num_points_iter = [50000, 250000, 500000]#, 1000000]
+    coverage_df = DataFrame()
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, num_points, θ_true, [collect(1:model.core.num_pars)],
+            show_progress=true, distributed_over_parameters=false)
+
+        new_df = filter(:θname => !=(:union), new_df)
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "full_sampling_prediction_coverage.csv"), coverage_df)
     end
 end

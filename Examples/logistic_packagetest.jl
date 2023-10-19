@@ -201,7 +201,7 @@ dimensional_likelihood_samples!(model, 2, 2000, use_threads=true)
 # dimensional_likelihood_samples!(model, 3, 20000, use_threads=false)
 
 prediction_locations = collect(LinRange(t[1], t[end], 30))
-generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()])
+generate_predictions_univariate!(model, prediction_locations, 1.0, profile_types=[EllipseApprox(), LogLikelihood()], use_distributed=false)
 generate_predictions_bivariate!(model, prediction_locations, 0.1)
 generate_predictions_dim_samples!(model, prediction_locations, 0.1)
 

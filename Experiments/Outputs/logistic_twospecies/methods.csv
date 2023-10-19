@@ -1,2 +1,2 @@
 method_key,method_name
-1,"IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)"
+1,"IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, false)"

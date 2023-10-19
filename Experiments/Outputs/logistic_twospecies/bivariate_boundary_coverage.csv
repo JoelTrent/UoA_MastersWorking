@@ -1,0 +1,3 @@
+θnames,θindices,hullmethod,coverage_median,coverage_mean,coverage_lb,coverage_ub,num_boundary_points,method_key,num_points
+"[:λ1, :λ2]","[1, 2]",MPPHullMethod(),0.9878048780487805,0.9842870544090057,0.9636491557223265,1.0,30,1,30
+"[:λ1, :λ2]","[1, 2]",ConvexHullMethod(),0.9878048780487805,0.9842870544090057,0.9636491557223265,1.0,30,1,30

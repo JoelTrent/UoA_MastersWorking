@@ -1,0 +1,16 @@
+θindices,method_name,num_points,xtol_rel,optimisation_calls,likelihood_calls
+"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,0.0,586,61218
+"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,0.0,567,50456
+"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,0.0,596,56865
+"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-20,586,33146
+"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-20,567,24632
+"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-20,596,30572
+"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-16,586,27826
+"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-16,567,20676
+"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-16,596,26249
+"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-12,586,21532
+"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-12,567,14687
+"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-12,596,20033
+"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-8,586,15550
+"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-8,567,8929
+"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,1.0e-8,596,14238
