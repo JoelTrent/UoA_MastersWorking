@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -385,17 +385,17 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
         using Combinatorics
 
-        function record_CI_LL_evaluations!(timer_df, method, num_points, xtol_rel, iter)
+        function record_CI_LL_evaluations!(timer_df, method, num_points, xtol_rel, conf_level, iter)
             opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
             model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
-
 
             opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,xtol_rel=xtol_rel))
 
             for (i, pars) in enumerate(collect(combinations(1:model.core.num_pars, 2)))
-                bivariate_confidenceprofiles!(model, [pars], num_points, method=method, existing_profiles=:overwrite, optimizationsettings=opt_settings)
+                bivariate_confidenceprofiles!(model, [pars], num_points, method=method, existing_profiles=:overwrite, optimizationsettings=opt_settings,
+                confidence_level=conf_level)
 
-                timer_df[i+model.core.num_pars*(iter-1), :] .= pars, string(method),  num_points, xtol_rel, TO.ncalls(
+                timer_df[i+model.core.num_pars*(iter-1), :] .= pars, string(method),  num_points, xtol_rel, conf_level, TO.ncalls(
                     PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]),
                 TO.ncalls(
                     PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
@@ -407,12 +407,15 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
         methods = [IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true)]
         num_points_iter = collect(50:10:50)
-        xtol_rel_iter = [0.0, 1e-20, 1e-16, 1e-12, 1e-8]
-        len = length(collect(combinations(1:model.core.num_pars, 2))) * length(methods) * length(num_points_iter) * length(xtol_rel_iter)
+        xtol_rel_iter = [0.0, 1e-20, 1e-16, 1e-12, 1e-8, 1e-6]
+        conf_levels = [0.95, 0.979906]
+        len = length(collect(combinations(1:model.core.num_pars, 2))) * length(methods) * 
+            length(num_points_iter) * length(xtol_rel_iter) * length(conf_levels)
         timer_df = DataFrame(θindices=[zeros(Int, 2) for _ in len],
             method_name=fill(string(methods[1]), len),
             num_points=zeros(Int, len),
             xtol_rel=zeros(len),
+            conf_level=zeros(len),
             optimisation_calls=zeros(Int, len),
             likelihood_calls=zeros(Int, len))
 
@@ -423,8 +426,10 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         for method in methods
             for num_points in num_points_iter
                 for xtol_rel in xtol_rel_iter
-                    record_CI_LL_evaluations!(timer_df, method, num_points, xtol_rel, iter)
-                    global iter += 1
+                    for conf_level in conf_levels
+                        record_CI_LL_evaluations!(timer_df, method, num_points, xtol_rel, conf_level, iter)
+                        global iter += 1
+                    end
                 end
             end
         end
@@ -583,6 +588,31 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
             global coverage_df = vcat(coverage_df, new_df)
             CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.csv"), coverage_df)
             Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.arrow"), coverage_df)
+        end
+    end
+
+    if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_xtol_rel.csv"))
+        using Combinatorics
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-8))
+
+        num_points_iter = collect(0:40:80)
+        coverage_df = DataFrame()
+
+        equiv_simul_conf_level = 0.979906
+
+        for num_points in num_points_iter
+            Random.seed!(1234)
+            new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 50, θ_true, collect(combinations(1:model.core.num_pars, 2)),
+                method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
+                num_internal_points=num_points,
+                show_progress=true, distributed_over_parameters=false, 
+                confidence_level=equiv_simul_conf_level,
+                optimizationsettings=opt_settings)
+
+            new_df.num_points .= num_points
+            global coverage_df = vcat(coverage_df, new_df)
+            CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_xtol_rel.csv"), coverage_df)
+            Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_xtol_rel.arrow"), coverage_df)
         end
     end
 end
