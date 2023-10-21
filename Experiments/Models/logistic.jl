@@ -28,6 +28,11 @@ end
     return data
 end
 
+@everywhere function reference_set_generator(θtrue, generator_args::NamedTuple, confidence_level::Float64)
+    lq, uq = errorFunc(generator_args.y_true, θtrue, confidence_level)
+    return (lq, uq)
+end
+
 # Data setup ###########################################################################
 using Random
 data_location = joinpath("Experiments", "Models", "Data", "logistic.csv")
@@ -59,9 +64,9 @@ function parameter_and_data_setup()
     # Named tuple of all data required within the log-likelihood function
     data = (y_obs=y_obs, t=t, dist=Normal(0, σ))
     training_gen_args = (y_true=y_true, t=t, dist=Normal(0, σ), is_test_set=false)
-    testing_gen_args = (y_true=y_true, t=t, dist=Normal(0, σ), is_test_set=true)
-
+    
     t_pred=0:5:1000
+    testing_gen_args = (y_true=solvedmodel(t_pred, θ_true), t=t_pred, dist=Normal(0, σ), is_test_set=true)
 
     # Bounds on model parameters 
     λ_min, λ_max = (0.00, 0.05)
