@@ -162,7 +162,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         using Plots
         gr()
         format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
-        plts = plot_bivariate_profiles_comparison(model; label_only_MLE=true, format...)
+        plts = plot_bivariate_profiles(model; label_only_MLE=true, format...)
 
         for (i, plt) in enumerate(plts)
             if i < length(plts)
