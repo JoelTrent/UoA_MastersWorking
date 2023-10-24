@@ -15,7 +15,9 @@ output_location = joinpath("Experiments", "Outputs", "lotka_volterra")
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
 if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
-    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:4), show_progress=true, distributed_over_parameters=false)
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:4), 
+                        show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
     display(uni_coverage_df)
     CSV.write(joinpath(output_location, "univariate_parameter_coverage.csv"), uni_coverage_df)
 end
@@ -128,7 +130,7 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
 
     function record_bivariate_boundary_coverage(method, method_key, num_points, hullmethods)
         Random.seed!(1234)
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1.0e-12))
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
         model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
         biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 100, num_points, 5000, θ_true,
@@ -168,7 +170,7 @@ end
 if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
     using Combinatorics
     Random.seed!(1234)
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
     biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 1000, 30, θ_true, collect(combinations(1:model.core.num_pars, 2)),
         method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
         show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
@@ -196,7 +198,7 @@ if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
 end
 
 if !isfile(joinpath(output_location, "univariate_prediction_coverage.csv"))
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
     num_points_iter = collect(0:40:120)
     coverage_df = DataFrame()
@@ -215,7 +217,7 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage.csv"))
 end
 
 if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneous_threshold.csv"))
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
     num_points_iter = collect(0:40:80)
     coverage_df = DataFrame()
@@ -261,7 +263,7 @@ end
 
 if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.csv"))
     using Combinatorics
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-16))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
     num_points_iter = collect(0:40:40)
     coverage_df = DataFrame()
@@ -285,7 +287,6 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
 end
 
 if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
 
     num_points_iter = [50000, 250000, 500000]
     coverage_df = DataFrame()
@@ -305,7 +306,7 @@ if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
 end
 
 if !isfile(joinpath(output_location, "univariate_realisation_coverage.csv"))
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
     num_points_iter = collect(0:40:120)
     coverage_df = DataFrame()

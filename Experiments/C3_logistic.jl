@@ -74,11 +74,12 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
     if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
 
         function record_CI_LL_evaluations!(timer_df, find_zero_atol, abstol, iter)
-            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=abstol))
-            model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+            model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=abstol))
             for i in 1:model.core.num_pars
-                univariate_confidenceintervals!(model, [i], existing_profiles=:overwrite, find_zero_atol=find_zero_atol)
+                univariate_confidenceintervals!(model, [i], existing_profiles=:overwrite, find_zero_atol=find_zero_atol, optimizationsettings=opt_settings)
 
                 timer_df[i+model.core.num_pars*(iter-1), :] .= i, find_zero_atol, abstol, TO.ncalls(
                     PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
@@ -111,6 +112,52 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         end
         
         CSV.write(joinpath(output_location, "confidence_interval_ll_calls.csv"), timer_df)
+
+        TO.disable_debug_timings(PlaceholderLikelihood)
+    end
+
+    if !isfile(joinpath(output_location, "confidence_interval_ll_calls_xtol_rel.csv"))
+
+        function record_CI_LL_evaluations!(timer_df, find_zero_atol, xtol_rel, iter)
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+            model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=xtol_rel, abstol=0.0))
+
+            for i in 1:model.core.num_pars
+                univariate_confidenceintervals!(model, [i], existing_profiles=:overwrite, find_zero_atol=find_zero_atol, optimizationsettings=opt_settings)
+
+                timer_df[i+model.core.num_pars*(iter-1), :] .= i, find_zero_atol, xtol_rel, TO.ncalls(
+                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
+                TO.ncalls(
+                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+
+                TO.reset_timer!(PlaceholderLikelihood.timer)
+            end
+            return nothing
+        end
+
+        xtol_rels = round.(vcat(0.0, 10.0 .^ (-20:1:-2)), sigdigits=1)
+        find_zero_atols = round.(vcat(0.0, 10.0 .^ (-20:1:-2)), sigdigits=1)
+        len = model.core.num_pars * length(xtol_rels) * length(find_zero_atols)
+        timer_df = DataFrame(parameter=zeros(Int, len),
+            find_zero_atol=zeros(len),
+            xtol_rel=zeros(len),
+            optimisation_calls=zeros(Int, len),
+            likelihood_calls=zeros(Int, len))
+
+        TO.enable_debug_timings(PlaceholderLikelihood)
+        TO.reset_timer!(PlaceholderLikelihood.timer)
+
+        iter = 1
+        for find_zero_atol in find_zero_atols
+            for xtol_rel in xtol_rels
+                record_CI_LL_evaluations!(timer_df, find_zero_atol, xtol_rel, iter)
+                global iter += 1
+            end
+        end
+
+        CSV.write(joinpath(output_location, "confidence_interval_ll_calls_xtol_rel.csv"), timer_df)
 
         TO.disable_debug_timings(PlaceholderLikelihood)
     end
@@ -165,12 +212,14 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         CSV.write(joinpath(output_location, "confidence_interval_ll_calls_lower_and_upper.csv"), timer_df)
         TO.disable_debug_timings(PlaceholderLikelihood)
     end
-
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
-    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
-
+    
     if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
-        uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:3), show_progress=true, distributed_over_parameters=false)
+        Random.seed!(1234)
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+        model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
+
+        opt_settings = default_OptimizationSettings()
+        uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:3), show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
         display(uni_coverage_df)
         CSV.write(joinpath(output_location, "univariate_parameter_coverage.csv"), uni_coverage_df)
     end
@@ -389,7 +438,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
             opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
             model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
-            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,xtol_rel=xtol_rel))
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=xtol_rel))
 
             for (i, pars) in enumerate(collect(combinations(1:model.core.num_pars, 2)))
                 bivariate_confidenceprofiles!(model, [pars], num_points, method=method, existing_profiles=:overwrite, optimizationsettings=opt_settings,
@@ -445,12 +494,14 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
         function record_bivariate_boundary_coverage(method, method_key, num_points, hullmethods)
             Random.seed!(1234)
-            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=0.5,))
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
             model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
             biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 500, num_points, 4000, θ_true,
                 collect(combinations(1:model.core.num_pars, 2)); method=method, distributed_over_parameters=false, hullmethod=hullmethods, 
-                coverage_estimate_quantile_level=0.9)
+                coverage_estimate_quantile_level=0.9,
+                optimizationsettings=opt_settings)
 
             biv_coverage_df.method_key .= method_key
             biv_coverage_df.num_points .= num_points
@@ -479,7 +530,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
     if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
         using Combinatorics
         Random.seed!(1234)
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
         biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 1000, 50, θ_true, collect(combinations(1:model.core.num_pars, 2)),
                             method = IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true), 
                             show_progress=true, distributed_over_parameters=false, optimizationsettings = opt_settings)
@@ -487,9 +538,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         CSV.write(joinpath(output_location, "bivariate_parameter_coverage.csv"), biv_coverage_df)
     end
 
-    if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
-        
+    if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))        
         num_points_iter = collect(5000:5000:40000)
         coverage_df = DataFrame()
         
@@ -507,7 +556,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
     end
 
     if !isfile(joinpath(output_location, "univariate_prediction_coverage.csv"))
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
         num_points_iter = collect(0:40:120)
         coverage_df = DataFrame()
@@ -526,7 +575,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
     end
 
     if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneous_threshold.csv"))
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
         num_points_iter = collect(0:40:120)
         coverage_df = DataFrame()
@@ -550,14 +599,14 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
     if !isfile(joinpath(output_location, "bivariate_prediction_coverage.csv"))
         using Combinatorics
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
         num_points_iter = collect(0:40:200)
         coverage_df = DataFrame()
 
         for num_points in num_points_iter
             Random.seed!(1234)
-            new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 10, 50, θ_true, collect(combinations(1:model.core.num_pars, 2)),
+            new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 50, θ_true, collect(combinations(1:model.core.num_pars, 2)),
                 method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
                 num_internal_points=num_points,
                 show_progress=true, distributed_over_parameters=false,
@@ -572,7 +621,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
     if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.csv"))
         using Combinatorics
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
         num_points_iter = collect(0:40:80)
         coverage_df = DataFrame()
@@ -581,7 +630,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
         for num_points in num_points_iter
             Random.seed!(1234)
-            new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 00, 50, θ_true, collect(combinations(1:model.core.num_pars, 2)),
+            new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 50, θ_true, collect(combinations(1:model.core.num_pars, 2)),
                 method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
                 num_internal_points=num_points,
                 show_progress=true, distributed_over_parameters=false, 
@@ -620,7 +669,6 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
     end
 
     if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
 
         num_points_iter = collect(5000:5000:40000)
         coverage_df = DataFrame()

@@ -35,14 +35,14 @@
 end
 
 @everywhere function odesolver(t, θ)
-    u0 = zeros(8)
+    u0 = zeros(eltype(θ), 8)
     u0[1] = 207.6 * ratio         # STAT5A
     u0[3] = 207.6 - 207.6 * ratio # STAT5B
     tspan=(0.0, t[end])
     prob = ODEProblem(stat5_ode, u0, tspan, θ)
 
     # solution
-    sol = solve(prob, lsoda(), saveat=t, reltol=1e-7, abstol=1e-7) #save_idxs=[1,2,3,4,5] 
+    sol = solve(prob, AutoVern7(Rodas5()), saveat=t, reltol=1e-7, abstol=1e-7) #save_idxs=[1,2,3,4,5] 
     STAT5A = sol[1, :]
     pApA = sol[2, :]
     STAT5B = sol[3, :]
@@ -163,7 +163,7 @@ function parameter_and_data_setup()
     
     θnames = [:Epo_degradation_BaF3, :k_exp_hetero, :k_exp_homo, :k_imp_hetero, :k_imp_homo, :k_phos,
         :σ_pSTAT5A_rel, :σ_pSTAT5B_rel, :σ_rSTAT5A_rel]
-    par_magnitudes = [0.1, 0.001, 0.01, 1000., 10000., 1., 1., 1.]
+    par_magnitudes = [0.01, 0.0001, 0.005, 0.01, 10000., 1000., 1., 1., 1.]
 
     return data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
         θG, lb, ub, par_magnitudes

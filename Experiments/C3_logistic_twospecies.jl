@@ -19,6 +19,7 @@ model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnam
 # inds = [3,6]; model.ellipse_MLE_approx.Hmle[inds, inds]
 
 if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD(), xtol_rel=1e-12))
     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:7), 
                         θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, show_progress=true, distributed_over_parameters=false,
                         optimizationsettings=opt_settings)
@@ -27,8 +28,10 @@ if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
 end
 
 if !isfile(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD(), xtol_rel=1e-12))
     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 1000, θ_true, collect(1:7), 
-                        θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, show_progress=true, distributed_over_parameters=false)
+                        θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, show_progress=true, distributed_over_parameters=false,
+                        optimizationsettings=opt_settings)
     display(uni_coverage_df)
     CSV.write(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"), uni_coverage_df)
 end
