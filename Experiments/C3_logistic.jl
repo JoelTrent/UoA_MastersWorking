@@ -18,6 +18,9 @@ output_location = joinpath("Experiments", "Outputs", "logistic")
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
 
+opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+univariate_confidenceintervals!(model, optimizationsettings=opt_settings)
+
 if false || isdefined(PlaceholderLikelihood, :find_zero_algo) || !isfile(joinpath(output_location, "confidence_interval_ll_calls_algos.csv"))
 
     using Roots
@@ -601,7 +604,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         using Combinatorics
         opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-        num_points_iter = collect(0:40:200)
+        num_points_iter = collect(0:40:120)
         coverage_df = DataFrame()
 
         for num_points in num_points_iter
@@ -616,6 +619,28 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
             global coverage_df = vcat(coverage_df, new_df)
             CSV.write(joinpath(output_location, "bivariate_prediction_coverage.csv"), coverage_df)
             Arrow.write(joinpath(output_location, "bivariate_prediction_coverage.arrow"), coverage_df)
+        end
+    end
+
+    if !isfile(joinpath(output_location, "bivariate_prediction_coverage_two_combinations.csv"))
+        using Combinatorics
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+        num_points_iter = collect(0:40:0)
+        coverage_df = DataFrame()
+
+        for num_points in num_points_iter
+            Random.seed!(1234)
+            new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 50, θ_true, [[1,2], [1,3]],
+                method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
+                num_internal_points=num_points,
+                show_progress=true, distributed_over_parameters=false,
+                optimizationsettings=opt_settings)
+
+            new_df.num_points .= num_points
+            global coverage_df = vcat(coverage_df, new_df)
+            CSV.write(joinpath(output_location, "bivariate_prediction_coverage_two_combinations.csv"), coverage_df)
+            Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_two_combinations.arrow"), coverage_df)
         end
     end
 
@@ -641,6 +666,31 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
             global coverage_df = vcat(coverage_df, new_df)
             CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.csv"), coverage_df)
             Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.arrow"), coverage_df)
+        end
+    end
+
+    if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.csv"))
+        using Combinatorics
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+        num_points_iter = collect(0:40:0)
+        coverage_df = DataFrame()
+
+        equiv_simul_conf_level = 0.979906
+
+        for num_points in num_points_iter
+            Random.seed!(1234)
+            new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 50, θ_true, [[1,2], [1,3]],
+                method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
+                num_internal_points=num_points,
+                show_progress=true, distributed_over_parameters=false,
+                confidence_level=equiv_simul_conf_level,
+                optimizationsettings=opt_settings)
+
+            new_df.num_points .= num_points
+            global coverage_df = vcat(coverage_df, new_df)
+            CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.csv"), coverage_df)
+            Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.arrow"), coverage_df)
         end
     end
 

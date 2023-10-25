@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -12,6 +12,7 @@ include(joinpath("Models", "STAT5.jl"))
 output_location = joinpath("Experiments", "Outputs", "STAT5");
 
 # do experiments
+opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD()))
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes);
 
 # univariate_confidenceintervals!(model)
@@ -127,20 +128,20 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
     if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
 
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, local_method=NLopt.LN_NELDERMEAD()))
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20,))
         model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
         n = 40
         additional_width = 0.2
-        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12, local_method=NLopt.LN_NELDERMEAD()))
-        univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=10, xtol_rel=1e-12, local_method=NLopt.LN_NELDERMEAD()))
+        # univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
         univariate_confidenceintervals!(model, num_points_in_interval=n, additional_width=additional_width,
                                         optimizationsettings=opt_settings)
 
         using Plots
         gr()
         format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
-        plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
+        plts = plot_univariate_profiles(model; label_only_lines=true, format...)
 
         for (i, plt) in enumerate(plts)
             if i < length(plts)

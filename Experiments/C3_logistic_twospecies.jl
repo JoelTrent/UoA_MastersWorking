@@ -184,7 +184,7 @@ end
 #     Random.seed!(1234)
 #     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
 #     biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 1000, 30, θ_true, collect(combinations(1:model.core.num_pars, 2)),
-#         method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
+#         method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true), θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance,
 #         show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
 #     display(biv_coverage_df)
 #     CSV.write(joinpath(output_location, "bivariate_parameter_coverage.csv"), biv_coverage_df)
