@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -14,8 +14,6 @@ output_location = joinpath("Experiments", "Outputs", "lotka_volterra")
 # do experiments
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
-
-univariate_confidenceintervals!(model)
 
 if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
 
@@ -423,7 +421,7 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage_two_combina
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_bivariate_prediction_realisations_coverage(data_generator, reference_set_generator, 
-            training_gen_args, testing_gen_args, t_pred, model, 1000, 30, θ_true, [[1,4],[2,3]o],
+            training_gen_args, testing_gen_args, t_pred, model, 1000, 30, θ_true, [[1,4],[2,3], [2,4]],
             method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
             num_internal_points=num_points,
             show_progress=true, distributed_over_parameters=false,
