@@ -1,5 +1,5 @@
-parameter,optimisation_calls,likelihood_calls
-1,62,8573
-2,21,3109
-3,19,2344
-4,22,2914
+parameter,mean_optimisation_calls,mean_likelihood_calls
+1,23.34,3206.36
+2,23.69,3308.14
+3,19.79,2529.98
+4,23.3,3213.14

@@ -4,6 +4,7 @@ using LikelihoodProfiler
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
+using PlaceholderLikelihood
 @everywhere using Revise
 @everywhere using Random, Distributions
 
@@ -50,5 +51,43 @@ res = DataFrame(
     TotCount=[k.result[1].counter + k.result[2].counter for k in intervals],
     InitValues=p_best
 )
+
+function record_CI_LL_evaluations!(N)
+    Random.seed!(1234)
+    training_data = [data_generator(θ_true, training_gen_args) for _ in 1:N]
+
+    total_ll_calls=zeros(Int, 4)
+
+    for j in 1:N
+
+        opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+        model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, training_data[j], θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+        function loss_func_training(θ); return -loglhood(θ, training_data[j]) end
+
+        α_training = loss_func_training(model.core.θmle) + 1.92073 # chisq with 1 df
+
+        intervals_training = Vector{ParamInterval}(undef, num_params)
+        for i in 1:num_params
+            intervals_training[i] = get_interval(
+                model.core.θmle,
+                i,
+                loss_func_training,
+                :CICO_ONE_PASS,
+                loss_crit=α_training,
+                theta_bounds=tbounds,
+                scan_bounds=sbounds[i],
+                scan_tol=1e-4,
+                local_alg=:LN_NELDERMEAD,
+            )
+        end
+        total_ll_calls .+= [k.result[1].counter + k.result[2].counter for k in intervals_training]
+    end
+
+    return total_ll_calls ./ N
+end
+
+mean_count = record_CI_LL_evaluations!(100)
+res.MeanCount=mean_count
 
 CSV.write(joinpath(output_location, "likelihoodprofiler_conf_int_calls.csv"), res)
