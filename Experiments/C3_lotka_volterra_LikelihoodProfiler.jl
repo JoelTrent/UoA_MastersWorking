@@ -1,4 +1,3 @@
-
 using LikelihoodProfiler
 
 using Distributed
@@ -7,9 +6,10 @@ using CSV, DataFrames, Arrow
 using PlaceholderLikelihood
 @everywhere using Revise
 @everywhere using Random, Distributions
+@everywhere using StaticArrays, DifferentialEquations
 
-@everywhere using Logging
-@everywhere Logging.disable_logging(Logging.Warn) # Disable debug, info and warn
+# @everywhere using Logging
+# @everywhere Logging.disable_logging(Logging.Warn) # Disable debug, info and warn
 
 include(joinpath("Models", "lotka_volterra.jl"))
 output_location = joinpath("Experiments", "Outputs", "lotka_volterra")
