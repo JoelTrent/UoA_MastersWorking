@@ -225,18 +225,18 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
 
         opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
         biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 40, num_points, 2000, θ_true,
-            collect(combinations(1:(model.core.num_pars-1), 2)),
-            confidence_level=0.975,
-            bivariate_combinations; method=method, distributed_over_parameters=false, hullmethod=hullmethods, 
-            coverage_estimate_quantile_level=0.9, θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, optimizationsettings=opt_settings)
+            collect(combinations(1:model.core.num_pars, 2));
+            confidence_level=0.98,
+            method=method, distributed_over_parameters=false, hullmethod=hullmethods, 
+            coverage_estimate_quantile_level=0.9, optimizationsettings=opt_settings)
 
         biv_coverage_df.method_key .= method_key
         biv_coverage_df.num_points .= num_points
         return biv_coverage_df
     end
 
-    methods = [IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=false)]
-    num_points_iter = [10]#,20,30,40]
+    methods = [RadialMLEMethod(0.15, 0.01)]#[IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=false)]
+    num_points_iter = [10,20,30,40]
     hullmethods = [MPPHullMethod(), ConvexHullMethod()]
     len = length(bivariate_combinations) * length(methods) * length(num_points_iter)
 
@@ -257,25 +257,18 @@ end
 
 
 bivariate_combinations = vcat(collect(combinations(1:7, 2)))
-if true || !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
+if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
     Random.seed!(1234)
 
-    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+    # model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-    biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 10, 30, θ_true, 
+    biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 100, 30, θ_true, 
         bivariate_combinations,
         # method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.01, use_ellipse=true),
         method=RadialMLEMethod(0.15, 0.01),
-        confidence_level=0.975,
+        confidence_level=0.98,
         show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
     display(biv_coverage_df)
     CSV.write(joinpath(output_location, "bivariate_parameter_coverage.csv"), biv_coverage_df)
 end
-
-# data_generator(θ_true, training_gen_args).y_obs
-# data_generator(θ_true, training_gen_args).y_true
-# data.y_obs
-
-
-model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data_generator(θ_true, training_gen_args), θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
