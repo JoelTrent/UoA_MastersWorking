@@ -11,7 +11,7 @@ using PlaceholderLikelihood
 # @everywhere using Logging
 # @everywhere Logging.disable_logging(Logging.Warn) # Disable debug, info and warn
 
-include(joinpath("Models", "logistic_twospecies.jl"))
+include(joinpath("Models", "logistic_twospecies_logitnormal.jl"))
 output_location = joinpath("Experiments", "Outputs", "logistic_twospecies")
 
 # search CI with LikelihoodProfiler
@@ -26,8 +26,8 @@ function loss_func(θ); return -loglhood(θ, data) end
 
 α = loss_func(p_best) + 1.92 # chisq with 1 df
 
-tbounds = [(lb[i]+0.0001, ub[i]) for i in 1:num_params]
-sbounds = [(lb[i]+0.0002, ub[i]-0.0001) for i in 1:num_params]
+tbounds = [(lb[i]+0.00001, ub[i]) for i in 1:num_params]
+sbounds = [(lb[i]+0.00002, ub[i]-0.0001) for i in 1:num_params]
 scan_tol=[1e-5, 1e-5, 1e-5, 1e-4, 1e-5, 1e-4, 1e-3]
 for i in 1:num_params
     @time intervals[i] = get_interval(
@@ -36,7 +36,7 @@ for i in 1:num_params
         loss_func,
         :CICO_ONE_PASS,
         loss_crit=α,
-        scale=[:log, :log, :log, :direct, :log, :log, :direct],
+        scale=[:log, :log, :log, :direct, :log, :direct, :direct],
         theta_bounds=tbounds,
         scan_bounds=sbounds[i],
         scan_tol=scan_tol[i],

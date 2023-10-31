@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -16,7 +16,7 @@ opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kw
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
 
 using Combinatorics
-bivariate_combinations = vcat(collect(combinations([1,4,5,7], 2)), [[2,3]])
+# bivariate_combinations = vcat(collect(combinations([1,4,5,7], 2)), [[2,3]])
 
 # getMLE_ellipse_approximation!(model)
 # inds = [3,6]; model.ellipse_MLE_approx.Hmle[inds, inds]
@@ -71,10 +71,11 @@ if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
     TO.disable_debug_timings(PlaceholderLikelihood)
 end
 
-if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD(), xtol_rel=1e-12))
+if true || !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:7), 
-                        θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, show_progress=true, distributed_over_parameters=false,
+                        # θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, 
+                        show_progress=true, distributed_over_parameters=false,
                         optimizationsettings=opt_settings)
     display(uni_coverage_df)
     CSV.write(joinpath(output_location, "univariate_parameter_coverage.csv"), uni_coverage_df)
@@ -82,51 +83,39 @@ end
 
 
 if !isfile(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"))
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD(), xtol_rel=1e-12))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 1000, θ_true, collect(1:7), 
-                        θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, show_progress=true, distributed_over_parameters=false,
+                        # θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, 
+                        show_progress=true, distributed_over_parameters=false,
                         optimizationsettings=opt_settings)
     display(uni_coverage_df)
     CSV.write(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"), uni_coverage_df)
 end
 
-# if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
+if !isfile(joinpath(output_location, "univariate_parameter_coverage_higher_threshold.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
+    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:7), 
+                        confidence_level=0.98,
+                        # θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, 
+                        show_progress=true, distributed_over_parameters=false,
+                        optimizationsettings=opt_settings)
+    display(uni_coverage_df)
+    CSV.write(joinpath(output_location, "univariate_parameter_coverage_higher_threshold.csv"), uni_coverage_df)
+end
 
-#     opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=120,))
-#     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
-
-#     n = 40
-#     additional_width = 0.2
-#     opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=5, xtol_rel=1e-12))
-#     univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
-#     univariate_confidenceintervals!(model, profile_type=LogLikelihood(), θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, use_distributed=false, num_points_in_interval=n,
-#         additional_width=additional_width)
-
-#     using Plots
-#     gr()
-#     format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
-#     plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
-
-#     for (i, plt) in enumerate(plts)
-#         if i < length(plts)
-#             plot!(plts[i], legend_position=nothing)
-#         end
-#         savefig(plts[i], joinpath(output_location, "uni_profile_" * string(i) * ".pdf"))
-#     end
-# end
-
-if !isfile(joinpath(output_location, "uni_profile_no_nuisance_1.pdf"))
+if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=120,))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=120, xtol_rel=1e-12))
-    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
     n = 40
     additional_width = 0.2
-    univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
-    univariate_confidenceintervals!(model, profile_type=LogLikelihood(), use_distributed=false, num_points_in_interval=n,
+    univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width, confidence_level=0.98)
+    univariate_confidenceintervals!(model, profile_type=LogLikelihood(),
+        confidence_level=0.98,
+        use_distributed=false, num_points_in_interval=n,
         additional_width=additional_width, optimizationsettings=opt_settings)
 
     using Plots
@@ -138,7 +127,7 @@ if !isfile(joinpath(output_location, "uni_profile_no_nuisance_1.pdf"))
         if i < length(plts)
             plot!(plts[i], legend_position=nothing)
         end
-        savefig(plts[i], joinpath(output_location, "uni_profile_no_nuisance_" * string(i) * ".pdf"))
+        savefig(plts[i], joinpath(output_location, "uni_profile_" * string(i) * ".pdf"))
     end
 end
 
@@ -148,8 +137,9 @@ if !isfile(joinpath(output_location, "biv_profile_1.pdf"))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-    bivariate_confidenceprofiles!(model, 100, method=AnalyticalEllipseMethod(0.0, 0.1))
-    bivariate_confidenceprofiles!(model, 40, method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), profile_type=LogLikelihood(),
+    bivariate_confidenceprofiles!(model, 100, method=AnalyticalEllipseMethod(0.0, 0.01), confidence_level=0.975)
+    bivariate_confidenceprofiles!(model, 100, method=RadialMLEMethod(0.15, 0.01), profile_type=LogLikelihood(),
+        confidence_level=0.975,
         # θlb_nuisance = lb_nuisance, θub_nuisance=ub_nuisance, 
         optimizationsettings=opt_settings)
 
@@ -235,7 +225,8 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
 
         opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
         biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 40, num_points, 2000, θ_true,
-            # collect(combinations(1:model.core.num_pars, 2))
+            collect(combinations(1:(model.core.num_pars-1), 2)),
+            confidence_level=0.975,
             bivariate_combinations; method=method, distributed_over_parameters=false, hullmethod=hullmethods, 
             coverage_estimate_quantile_level=0.9, θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, optimizationsettings=opt_settings)
 
@@ -265,17 +256,26 @@ end
 
 
 
-# bivariate_combinations = vcat(collect(combinations([1,4,5,7], 2)))
-# if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
-#     Random.seed!(1234)
-#     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-#     biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 10, 30, θ_true, bivariate_combinations,
-#         method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true), θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance,
-#         show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
-#     display(biv_coverage_df)
-#     CSV.write(joinpath(output_location, "bivariate_parameter_coverage.csv"), biv_coverage_df)
-# end
+bivariate_combinations = vcat(collect(combinations(1:7, 2)))
+if true || !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
+    Random.seed!(1234)
+
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
+    biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 10, 30, θ_true, 
+        bivariate_combinations,
+        # method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.01, use_ellipse=true),
+        method=RadialMLEMethod(0.15, 0.01),
+        confidence_level=0.975,
+        show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
+    display(biv_coverage_df)
+    CSV.write(joinpath(output_location, "bivariate_parameter_coverage.csv"), biv_coverage_df)
+end
 
 # data_generator(θ_true, training_gen_args).y_obs
 # data_generator(θ_true, training_gen_args).y_true
 # data.y_obs
+
+
+model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data_generator(θ_true, training_gen_args), θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);

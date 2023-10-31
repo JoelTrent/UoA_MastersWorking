@@ -51,7 +51,7 @@ end
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
     for i in eachindex(predictions)
-        dist = Binomial(100000, predictions[i] / 100.)
+        dist = LogitNormal(logit(predictions[i] / 100.), θ[7])
         lq[i] = quantile(dist, THalpha / 2.0) / 1000.
         uq[i] = quantile(dist, 1 - (THalpha / 2.0)) / 1000.
     end
@@ -71,6 +71,7 @@ end
     for i in eachindex(generator_args.y_true)
         y_obs[i] = rand(LogitNormal(logit(generator_args.y_true[i]/100.), θtrue[7]))
     end
+    y_obs .= y_obs .* 100
     if generator_args.is_test_set; return y_obs end
     data = (y_obs=y_obs, generator_args...)
     return data
@@ -90,7 +91,9 @@ function parameter_and_data_setup()
 
     # for the purposes of coverage testing (not actually known)
     # MLE values to 3 s.f.
-    θ_true = [0.00298, 0.000629, 0.00055, 78.7, 0.265, 1.0, 1.0]
+    # θ_true = [0.00298, 0.000629, 0.00055, 78.7, 0.265, 1.0, 1.0]
+    θ_true = [0.003, 0.0004, 0.0004, 80.0, 0.4, 1.2, 0.1]
+    # θmle = [0.00263, 0.00036, 0.000398, 81.3, 0.384, 1.19, 0.451]
     y_true = predictFunc(θ_true, data)
     training_gen_args = (y_true=y_true, t=t, is_test_set=false)
 
@@ -109,12 +112,12 @@ function parameter_and_data_setup()
     t_pred=LinRange(t[1], t[end], 400)
 
     # Bounds on model parameters 
-    lb = [0.0001, 0.0001, 0.0, 60.0, 0.01, 0.001, 0.0001]
-    ub = [0.01, 0.01, 0.01, 95.0, 1.0, 3.0, 5.0]
+    lb = [0.0005, 0.00001, 0.00001, 60.0, 0.01, 0.1, 0.01]
+    ub = [0.01, 0.005, 0.005, 98.0, 2.0, 3.0, 1.0]
     lb_nuisance = max.(lb, θ_true ./ 2.5)
     ub_nuisance = min.(ub, θ_true .* 2.5)
     
-    λ1g=0.002; λ2g=0.002; δg=0.0; KKg=80.0; C0g=[1.0, 1.0]; σg=1.0
+    λ1g=0.002; λ2g=0.002; δg=0.001; KKg=80.0; C0g=[1.0, 1.0]; σg=0.5
     θG = [λ1g, λ2g, δg, KKg, C0g[1], C0g[2], σg]
     
     θnames = [:λ1, :λ2, :δ, :K, :C01, :C02, :σ]
