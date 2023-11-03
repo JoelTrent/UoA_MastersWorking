@@ -97,8 +97,8 @@ function parameter_and_data_setup()
     y_true = predictFunc(θ_true, data)
     training_gen_args = (y_true=y_true, t=t, is_test_set=false)
 
-    t_more = LinRange(t[1], t[end], length(t)*2)
-    n=2
+    # t_more = LinRange(t[1], t[end], length(t)*2)
+    n=10
     t_more = zeros(length(t)*(n+1) - n)
     t_more[1:(n+1):end] .= t
     for i in 1:(n+1):length(t_more)-n, j=i+(n+1)

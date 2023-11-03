@@ -26,7 +26,7 @@ if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
 
     function record_CI_LL_evaluations!(timer_df, N)
         Random.seed!(1234)
-        training_data = [data]#[data_generator(θ_true, training_gen_args) for _ in 1:N]
+        training_data = [data_generator(θ_true, training_gen_args) for _ in 1:N]
         total_opt_calls=zeros(Int, model.core.num_pars)
         total_ll_calls=zeros(Int, model.core.num_pars)
 
@@ -64,14 +64,14 @@ if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
     TO.enable_debug_timings(PlaceholderLikelihood)
     TO.reset_timer!(PlaceholderLikelihood.timer)
 
-    record_CI_LL_evaluations!(timer_df, 1)
+    record_CI_LL_evaluations!(timer_df, 100)
 
     CSV.write(joinpath(output_location, "confidence_interval_ll_calls.csv"), timer_df)
 
     TO.disable_debug_timings(PlaceholderLikelihood)
 end
 
-if true || !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
+if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:7), 
                         # θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, 
@@ -82,26 +82,35 @@ if true || !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"
 end
 
 
-if !isfile(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"))
+# if !isfile(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"))
+#     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
+#     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 1000, θ_true, collect(1:7), 
+#                         # θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, 
+#                         show_progress=true, distributed_over_parameters=false,
+#                         optimizationsettings=opt_settings)
+#     display(uni_coverage_df)
+#     CSV.write(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"), uni_coverage_df)
+# end
+
+if !isfile(joinpath(output_location, "univariate_parameter_coverage_significantly_more_data.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 1000, θ_true, collect(1:7), 
-                        # θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, 
-                        show_progress=true, distributed_over_parameters=false,
-                        optimizationsettings=opt_settings)
+    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 1000, θ_true, collect(1:7),
+        show_progress=true, distributed_over_parameters=false,
+        optimizationsettings=opt_settings)
     display(uni_coverage_df)
-    CSV.write(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"), uni_coverage_df)
+    CSV.write(joinpath(output_location, "univariate_parameter_coverage_significantly_more_data.csv"), uni_coverage_df)
 end
 
-if !isfile(joinpath(output_location, "univariate_parameter_coverage_higher_threshold.csv"))
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-    uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:7), 
-                        confidence_level=0.98,
-                        # θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, 
-                        show_progress=true, distributed_over_parameters=false,
-                        optimizationsettings=opt_settings)
-    display(uni_coverage_df)
-    CSV.write(joinpath(output_location, "univariate_parameter_coverage_higher_threshold.csv"), uni_coverage_df)
-end
+# if !isfile(joinpath(output_location, "univariate_parameter_coverage_higher_threshold.csv"))
+#     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
+#     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:7), 
+#                         confidence_level=0.98,
+#                         # θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, 
+#                         show_progress=true, distributed_over_parameters=false,
+#                         optimizationsettings=opt_settings)
+#     display(uni_coverage_df)
+#     CSV.write(joinpath(output_location, "univariate_parameter_coverage_higher_threshold.csv"), uni_coverage_df)
+# end
 
 if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
 
@@ -112,9 +121,8 @@ if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
 
     n = 40
     additional_width = 0.2
-    univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width, confidence_level=0.98)
+    univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical(), num_points_in_interval=n, additional_width=additional_width)
     univariate_confidenceintervals!(model, profile_type=LogLikelihood(),
-        confidence_level=0.98,
         use_distributed=false, num_points_in_interval=n,
         additional_width=additional_width, optimizationsettings=opt_settings)
 
@@ -137,10 +145,8 @@ if !isfile(joinpath(output_location, "biv_profile_1.pdf"))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-    bivariate_confidenceprofiles!(model, 100, method=AnalyticalEllipseMethod(0.0, 0.01), confidence_level=0.975)
+    bivariate_confidenceprofiles!(model, 100, method=AnalyticalEllipseMethod(0.0, 0.01))
     bivariate_confidenceprofiles!(model, 100, method=RadialMLEMethod(0.15, 0.01), profile_type=LogLikelihood(),
-        confidence_level=0.975,
-        # θlb_nuisance = lb_nuisance, θub_nuisance=ub_nuisance, 
         optimizationsettings=opt_settings)
 
     using Plots
@@ -263,7 +269,7 @@ if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
     # model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-    biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 100, 30, θ_true, 
+    biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 1000, 30, θ_true, 
         bivariate_combinations,
         # method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.01, use_ellipse=true),
         method=RadialMLEMethod(0.15, 0.01),

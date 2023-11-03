@@ -12,7 +12,7 @@ include(joinpath("Models", "logistic_twospecies.jl"))
 output_location = joinpath("Experiments", "Outputs", "logistic_twospecies");
 
 # do experiments
-opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD()))
+opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20, ))
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
 
 using Combinatorics
@@ -90,8 +90,8 @@ if true || !isfile(joinpath(output_location, "univariate_parameter_coverage_8par
     CSV.write(joinpath(output_location, "univariate_parameter_coverage_8pars.csv"), uni_coverage_df)
 end
 
-if !isfile(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"))
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, local_method=NLopt.LN_NELDERMEAD(), xtol_rel=1e-12))
+if true || !isfile(joinpath(output_location, "univariate_parameter_coverage_more_data.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 1000, θ_true, collect(1:7), 
                         θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, show_progress=true, distributed_over_parameters=false,
                         optimizationsettings=opt_settings)
@@ -321,6 +321,24 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
     end
 end
 
+
+
+bivariate_combinations = vcat(collect(combinations(1:7, 2)))
+if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
+    Random.seed!(1234)
+
+    # model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
+    biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 10, 30, θ_true,
+        bivariate_combinations,
+        # method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.01, use_ellipse=true),
+        method=RadialMLEMethod(0.15, 0.01),
+        confidence_level=0.95,
+        show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
+    display(biv_coverage_df)
+    # CSV.write(joinpath(output_location, "bivariate_parameter_coverage.csv"), biv_coverage_df)
+end
 
 
 # bivariate_combinations = vcat(collect(combinations([1,4,5,7], 2)))
