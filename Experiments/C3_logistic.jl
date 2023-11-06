@@ -215,6 +215,41 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         CSV.write(joinpath(output_location, "confidence_interval_ll_calls_lower_and_upper.csv"), timer_df)
         TO.disable_debug_timings(PlaceholderLikelihood)
     end
+
+    if !isfile(joinpath(output_location, "confidence_interval_ll_calls_ellipseapprox_start.csv"))
+
+        function record_CI_LL_evaluations!(timer_df)
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+            model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+            univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
+
+            TO.reset_timer!(PlaceholderLikelihood.timer)
+            for i in 1:model.core.num_pars
+                univariate_confidenceintervals!(model, [i], use_ellipse_approx_analytical_start=true, existing_profiles=:overwrite)
+
+                timer_df[i, :] .= i, TO.ncalls(
+                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
+                TO.ncalls(
+                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+
+                TO.reset_timer!(PlaceholderLikelihood.timer)
+            end
+            return nothing
+        end
+
+        len = model.core.num_pars 
+        timer_df = DataFrame(parameter=zeros(Int, len),
+            optimisation_calls=zeros(Int, len),
+            likelihood_calls=zeros(Int, len))
+
+        TO.enable_debug_timings(PlaceholderLikelihood)
+        TO.reset_timer!(PlaceholderLikelihood.timer)
+
+        record_CI_LL_evaluations!(timer_df)
+
+        CSV.write(joinpath(output_location, "confidence_interval_ll_calls_ellipseapprox_start.csv"), timer_df)
+        TO.disable_debug_timings(PlaceholderLikelihood)
+    end
     
     if !isfile(joinpath(output_location, "confidence_interval_ll_calls_mean.csv"))
 
@@ -268,6 +303,63 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
         record_CI_LL_evaluations!(timer_df, 100)
 
         CSV.write(joinpath(output_location, "confidence_interval_ll_calls_mean.csv"), timer_df)
+
+        TO.disable_debug_timings(PlaceholderLikelihood)
+    end
+
+    if !isfile(joinpath(output_location, "confidence_interval_ll_calls_mean_ellipseapprox_start.csv"))
+
+        function record_CI_LL_evaluations!(timer_df, N)
+            Random.seed!(1234)
+            training_data = [data_generator(θ_true, training_gen_args) for _ in 1:N]
+            total_opt_calls = zeros(Int, model.core.num_pars)
+            total_ll_calls = zeros(Int, model.core.num_pars)
+
+            function loglhood_new(Θ, data)
+                return loglhood([exp(Θ[1]), Θ[2], Θ[3]], data)
+            end
+            θG_new, lb_new, ub_new = θG .* 1.0, lb .* 1.0, ub .* 1.0
+            θG_new[1], lb_new[1], ub_new[1] = log(θG_new[1]), log(lb_new[1] + 0.0001), log(ub_new[1])
+
+            for j in 1:N
+                opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+                # model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, training_data[j], θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+                model = initialise_LikelihoodModel(loglhood_new, predictFunc, errorFunc, training_data[j], θnames, θG_new, lb_new, ub_new, par_magnitudes, optimizationsettings=opt_settings)
+
+                opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+                for i in 1:model.core.num_pars
+                    univariate_confidenceintervals!(model, [i], profile_type=EllipseApproxAnalytical(), existing_profiles=:overwrite)
+
+                    TO.reset_timer!(PlaceholderLikelihood.timer)
+                    univariate_confidenceintervals!(model, [i], use_ellipse_approx_analytical_start=true, existing_profiles=:overwrite, optimizationsettings=opt_settings)
+
+                    total_opt_calls[i] += TO.ncalls(
+                        PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"])
+
+                    total_ll_calls[i] += TO.ncalls(
+                        PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+
+                    TO.reset_timer!(PlaceholderLikelihood.timer)
+                end
+            end
+
+            timer_df[:, 1] .= 1:model.core.num_pars
+            timer_df[:, 2] .= total_opt_calls ./ N
+            timer_df[:, 3] .= total_ll_calls ./ N
+            return nothing
+        end
+
+        len = model.core.num_pars
+        timer_df = DataFrame(parameter=zeros(Int, len),
+            mean_optimisation_calls=zeros(len),
+            mean_likelihood_calls=zeros(len))
+
+        TO.enable_debug_timings(PlaceholderLikelihood)
+        TO.reset_timer!(PlaceholderLikelihood.timer)
+
+        record_CI_LL_evaluations!(timer_df, 100)
+
+        CSV.write(joinpath(output_location, "confidence_interval_ll_calls_mean_ellipseapprox_start.csv"), timer_df)
 
         TO.disable_debug_timings(PlaceholderLikelihood)
     end
