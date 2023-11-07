@@ -1,0 +1,121 @@
+iter,θindices,method,num_points,optimisation_calls,likelihood_calls
+1,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",10,89,8598
+1,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",10,100,8752
+1,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",10,98,9312
+2,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",29,216,21323
+2,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",28,219,19642
+2,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",30,225,21714
+3,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",49,344,34802
+3,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",46,330,29799
+3,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",50,354,34282
+4,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",67,457,47272
+4,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",65,451,41066
+4,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",70,469,44820
+5,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",86,574,59893
+5,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",83,566,51462
+5,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",90,588,57122
+6,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",106,592,61571
+6,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",103,584,53069
+6,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",110,604,58731
+7,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",126,611,63855
+7,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",123,609,55715
+7,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",130,628,61007
+8,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",146,633,65769
+8,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",143,629,57344
+8,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",150,646,62735
+9,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",166,653,67641
+9,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",163,644,58816
+9,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",170,666,64886
+10,"[1, 2]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",186,673,69366
+10,"[1, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",183,660,60153
+10,"[2, 3]","IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, true)",190,684,65783
+11,"[1, 2]",Latin Hypercube,4,100,11665
+11,"[1, 3]",Latin Hypercube,3,100,9251
+11,"[2, 3]",Latin Hypercube,9,100,9986
+12,"[1, 2]",Latin Hypercube,8,200,23350
+12,"[1, 3]",Latin Hypercube,15,200,18302
+12,"[2, 3]",Latin Hypercube,18,200,19073
+13,"[1, 2]",Latin Hypercube,13,300,35470
+13,"[1, 3]",Latin Hypercube,10,300,26974
+13,"[2, 3]",Latin Hypercube,24,300,29175
+14,"[1, 2]",Latin Hypercube,25,400,46999
+14,"[1, 3]",Latin Hypercube,19,400,36664
+14,"[2, 3]",Latin Hypercube,34,400,39290
+15,"[1, 2]",Latin Hypercube,29,500,58465
+15,"[1, 3]",Latin Hypercube,22,500,45950
+15,"[2, 3]",Latin Hypercube,43,500,48782
+16,"[1, 2]",Latin Hypercube,32,600,70368
+16,"[1, 3]",Latin Hypercube,30,600,55348
+16,"[2, 3]",Latin Hypercube,49,600,57404
+17,"[1, 2]",Latin Hypercube,35,700,83150
+17,"[1, 3]",Latin Hypercube,26,700,64402
+17,"[2, 3]",Latin Hypercube,59,700,67175
+18,"[1, 2]",Latin Hypercube,41,800,93903
+18,"[1, 3]",Latin Hypercube,29,800,73089
+18,"[2, 3]",Latin Hypercube,70,800,76572
+19,"[1, 2]",Latin Hypercube,53,900,104867
+19,"[1, 3]",Latin Hypercube,40,900,81779
+19,"[2, 3]",Latin Hypercube,82,900,87831
+20,"[1, 2]",Latin Hypercube,62,1000,116265
+20,"[1, 3]",Latin Hypercube,49,1000,91674
+20,"[2, 3]",Latin Hypercube,86,1000,94832
+21,"[1, 2]",Latin Hypercube,60,1100,130137
+21,"[1, 3]",Latin Hypercube,41,1100,100297
+21,"[2, 3]",Latin Hypercube,96,1100,105499
+22,"[1, 2]",Latin Hypercube,76,1200,139904
+22,"[1, 3]",Latin Hypercube,44,1200,110589
+22,"[2, 3]",Latin Hypercube,96,1200,115073
+23,"[1, 2]",Latin Hypercube,78,1300,151547
+23,"[1, 3]",Latin Hypercube,55,1300,119706
+23,"[2, 3]",Latin Hypercube,104,1300,124891
+24,"[1, 2]",Latin Hypercube,68,1400,163592
+24,"[1, 3]",Latin Hypercube,64,1400,128472
+24,"[2, 3]",Latin Hypercube,111,1400,135230
+25,"[1, 2]",Latin Hypercube,90,1500,174949
+25,"[1, 3]",Latin Hypercube,56,1500,138447
+25,"[2, 3]",Latin Hypercube,141,1500,145280
+26,"[1, 2]",Latin Hypercube,90,1600,186141
+26,"[1, 3]",Latin Hypercube,55,1600,147353
+26,"[2, 3]",Latin Hypercube,144,1600,154690
+27,"[1, 2]",Latin Hypercube,84,1700,199191
+27,"[1, 3]",Latin Hypercube,68,1700,154968
+27,"[2, 3]",Latin Hypercube,139,1700,163400
+28,"[1, 2]",Latin Hypercube,96,1800,210396
+28,"[1, 3]",Latin Hypercube,71,1800,165948
+28,"[2, 3]",Latin Hypercube,160,1800,170772
+29,"[1, 2]",Latin Hypercube,102,1900,222280
+29,"[1, 3]",Latin Hypercube,86,1900,175590
+29,"[2, 3]",Latin Hypercube,167,1900,183223
+30,"[1, 2]",Latin Hypercube,123,2000,233296
+30,"[1, 3]",Latin Hypercube,89,2000,182888
+30,"[2, 3]",Latin Hypercube,173,2000,192654
+31,"[1, 2]",Latin Hypercube,110,2100,245433
+31,"[1, 3]",Latin Hypercube,97,2100,195399
+31,"[2, 3]",Latin Hypercube,174,2100,202726
+32,"[1, 2]",Latin Hypercube,102,2200,257334
+32,"[1, 3]",Latin Hypercube,106,2200,204211
+32,"[2, 3]",Latin Hypercube,190,2200,212678
+33,"[1, 2]",Latin Hypercube,122,2300,269224
+33,"[1, 3]",Latin Hypercube,91,2300,210455
+33,"[2, 3]",Latin Hypercube,201,2300,221019
+34,"[1, 2]",Latin Hypercube,124,2400,279216
+34,"[1, 3]",Latin Hypercube,104,2400,219906
+34,"[2, 3]",Latin Hypercube,206,2400,229547
+35,"[1, 2]",Latin Hypercube,134,2500,290309
+35,"[1, 3]",Latin Hypercube,116,2500,230764
+35,"[2, 3]",Latin Hypercube,211,2500,240486
+36,"[1, 2]",Latin Hypercube,133,2600,302511
+36,"[1, 3]",Latin Hypercube,106,2600,238591
+36,"[2, 3]",Latin Hypercube,222,2600,249716
+37,"[1, 2]",Latin Hypercube,145,2700,316623
+37,"[1, 3]",Latin Hypercube,107,2700,247934
+37,"[2, 3]",Latin Hypercube,238,2700,258205
+38,"[1, 2]",Latin Hypercube,155,2800,329416
+38,"[1, 3]",Latin Hypercube,119,2800,255217
+38,"[2, 3]",Latin Hypercube,242,2800,269877
+39,"[1, 2]",Latin Hypercube,175,2900,339217
+39,"[1, 3]",Latin Hypercube,119,2900,267882
+39,"[2, 3]",Latin Hypercube,272,2900,277559
+40,"[1, 2]",Latin Hypercube,181,3000,350755
+40,"[1, 3]",Latin Hypercube,142,3000,277835
+40,"[2, 3]",Latin Hypercube,263,3000,285931
