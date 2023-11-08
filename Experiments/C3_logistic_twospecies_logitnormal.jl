@@ -8,8 +8,8 @@ using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Random, Distributions, DifferentialEquations
 @everywhere using PlaceholderLikelihood
 
-@everywhere using Logging
-@everywhere Logging.disable_logging(Logging.Warn) # Disable debug, info and warn
+# @everywhere using Logging
+# @everywhere Logging.disable_logging(Logging.Warn) # Disable debug, info and warn
 
 include(joinpath("Models", "logistic_twospecies_logitnormal.jl"))
 output_location = joinpath("Experiments", "Outputs", "logistic_twospecies_logitnormal");
@@ -284,7 +284,7 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
         model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample, ub_sample, par_magnitudes, optimizationsettings=opt_settings)
 
         opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-        biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 20, num_points, 2400, θ_true,
+        biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 20, num_points, 2000, θ_true,
             collect(combinations(1:model.core.num_pars, 2));
             confidence_level=0.95,
             method=method, distributed_over_parameters=false, hullmethod=hullmethods, 
@@ -319,7 +319,7 @@ bivariate_combinations = vcat(collect(combinations(1:7, 2)))
 if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
     Random.seed!(1234)
 
-    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample, ub_sample, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
     biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 1000, 30, θ_true, 
@@ -330,4 +330,21 @@ if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
         show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
     display(biv_coverage_df)
     CSV.write(joinpath(output_location, "bivariate_parameter_coverage.csv"), biv_coverage_df)
+end
+
+bivariate_combinations = vcat(collect(combinations(1:7, 2)))
+if !isfile(joinpath(output_location, "bivariate_parameter_coverage_significantly_more_data.csv"))
+    Random.seed!(1234)
+
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample, ub_sample, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
+    biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args_more_data, model, 1000, 30, θ_true,
+        bivariate_combinations,
+        # method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.01, use_ellipse=true),
+        method=RadialMLEMethod(0.15, 0.01),
+        confidence_level=0.95,
+        show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
+    display(biv_coverage_df)
+    CSV.write(joinpath(output_location, "bivariate_parameter_coverage_significantly_more_data.csv"), biv_coverage_df)
 end
