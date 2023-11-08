@@ -284,7 +284,7 @@ if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
         model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample, ub_sample, par_magnitudes, optimizationsettings=opt_settings)
 
         opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
-        biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 20, num_points, 2000, θ_true,
+        biv_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 100, num_points, 2000, θ_true,
             collect(combinations(1:model.core.num_pars, 2));
             confidence_level=0.95,
             method=method, distributed_over_parameters=false, hullmethod=hullmethods, 
