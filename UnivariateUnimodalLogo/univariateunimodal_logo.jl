@@ -7,18 +7,18 @@ function logo(name::String, grey_outlines::Bool)
     origin()
 
     colors = (Luxor.julia_green, Luxor.julia_red, Luxor.julia_purple, Luxor.julia_blue)
-    grey = "grey90"
+    grey = "grey95"
 
     # x_radius, y_radius = 275.0, 275/2
     # cx, cy = 0.0, 0.0
     # N=7
     N=5000
     xmap(x) = (x * 500) - 250
-    ymap(y) = -1 * ((y*490)-245)
+    ymap(y) = -1 * ((y*490)-250)
         
     
     d = Beta(2.5, 5.0)
-    interval = xmap.(univariate_unimodal_HDR(d, 0.9))
+    interval = round.(Int, xmap.(univariate_unimodal_HDR(d, 0.9)))
     
     x = LinRange(0, 1, N)
     y = pdf.(d, x)
@@ -27,74 +27,68 @@ function logo(name::String, grey_outlines::Bool)
 
     points = [Point(x[i], y[i]) for i in 1:N]
 
-    setline(10)
-    setcolor(colors[1])
-    poly(points, action=:stroke)
+    println(interval)
 
+    setline(16)
 
-    setcolor(colors[2])
-    for i in 1:2
-        poly([Point(interval[i], 0), Point(interval[i], 250)], action=:stroke)
-    end
-
-
-    # points = generate_N_equally_spaced_points(N, construct_ellipse(x_radius, y_radius, deg2rad(45)); start_point_shift=0.5)
-
-    # colors = colors[[1,3,2,4]]
-    # points=points[:, [5,6,7,1,2,3,4]]
-
-    # if grey_outlines
-    #     gsave()
-    #     rotate(deg2rad(45))
-    #     setcolor(grey)
-    #     setline(18)
-    #     ellipse(cx, cy, x_radius*2, y_radius*2, action=:stroke)
-    #     grestore()
-
-    #     for i in 1:N
-    #         ind2 = i==N ? 1 : i+1
-
-    #         setline(10)
-    #         setcolor(grey)
-    #         poly([Point(points[:,i]...), Point(cx,cy)], action=:stroke)
-    #     end
-    # end
-
-    # for i in 1:N
-    #     ind2 = i==N ? 1 : i+1
-    #     gsave()
-
-    #     line_point = perpendicular(Point(points[:,i]...),  Point(points[:,ind2]...), Point(cx, cy))
-    #     reflection = line_point + (line_point - Point(cx,cy))
-    #     poly([Point(points[:,i]...) + 0.5*(Point(points[:,i]...) - Point(cx,cy)), reflection, Point(points[:,ind2]...) + 0.5*(Point(points[:,ind2]...) - Point(cx,cy)), Point(cx, cy)], action=:clip)
-
-    #     rotate(deg2rad(45))
-    #     setcolor(colors[mod1(ind2, end)])
-    #     setline(16)
-    #     ellipse(cx, cy, x_radius*2, y_radius*2, action=:stroke)
-    #     clipreset()
-    #     grestore()
-
-    #     setline(8)
-    #     setcolor(colors[mod1(i, end)])
-    #     poly([Point(points[:,i]...), Point(cx,cy)], action=:stroke)
-    # end
-
-    # if grey_outlines
-    #     setcolor(grey)
-    #     circle(O, 22, action=:fill)
-    #     for i in 1:N
-    #         setcolor(grey)
-    #         circle.(Point(points[:,i]...), 34, action = :fill)
-    #     end
-    # end
-
+    poly([Point(interval[1], -250), Point(interval[2], -250), Point(interval[2], 250), Point(interval[1], 250)], action=:clip)
     # setcolor(colors[1])
-    # circle(O, 20, action=:fill)
-    # for i in 1:N
-    #     setcolor(colors[mod1(i, end)])
-    #     circle.(Point(points[:,i]...), 32, action = :fill)
+    blend_interval = blend(Point(interval[1]+50, 150), Point(interval[2]-50, -0), colors[3], colors[1])
+    setblend(blend_interval)
+    # poly(points[[1,end]], action=:stroke)
+    poly(points[[collect(1:end)..., 1]], action=:fill)
+    clipreset()
+
+
+    # gsave()
+    # poly([Point(interval[1], -250), Point(interval[2], -250), Point(interval[2], 250), Point(interval[1], 250)], action=:clip)
+    # # poly(points[[1,end]], action=:stroke)
+    # poly(points[[collect(1:end)..., 1]], action=:clip)
+    
+    # rotate(deg2rad(45))
+    # # (interval[2] - interval[1]) / -2
+
+    # sethue(colors[4])
+    # for i in 0:100:500
+    #     # rect(Point(-250, 240-i), 470, 25, action=:fill)
     # end
+
+    # grestore()
+    # clipreset()
+
+
+    blend_outer_left = blend(Point(interval[1]-10, 240), Point(-240, 224), colors[4], colors[2])
+    # setblend(blend_outer_left)
+    
+    setcolor(colors[2])
+    poly([Point(interval[1]+1, -250), Point(-250, -250), Point(-250, 250), Point(interval[1]+1, 250)], action=:clip)
+    poly(points[[collect(1:end)..., 1]], action=:fill)
+    clipreset()
+
+    blend_outer_right = blend(Point(interval[2] + 10, 240), Point(83, 200), colors[4], colors[2])
+    # setblend(blend_outer_right)
+
+    poly([Point(interval[2]-1, -250), Point(250, -250), Point(250, 250), Point(interval[2]-1, 250)], action=:clip)
+    poly(points[[collect(1:end)..., 1]], action=:fill)
+    clipreset()
+
+
+    poly(points, action=:clip)
+    setcolor(grey)
+    # setcolor(colors[2])
+    for i in 1:2
+        poly([Point(interval[i], 0), Point(interval[i], 250.1)], action=:stroke)
+    end
+    clipreset()
+
+
+    setcolor(colors[3])
+    setcolor(grey)
+    poly(points, action=:stroke)
+    # setline(16)
+    # setcolor(grey)
+    # poly(points, action=:stroke)
+
 
     finish()
     return preview()
