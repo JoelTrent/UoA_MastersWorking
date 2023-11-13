@@ -47,16 +47,23 @@ end
 end
 
 @everywhere function errorFunc(predictions, θ, cl)
-    THalpha = 1.0 - cl
-    lq, uq = zeros(size(predictions)), zeros(size(predictions))
-
-    for i in eachindex(predictions)
-        dist = LogitNormal(logit(predictions[i] / 100.), θ[7])
-        lq[i] = quantile(dist, THalpha / 2.0) / 1000.
-        uq[i] = quantile(dist, 1 - (THalpha / 2.0)) / 1000.
-    end
+    lq, uq = logitnormal_error_σ_estimated(predictions ./ 100, θ, cl, 7)
+    lq .= lq .* 100
+    uq .= uq .* 100
     return lq, uq
 end
+
+# @everywhere function errorFunc(predictions, θ, cl)
+#     THalpha = 1.0 - cl
+#     lq, uq = zeros(size(predictions)), zeros(size(predictions))
+
+#     for i in eachindex(predictions)
+#         dist = LogitNormal(logit(predictions[i] / 100.), θ[7])
+#         lq[i] = quantile(dist, THalpha / 2.0) * 100.
+#         uq[i] = quantile(dist, 1 - (THalpha / 2.0)) * 100.
+#     end
+#     return lq, uq
+# end
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
 # @everywhere function data_generator(θtrue, generator_args::NamedTuple)
@@ -109,7 +116,7 @@ function parameter_and_data_setup()
     training_gen_args_more_data = (y_true=y_true_more, t=t_more, is_test_set=false)
     testing_gen_args = (y_true=y_true, t=t, is_test_set=true)
 
-    t_pred=LinRange(t[1], t[end], 400)
+    t_pred=LinRange(t[1], t[end], 201)
 
     # Bounds on model parameters 
     lb = [0.0005, 0.00001, 0.00001, 60.0, 0.01, 0.1, 0.01]

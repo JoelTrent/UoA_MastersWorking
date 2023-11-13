@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -280,7 +280,7 @@ end
 if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
 
-    num_points_iter = [50000, 250000, 500000]#, 1000000]
+    num_points_iter = [10000, 50000, 250000, 500000]#, 1000000]
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
@@ -385,34 +385,34 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
     end
 end
 
-if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.csv"))
-    using Combinatorics
-    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+# if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.csv"))
+#     using Combinatorics
+#     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:40)
-    coverage_df = DataFrame()
+#     num_points_iter = collect(0:40:40)
+#     coverage_df = DataFrame()
 
-    equiv_simul_conf_level = 0.99129
+#     equiv_simul_conf_level = 0.99129
 
-    for num_points in num_points_iter
-        Random.seed!(1234)
-        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1,4],[2,3],[2,4]],
-            method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
-            num_internal_points=num_points,
-            show_progress=true, distributed_over_parameters=false,
-            confidence_level=equiv_simul_conf_level,
-            optimizationsettings=opt_settings)
+#     for num_points in num_points_iter
+#         Random.seed!(1234)
+#         new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1,4],[2,3],[2,4]],
+#             method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
+#             num_internal_points=num_points,
+#             show_progress=true, distributed_over_parameters=false,
+#             confidence_level=equiv_simul_conf_level,
+#             optimizationsettings=opt_settings)
 
-        new_df.num_points .= num_points
-        global coverage_df = vcat(coverage_df, new_df)
-        CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.csv"), coverage_df)
-        Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.arrow"), coverage_df)
-    end
-end
+#         new_df.num_points .= num_points
+#         global coverage_df = vcat(coverage_df, new_df)
+#         CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.csv"), coverage_df)
+#         Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.arrow"), coverage_df)
+#     end
+# end
 
 if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
 
-    num_points_iter = [50000, 250000, 500000]
+    num_points_iter = [10000, 50000, 250000, 500000]
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
@@ -449,6 +449,28 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage.csv"))
     end
 end
 
+if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+    num_points_iter = collect(0:40:120)
+    coverage_df = DataFrame()    
+    equiv_simul_conf_level = 0.99793
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_univariate_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred,
+            model, 1000, θ_true, collect(1:model.core.num_pars),
+            show_progress=true, num_points_in_interval=num_points, distributed_over_parameters=false,
+            confidence_level=equiv_simul_conf_level,
+            optimizationsettings=opt_settings)
+
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold.arrow"), coverage_df)
+    end
+end
+
 if !isfile(joinpath(output_location, "bivariate_realisation_coverage.csv"))
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
@@ -472,25 +494,27 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage.csv"))
     end
 end
 
-if !isfile(joinpath(output_location, "bivariate_realisation_coverage_two_combinations.csv"))
+if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold.csv"))
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:40)
+    num_points_iter = collect(0:40:80)
     coverage_df = DataFrame()
+    equiv_simul_conf_level = 0.99129
 
     for num_points in num_points_iter
         Random.seed!(1234)
-        new_df = check_bivariate_prediction_realisations_coverage(data_generator, reference_set_generator, 
-            training_gen_args, testing_gen_args, t_pred, model, 1000, 30, θ_true, [[1,4],[2,3], [2,4]],
+        new_df = check_bivariate_prediction_realisations_coverage(data_generator, reference_set_generator,
+            training_gen_args, testing_gen_args, t_pred, model, 1000, 30, θ_true, collect(combinations(1:model.core.num_pars, 2)),
             method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
             num_internal_points=num_points,
             show_progress=true, distributed_over_parameters=false,
+            confidence_level=equiv_simul_conf_level,
             optimizationsettings=opt_settings)
 
         new_df.num_points .= num_points
         global coverage_df = vcat(coverage_df, new_df)
-        CSV.write(joinpath(output_location, "bivariate_realisation_coverage_two_combinations.csv"), coverage_df)
-        Arrow.write(joinpath(output_location, "bivariate_realisation_coverage_two_combinations.arrow"), coverage_df)
+        CSV.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold.arrow"), coverage_df)
     end
 end
