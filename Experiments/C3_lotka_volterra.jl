@@ -321,7 +321,7 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneou
     num_points_iter = collect(0:40:80)
     coverage_df = DataFrame()
 
-    equiv_simul_conf_level = 0.99793
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
     # PlaceholderLikelihood.get_target_loglikelihood(model, 0.95, LogLikelihood(), model.core.num_pars) ≈ 
     # PlaceholderLikelihood.get_target_loglikelihood(model, equiv_simul_conf_level, LogLikelihood(), 1)
 
@@ -367,7 +367,7 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
     num_points_iter = collect(0:40:40)
     coverage_df = DataFrame()
 
-    equiv_simul_conf_level = 0.99129
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
 
     for num_points in num_points_iter
         Random.seed!(1234)
@@ -454,7 +454,7 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneo
 
     num_points_iter = collect(0:40:120)
     coverage_df = DataFrame()    
-    equiv_simul_conf_level = 0.99793
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
 
     for num_points in num_points_iter
         Random.seed!(1234)
@@ -500,7 +500,7 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneou
 
     num_points_iter = collect(0:40:80)
     coverage_df = DataFrame()
-    equiv_simul_conf_level = 0.99129
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
 
     for num_points in num_points_iter
         Random.seed!(1234)
