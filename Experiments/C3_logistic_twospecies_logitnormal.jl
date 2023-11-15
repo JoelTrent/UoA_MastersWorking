@@ -447,6 +447,9 @@ if isfile(joinpath(output_location, "full_sampling_prediction_coverage_significa
 end
 
 if !isfile(joinpath(output_location, "univariate_prediction_coverage.csv"))
+    opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
     num_points_iter = collect(0:40:120)
@@ -466,6 +469,10 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage.csv"))
 end
 
 if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneous_threshold.csv"))
+
+    opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
     num_points_iter = collect(0:40:80)
@@ -490,6 +497,9 @@ end
 
 if !isfile(joinpath(output_location, "bivariate_prediction_coverage.csv"))
     using Combinatorics
+    opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
     num_points_iter = collect(0:40:80)
@@ -512,6 +522,10 @@ end
 
 if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.csv"))
     using Combinatorics
+
+    opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
     num_points_iter = collect(0:40:40)
