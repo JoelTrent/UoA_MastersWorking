@@ -275,7 +275,7 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
     TO.disable_debug_timings(PlaceholderLikelihood)
 end
 
-if isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
+if !isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
 
     function record_CI_LL_evaluations!(timer_df, N)
         Random.seed!(1234)
@@ -320,7 +320,7 @@ if isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
     TO.enable_debug_timings(PlaceholderLikelihood)
     TO.reset_timer!(PlaceholderLikelihood.timer)
 
-    record_CI_LL_evaluations!(timer_df, 10)
+    record_CI_LL_evaluations!(timer_df, 100)
 
     CSV.write(joinpath(output_location, "confidence_boundary_ll_calls.csv"), timer_df)
 
@@ -411,14 +411,38 @@ if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
 
     for num_points in num_points_iter
         Random.seed!(1234)
-        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 100, num_points, θ_true, [collect(1:model.core.num_pars)],
-            show_progress=true, distributed_over_parameters=false)
+        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 200, num_points, θ_true, [collect(1:model.core.num_pars)],
+            show_progress=true, distributed_over_parameters=true, use_threads=true)
 
         new_df = filter(:θname => !=(""), new_df)
         new_df.num_points .= num_points
         global coverage_df = vcat(coverage_df, new_df)
         CSV.write(joinpath(output_location, "full_sampling_prediction_coverage.csv"), coverage_df)
         Arrow.write(joinpath(output_location, "full_sampling_prediction_coverage.arrow"), coverage_df)
+        GC.gc()
+    end
+end
+
+if isfile(joinpath(output_location, "full_sampling_prediction_coverage_significantly_more_data.csv"))
+
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample_more_data, ub_sample_more_data, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
+
+    num_points_iter = [500000, 1000000, 2000000]
+    coverage_df = DataFrame()
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args_more_data, t_pred, model, 200, num_points, θ_true, [collect(1:model.core.num_pars)],
+            show_progress=true, distributed_over_parameters=true, use_threads=true)
+
+        new_df = filter(:θname => !=(""), new_df)
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "full_sampling_prediction_coverage_significantly_more_data.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "full_sampling_prediction_coverage_significantly_more_data.arrow"), coverage_df)
+        GC.gc()
     end
 end
 

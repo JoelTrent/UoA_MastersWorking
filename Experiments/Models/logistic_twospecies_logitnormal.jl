@@ -127,7 +127,10 @@ function parameter_and_data_setup()
     # lb_sample = [0.0022, 0.0002, 0.0002, 76.0, 0.25, 0.7, 0.05]
     lb_sample = [0.0022, 0.00001, 0.0001, 73.0, 0.25, 0.7, 0.03]
     ub_sample = [0.0036,  0.001, 0.0009, 85., 0.65, 2.0, 0.2]
-    
+
+    lb_sample_more_data = [0.00285, 0.00032, 0.00033, 78.2, 0.34, 0.95, 0.078]
+    ub_sample_more_data = [0.00315, 0.0006,  0.00055, 81.2, 0.46, 1.35, 0.125]
+
     λ1g=0.002; λ2g=0.002; δg=0.001; KKg=80.0; C0g=[1.0, 1.0]; σg=0.5
     θG = [λ1g, λ2g, δg, KKg, C0g[1], C0g[2], σg]
     
@@ -135,8 +138,8 @@ function parameter_and_data_setup()
     par_magnitudes = [0.001, 0.001, 0.001, 10, 1, 1, 1]
 
     return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
-        θG, lb, ub, lb_sample, ub_sample, par_magnitudes
+        θG, lb, ub, lb_sample, ub_sample, lb_sample_more_data, ub_sample_more_data, par_magnitudes
 end
 
 data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
-    θG, lb, ub, lb_sample, ub_sample, par_magnitudes = parameter_and_data_setup()
+    θG, lb, ub, lb_sample, ub_sample, lb_sample_more_data, ub_sample_more_data,par_magnitudes = parameter_and_data_setup()
