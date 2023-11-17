@@ -84,6 +84,11 @@ end
     return data
 end
 
+@everywhere function reference_set_generator(θtrue, generator_args::NamedTuple, confidence_level::Float64)
+    lq, uq = errorFunc(generator_args.y_true, θtrue, confidence_level)
+    return (lq, uq)
+end
+
 # Data setup ###########################################################################
 data_location = joinpath("Experiments", "Models", "Data", "logistic_twospecies.csv")
 function data_setup()
@@ -114,9 +119,9 @@ function parameter_and_data_setup()
 
     y_true_more = predictFunc(θ_true, data, t_more)
     training_gen_args_more_data = (y_true=y_true_more, t=t_more, is_test_set=false)
-    testing_gen_args = (y_true=y_true, t=t, is_test_set=true)
-
+    
     t_pred=LinRange(t[1], t[end], 201)
+    testing_gen_args = (y_true=predictFunc(θ_true, data, t_pred), t=t_pred, is_test_set=true)
 
     # Bounds on model parameters 
     lb = [0.0005, 0.00001, 0.00001, 60.0, 0.01, 0.1, 0.01]
