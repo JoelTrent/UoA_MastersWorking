@@ -5,7 +5,7 @@ if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
-@everywhere using Random, Distributions
+@everywhere using Random, Distributions, DifferentialEquations, StaticArrays
 @everywhere using PlaceholderLikelihood
 
 @everywhere using Logging
@@ -22,41 +22,39 @@ opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-
 univariate_confidenceintervals!(model, optimizationsettings=opt_settings)
 
 
-if isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
-    num_points_iter = [500000, 1000000, 5000000]
+if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
+    num_points_iter = [500000, 1000000, 5000000, 10000000]
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
         Random.seed!(1234)
-        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, num_points, θ_true, [collect(1:model.core.num_pars)],
-            show_progress=true, distributed_over_parameters=false)
+        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 100, num_points, θ_true, [collect(1:model.core.num_pars)],
+            show_progress=true, distributed_over_parameters=false, manual_GC_calls=true)
 
-        new_df = filter(:n_random_combinations => !=(0), new_df)
+        new_df = filter(:n_random_combinations => ==(0), new_df)
         new_df.num_points .= num_points
         global coverage_df = vcat(coverage_df, new_df)
         CSV.write(joinpath(output_location, "full_sampling_prediction_coverage.csv"), coverage_df)
         Arrow.write(joinpath(output_location, "full_sampling_prediction_coverage.arrow"), coverage_df)
-        @everywhere GC.gc()
     end
 end
 
 if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
 
-    num_points_iter = [500000, 1000000, 5000000]
+    num_points_iter = [500000, 1000000, 5000000, 10000000]
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_dimensional_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred, 
             model, 1000, num_points, θ_true, [collect(1:model.core.num_pars)],
-            show_progress=true, distributed_over_parameters=false)
+            show_progress=true, distributed_over_parameters=false, manual_GC_calls=true)
 
-        new_df = filter(:n_random_combinations => !=(0), new_df)
+        new_df = filter(:n_random_combinations => ==(0), new_df)
         new_df.num_points .= num_points
         global coverage_df = vcat(coverage_df, new_df)
         CSV.write(joinpath(output_location, "full_sampling_realisation_coverage.csv"), coverage_df)
         Arrow.write(joinpath(output_location, "full_sampling_realisation_coverage.arrow"), coverage_df)
-        @everywhere GC.gc()
     end
 end
 

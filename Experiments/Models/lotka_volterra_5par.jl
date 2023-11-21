@@ -88,10 +88,10 @@ function parameter_and_data_setup()
     
     # Named tuple of all data required within the log-likelihood function
     data = (y_obs=y_obs, t=t)
-    training_gen_args = (y_true=y_true, t=t, is_test_set=false)
+    training_gen_args = (y_true=y_true, t=t, dist=Normal(0,σ), is_test_set=false)
     
     t_pred=LinRange(0,10,201)
-    testing_gen_args = (y_true=hcat(ODEmodel(t_pred, θ_true)...), t=t_pred,  is_test_set=true)
+    testing_gen_args = (y_true=hcat(ODEmodel(t_pred, θ_true)...), dist=Normal(0, σ), t=t_pred, is_test_set=true)
 
     # Bounds on model parameters 
     αmin, αmax   = (0.7, 1.2)
