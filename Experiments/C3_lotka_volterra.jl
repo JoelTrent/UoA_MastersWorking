@@ -299,13 +299,13 @@ end
 if !isfile(joinpath(output_location, "univariate_prediction_coverage.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:120)
+    num_points_iter = collect(0:20:60)
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_univariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, θ_true, collect(1:model.core.num_pars),
-            num_points_in_interval=num_points, show_progress=true, distributed_over_parameters=false,
+            num_points_in_interval=num_points, show_progress=true, distributed_over_parameters=false, manual_GC_calls=true,
             optimizationsettings=opt_settings)
 
         new_df.num_points .= num_points
@@ -318,7 +318,7 @@ end
 if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneous_threshold.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:80)
+    num_points_iter = collect(0:20:60)
     coverage_df = DataFrame()
 
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
@@ -328,8 +328,8 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneou
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_univariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, θ_true, collect(1:model.core.num_pars),
-            num_points_in_interval=num_points, show_progress=true, distributed_over_parameters=false, confidence_level=equiv_simul_conf_level,
-            optimizationsettings=opt_settings)
+            num_points_in_interval=num_points, show_progress=true, distributed_over_parameters=false, confidence_level=equiv_simul_conf_level, 
+            manual_GC_calls=true, optimizationsettings=opt_settings)
 
         new_df.num_points .= num_points
         global coverage_df = vcat(coverage_df, new_df)
@@ -432,14 +432,14 @@ end
 if !isfile(joinpath(output_location, "univariate_realisation_coverage.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:120)
+    num_points_iter = collect(0:20:60)
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_univariate_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred,
             model, 1000, θ_true, collect(1:model.core.num_pars),
-            show_progress=true, num_points_in_interval=num_points, distributed_over_parameters=false,
+            show_progress=true, num_points_in_interval=num_points, distributed_over_parameters=false, manual_GC_calls=true,
             optimizationsettings=opt_settings)
 
         new_df.num_points .= num_points
@@ -452,7 +452,7 @@ end
 if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:120)
+    num_points_iter = collect(0:20:60)
     coverage_df = DataFrame()    
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
 
@@ -461,7 +461,7 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneo
         new_df = check_univariate_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred,
             model, 1000, θ_true, collect(1:model.core.num_pars),
             show_progress=true, num_points_in_interval=num_points, distributed_over_parameters=false,
-            confidence_level=equiv_simul_conf_level,
+            confidence_level=equiv_simul_conf_level, manual_GC_calls=true,
             optimizationsettings=opt_settings)
 
         new_df.num_points .= num_points

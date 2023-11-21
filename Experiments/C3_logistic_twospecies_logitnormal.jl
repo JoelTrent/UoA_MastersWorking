@@ -452,7 +452,7 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage.csv"))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:120)
+    num_points_iter = collect(0:20:60)
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
@@ -605,12 +605,36 @@ if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
     end
 end
 
+if !isfile(joinpath(output_location, "full_sampling_realisation_coverage_significantly_more_data.csv"))
+
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample_more_data, ub_sample_more_data, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
+
+    num_points_iter = [500000, 1000000, 2000000]
+    coverage_df = DataFrame()
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_dimensional_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args_more_data, testing_gen_args, t_pred,
+            model, 200, num_points, θ_true, [collect(1:model.core.num_pars)],
+            show_progress=true, distributed_over_parameters=true, use_threads=true, manual_GC_calls=true)
+
+        new_df = filter(:θname => !=(:union), new_df)
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "full_sampling_realisation_coverage_significantly_more_data.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "full_sampling_realisation_coverage_significantly_more_data.arrow"), coverage_df)
+        @everywhere GC.gc()
+    end
+end
+
 if !isfile(joinpath(output_location, "univariate_realisation_coverage.csv"))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:80)
+    num_points_iter = collect(0:20:60)
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
