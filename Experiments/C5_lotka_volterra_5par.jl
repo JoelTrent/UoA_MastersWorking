@@ -23,12 +23,12 @@ univariate_confidenceintervals!(model, optimizationsettings=opt_settings)
 
 
 if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
-    num_points_iter = [500000, 1000000, 5000000, 10000000]
+    num_points_iter = [500000, 1000000, 5000000]#, 10000000]
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
         Random.seed!(1234)
-        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 100, num_points, θ_true, [collect(1:model.core.num_pars)],
+        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 200, num_points, θ_true, [collect(1:model.core.num_pars)],
             show_progress=true, distributed_over_parameters=false, manual_GC_calls=true)
 
         new_df = filter(:n_random_combinations => ==(0), new_df)
@@ -41,13 +41,13 @@ end
 
 if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
 
-    num_points_iter = [500000, 1000000, 5000000, 10000000]
+    num_points_iter = [500000, 1000000, 5000000]#, 10000000]
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_dimensional_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred, 
-            model, 1000, num_points, θ_true, [collect(1:model.core.num_pars)],
+            model, 200, num_points, θ_true, [collect(1:model.core.num_pars)],
             show_progress=true, distributed_over_parameters=false, manual_GC_calls=true)
 
         new_df = filter(:n_random_combinations => ==(0), new_df)
