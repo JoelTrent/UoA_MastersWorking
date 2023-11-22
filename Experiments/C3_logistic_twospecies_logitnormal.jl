@@ -475,7 +475,7 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneou
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:80)
+    num_points_iter = collect(0:20:80)
     coverage_df = DataFrame()
 
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
