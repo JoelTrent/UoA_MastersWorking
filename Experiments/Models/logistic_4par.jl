@@ -66,6 +66,10 @@ function parameter_and_data_setup()
     data = (y_obs=y_obs, t=t, dist=Normal(0, σ))
     training_gen_args = (y_true=y_true, t=t, dist=Normal(0, σ), is_test_set=false)
     
+    t_more = LinRange(0, 1000, 111)
+    y_true_more = predictFunc(θ_true, data, t_more)
+    training_gen_args_more_data = (y_true=y_true_more, t=t_more, dist=Normal(0, σ),is_test_set = false)
+
     t_pred=0:5:1000
     testing_gen_args = (y_true=solvedmodel(t_pred, θ_true), t=t_pred, dist=Normal(0, σ), is_test_set=true)
 
@@ -76,14 +80,17 @@ function parameter_and_data_setup()
     σ_min, σ_max = (1.0, 30.0)
     lb = [λ_min, K_min, C0_min, σ_min]
     ub = [λ_max, K_max, C0_max, σ_max]
+
+    lb_more_data = [0.005, 90, 4, 6]
+    ub_more_data = [0.015, 110, 20, 13]
     
     θnames = [:λ, :K, :C0, :σ]
     θG = θ_true
     par_magnitudes = [0.005, 10, 10, 1]
 
-    return data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
-        θG, lb, ub, par_magnitudes
+    return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames, 
+        θG, lb, ub, lb_more_data, ub_more_data, par_magnitudes
 end
 
-data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
-    θG, lb, ub, par_magnitudes = parameter_and_data_setup()
+data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
+    θG, lb, ub, lb_more_data, ub_more_data, par_magnitudes = parameter_and_data_setup()

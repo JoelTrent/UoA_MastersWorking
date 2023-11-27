@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -475,7 +475,7 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneou
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:20:80)
+    num_points_iter = collect(0:20:60)
     coverage_df = DataFrame()
 
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
@@ -657,14 +657,14 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneo
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:80)
+    num_points_iter = collect(0:20:60)
     coverage_df = DataFrame()
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
 
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_univariate_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred,
-            model, 200, θ_true, collect(1:model.core.num_pars),
+            model, 1000, θ_true, collect(1:model.core.num_pars),
             show_progress=true, num_points_in_interval=num_points, distributed_over_parameters=false,
             confidence_level=equiv_simul_conf_level,
             optimizationsettings=opt_settings)

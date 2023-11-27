@@ -89,6 +89,10 @@ function parameter_and_data_setup()
     # Named tuple of all data required within the log-likelihood function
     data = (y_obs=y_obs, t=t)
     training_gen_args = (y_true=y_true, t=t, dist=Normal(0,σ), is_test_set=false)
+
+    t_more = LinRange(0, 10, 111)
+    y_true_more = predictFunc(θ_true, data, t_more)
+    training_gen_args_more_data = (y_true=y_true_more, t=t_more, dist=Normal(0, σ), is_test_set=false)
     
     t_pred=LinRange(0,10,201)
     testing_gen_args = (y_true=hcat(ODEmodel(t_pred, θ_true)...), dist=Normal(0, σ), t=t_pred, is_test_set=true)
@@ -102,13 +106,16 @@ function parameter_and_data_setup()
     lb = [αmin,βmin,x0min,y0min,σmin]
     ub = [αmax,βmax,x0max,y0max,σmax]
 
+    lb_more_data = [0.84, 0.95, 0.7, 0.24, 0.14]
+    ub_more_data = [0.97, 1.2, 0.93, 0.38, 0.27]
+
     θG = θ_true
     θnames = [:α, :β, :x0, :y0, :σ]
     par_magnitudes = [1,1,1,1,1]
 
-    return data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
-        θG, lb, ub, par_magnitudes
+    return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames, 
+        θG, lb, ub, lb_more_data, ub_more_data, par_magnitudes
 end
 
-data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
-    θG, lb, ub, par_magnitudes = parameter_and_data_setup()
+data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
+    θG, lb, ub, lb_more_data, ub_more_data, par_magnitudes = parameter_and_data_setup()

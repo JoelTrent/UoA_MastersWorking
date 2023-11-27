@@ -58,6 +58,47 @@ if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
     end
 end
 
+if !isfile(joinpath(output_location, "full_sampling_prediction_coverage_more_data.csv"))
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb_more_data, ub_more_data, par_magnitudes, optimizationsettings=opt_settings)
+    num_points_iter = [200000, 500000, 1000000]
+    coverage_df = DataFrame()
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args_more_data, t_pred, model, 1000, num_points, θ_true, [collect(1:model.core.num_pars)],
+            show_progress=true, distributed_over_parameters=false, manual_GC_calls=true)
+
+        new_df = filter(:n_random_combinations => ==(0), new_df)
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "full_sampling_prediction_coverage_more_data.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "full_sampling_prediction_coverage_more_data.arrow"), coverage_df)
+    end
+end
+
+if !isfile(joinpath(output_location, "full_sampling_realisation_coverage_more_data.csv"))
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb_more_data, ub_more_data, par_magnitudes, optimizationsettings=opt_settings)
+    num_points_iter = [200000, 500000, 1000000]
+    coverage_df = DataFrame()
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_dimensional_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred,
+            model, 1000, num_points, θ_true, [collect(1:model.core.num_pars)],
+            show_progress=true, distributed_over_parameters=false, manual_GC_calls=true)
+
+        new_df = filter(:n_random_combinations => ==(0), new_df)
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "full_sampling_realisation_coverage_more_data.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "full_sampling_realisation_coverage_more_data.arrow"), coverage_df)
+    end
+end
+
 
 if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold.csv"))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
