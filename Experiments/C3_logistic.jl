@@ -944,7 +944,7 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage.csv"))
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:120)
+    num_points_iter = collect(0:40:80)
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
@@ -1077,7 +1077,7 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage.csv"))
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:120)
+    num_points_iter = collect(0:40:80)
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
@@ -1099,7 +1099,7 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneou
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:120)
+    num_points_iter = collect(0:40:80)
     coverage_df = DataFrame()
 
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)

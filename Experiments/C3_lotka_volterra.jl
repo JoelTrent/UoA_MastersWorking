@@ -498,7 +498,7 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneou
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:80)
+    num_points_iter = collect(0:40:40)
     coverage_df = DataFrame()
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
 
@@ -510,6 +510,7 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneou
             num_internal_points=num_points,
             show_progress=true, distributed_over_parameters=false,
             confidence_level=equiv_simul_conf_level,
+            manual_GC_calls=true,
             optimizationsettings=opt_settings)
 
         new_df.num_points .= num_points
