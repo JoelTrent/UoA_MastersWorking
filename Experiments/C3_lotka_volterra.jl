@@ -223,6 +223,61 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
     TO.disable_debug_timings(PlaceholderLikelihood)
 end
 
+
+if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_threshold.csv"))
+
+    function record_CI_LL_evaluations!(timer_df, N)
+        Random.seed!(1234)
+        training_data = [data_generator(θ_true, training_gen_args) for _ in 1:N]
+
+        len_combos = length(collect(combinations(1:model.core.num_pars, 2)))
+        total_opt_calls = zeros(Int, len_combos)
+        total_ll_calls = zeros(Int, len_combos)
+
+        equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
+
+        for j in 1:N
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20,))
+            model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, training_data[j], θnames, θ_true, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+            for (i, pars) in enumerate(collect(combinations(1:model.core.num_pars, 2)))
+                TO.reset_timer!(PlaceholderLikelihood.timer)
+                bivariate_confidenceprofiles!(model, [pars], 30, method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true), existing_profiles=:overwrite,
+                    use_distributed=false, use_threads=false, optimizationsettings=opt_settings, confidence_level=equiv_simul_conf_level)
+
+                total_opt_calls[i] += TO.ncalls(
+                    PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"])
+
+                total_ll_calls[i] += TO.ncalls(
+                    PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+
+                TO.reset_timer!(PlaceholderLikelihood.timer)
+            end
+        end
+
+        timer_df[:, 1] .= collect(combinations(1:model.core.num_pars, 2))
+        timer_df[:, 2] .= total_opt_calls ./ N
+        timer_df[:, 3] .= total_ll_calls ./ N
+        return nothing
+    end
+
+    len = length(collect(combinations(1:model.core.num_pars, 2)))
+    timer_df = DataFrame(θindices=[zeros(Int, 2) for _ in len],
+        mean_optimisation_calls=zeros(len),
+        mean_likelihood_calls=zeros(len))
+
+    TO.enable_debug_timings(PlaceholderLikelihood)
+    TO.reset_timer!(PlaceholderLikelihood.timer)
+
+    record_CI_LL_evaluations!(timer_df, 100)
+
+    CSV.write(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_threshold.csv"), timer_df)
+
+    TO.disable_debug_timings(PlaceholderLikelihood)
+end
+
 if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
 
     using Combinatorics
@@ -385,31 +440,6 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
     end
 end
 
-# if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.csv"))
-#     using Combinatorics
-#     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
-
-#     num_points_iter = collect(0:40:40)
-#     coverage_df = DataFrame()
-
-#     equiv_simul_conf_level = 0.99129
-
-#     for num_points in num_points_iter
-#         Random.seed!(1234)
-#         new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1,4],[2,3],[2,4]],
-#             method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
-#             num_internal_points=num_points,
-#             show_progress=true, distributed_over_parameters=false,
-#             confidence_level=equiv_simul_conf_level,
-#             optimizationsettings=opt_settings)
-
-#         new_df.num_points .= num_points
-#         global coverage_df = vcat(coverage_df, new_df)
-#         CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.csv"), coverage_df)
-#         Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_two_combinations.arrow"), coverage_df)
-#     end
-# end
-
 if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
 
     num_points_iter = [10000, 50000, 250000, 500000]
@@ -517,5 +547,60 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneou
         global coverage_df = vcat(coverage_df, new_df)
         CSV.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold.csv"), coverage_df)
         Arrow.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold.arrow"), coverage_df)
+    end
+end
+
+#############################################################################################################################
+
+if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_a.csv"))
+    using Combinatorics
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+    num_points_iter = collect(0:40:0)
+    coverage_df = DataFrame()
+
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1,4],[2,3],[2,4]],
+            method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
+            num_internal_points=num_points,
+            show_progress=true, distributed_over_parameters=false,
+            confidence_level=equiv_simul_conf_level,
+            manual_GC_calls=true,
+            optimizationsettings=opt_settings)
+
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_a.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_a.arrow"), coverage_df)
+    end
+end
+
+
+if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_b.csv"))
+    using Combinatorics
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+    num_points_iter = collect(0:40:0)
+    coverage_df = DataFrame()
+
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1,2],[2,4],[3,4]],
+            method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
+            num_internal_points=num_points,
+            show_progress=true, distributed_over_parameters=false,
+            confidence_level=equiv_simul_conf_level,
+            manual_GC_calls=true,
+            optimizationsettings=opt_settings)
+
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_b.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_b.arrow"), coverage_df)
     end
 end
