@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -224,7 +224,61 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
 end
 
 
+if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_mean.csv"))
+    using Combinatorics
+
+    function record_CI_LL_evaluations!(timer_df, N)
+        Random.seed!(1234)
+        training_data = [data_generator(θ_true, training_gen_args) for _ in 1:N]
+
+        len_combos = length(collect(combinations(1:model.core.num_pars, 2)))
+        total_opt_calls = zeros(Int, len_combos)
+        total_ll_calls = zeros(Int, len_combos)
+
+        for j in 1:N
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20,))
+            model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, training_data[j], θnames, θ_true, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+            opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+            for (i, pars) in enumerate(collect(combinations(1:model.core.num_pars, 2)))
+                TO.reset_timer!(PlaceholderLikelihood.timer)
+                bivariate_confidenceprofiles!(model, [pars], 30, method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true), existing_profiles=:overwrite,
+                    use_distributed=false, use_threads=false, optimizationsettings=opt_settings)
+
+                total_opt_calls[i] += TO.ncalls(
+                    PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"])
+
+                total_ll_calls[i] += TO.ncalls(
+                    PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+
+                TO.reset_timer!(PlaceholderLikelihood.timer)
+            end
+        end
+
+        timer_df[:, 1] .= collect(combinations(1:model.core.num_pars, 2))
+        timer_df[:, 2] .= total_opt_calls ./ N
+        timer_df[:, 3] .= total_ll_calls ./ N
+        return nothing
+    end
+
+    len = length(collect(combinations(1:model.core.num_pars, 2)))
+    timer_df = DataFrame(θindices=[zeros(Int, 2) for _ in len],
+        mean_optimisation_calls=zeros(len),
+        mean_likelihood_calls=zeros(len))
+
+    TO.enable_debug_timings(PlaceholderLikelihood)
+    TO.reset_timer!(PlaceholderLikelihood.timer)
+
+    record_CI_LL_evaluations!(timer_df, 100)
+
+    CSV.write(joinpath(output_location, "confidence_boundary_ll_calls_mean.csv"), timer_df)
+
+    TO.disable_debug_timings(PlaceholderLikelihood)
+end
+
 if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_threshold.csv"))
+    using Combinatorics
 
     function record_CI_LL_evaluations!(timer_df, N)
         Random.seed!(1234)

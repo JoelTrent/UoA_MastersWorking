@@ -581,6 +581,7 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_widerbounds.c
 end
 
 if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_threshold.csv"))
+    using Combinatorics
 
     function record_CI_LL_evaluations!(timer_df, N)
         Random.seed!(1234)
@@ -1157,7 +1158,7 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-    num_points_iter = collect(30:10:50)
+    num_points_iter = collect(10:10:50)
     coverage_df = DataFrame()
 
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
