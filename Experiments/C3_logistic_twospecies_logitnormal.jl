@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -1113,6 +1113,67 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneou
         global coverage_df = vcat(coverage_df, new_df)
         CSV.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_10points_xtol_rel.csv"), coverage_df)
         Arrow.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_10points_xtol_rel.arrow"), coverage_df)
+        @everywhere GC.gc()
+    end
+end
+
+if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_eigen_10points_xtol_rel.csv"))
+    using Combinatorics
+
+    opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-8))
+
+    num_points_iter = collect(0:40:0)
+    coverage_df = DataFrame()
+
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 10, θ_true, collect(combinations([1,2,3,5,7], 2)),
+            method=RadialMLEMethod(0.15, 0.01),
+            num_internal_points=num_points,
+            show_progress=true, distributed_over_parameters=false,
+            confidence_level=equiv_simul_conf_level, manual_GC_calls=true,
+            optimizationsettings=opt_settings)
+
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_eigen_10points_xtol_rel.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_eigen_10points_xtol_rel.arrow"), coverage_df)
+        @everywhere GC.gc()
+    end
+end
+
+if isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_eigen_10points_xtol_rel.csv"))
+    using Combinatorics
+
+    opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-8))
+
+    num_points_iter = collect(0:40:0)
+    coverage_df = DataFrame()
+
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_bivariate_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 250, 10, θ_true, collect(combinations([1,2,3,5,7], 2)),
+            method=RadialMLEMethod(0.15, 0.01),
+            num_internal_points=num_points,
+            show_progress=true, distributed_over_parameters=false,
+            confidence_level=equiv_simul_conf_level,
+            manual_GC_calls=true,
+            optimizationsettings=opt_settings)
+
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_eigen_10points_xtol_rel.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_eigen_10points_xtol_rel.arrow"), coverage_df)
         @everywhere GC.gc()
     end
 end

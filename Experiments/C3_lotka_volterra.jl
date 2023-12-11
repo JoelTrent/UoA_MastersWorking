@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -736,6 +736,32 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
         global coverage_df = vcat(coverage_df, new_df)
         CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_a.csv"), coverage_df)
         Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_a.arrow"), coverage_df)
+    end
+end
+
+if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_four_combinations.csv"))
+    using Combinatorics
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+    num_points_iter = collect(0:40:0)
+    coverage_df = DataFrame()
+
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1, 4], [2, 3], [2, 4], [3,4]],
+            method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
+            num_internal_points=num_points,
+            show_progress=true, distributed_over_parameters=false,
+            confidence_level=equiv_simul_conf_level,
+            manual_GC_calls=true,
+            optimizationsettings=opt_settings)
+
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_four_combinations.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_four_combinations.arrow"), coverage_df)
     end
 end
 
