@@ -83,8 +83,8 @@ function parameter_and_data_setup()
 
     # for the purposes of coverage testing (not actually known)
     # MLE values to 3 s.f.
-    # θ_true = [0.00293, 0.00315, 0.00164, 78.8, 0.289, 0.0293, 1.83]
-    θ_true = [0.00293, 0.00315, 0.00164, 78.8, 0.289, 0.0293, 0.3]
+    θ_true = [0.00293, 0.00315, 0.00164, 78.8, 0.289, 0.0293, 1.83]
+    # θ_true = [0.00293, 0.00315, 0.00164, 78.8, 0.289, 0.0293, 0.3]
     # θ_true = [0.00287, 0.00109, 0.000829, 78.7, 0.329, 0.563, 2.61, 0.68]
     y_true = predictFunc(θ_true, data)
     training_gen_args = (y_true=y_true, t=t, dist=Normal(0, θ_true[7]), is_test_set=false)
