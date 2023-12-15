@@ -21,6 +21,24 @@ model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnam
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 univariate_confidenceintervals!(model, optimizationsettings=opt_settings)
 
+if isfile(joinpath(output_location, "logistic_example.pdf"))
+    using Plots; gr()
+    using Plots.PlotMeasures
+    using LaTeXStrings
+
+    format = (palette=:Paired, size=(500, 400), dpi=300, title="", msw=0, legend_position=:bottomright, ylabel=L"C(t)", xlabel=L"t", minorgrid=true, minorticks=2, xlims=(0,1000), rightmargin=3mm)# ylims=(0.6, 1.0))
+    plt = plot(; format...)
+
+    lq, uq = reference_set_generator(θ_true, testing_gen_args, 0.95)
+    plot!(testing_gen_args.t, lq, fillrange=uq, fillalpha=0.3, linealpha=0,
+        label="95% population reference set")
+
+    plot!(testing_gen_args.t, testing_gen_args.y_true, label="True model trajectory", lw=4)
+    scatter!(data.t, data.y_obs, label="Example observations", msw=0, ms=7,)
+
+    savefig(plt, joinpath(output_location, "logistic_example.pdf"))
+end
+
 if false || isdefined(PlaceholderLikelihood, :find_zero_algo) || !isfile(joinpath(output_location, "confidence_interval_ll_calls_algos.csv"))
 
     using Roots

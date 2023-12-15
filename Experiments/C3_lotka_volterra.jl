@@ -15,6 +15,52 @@ output_location = joinpath("Experiments", "Outputs", "lotka_volterra")
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
 model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings);
 
+if !isfile(joinpath(output_location, "lotka_volterra_example.pdf"))
+    using Plots; gr()
+    using Plots.PlotMeasures
+    using LaTeXStrings
+
+    format = (palette=:Paired, size=(500, 400), dpi=300, title="", msw=0,
+        legend_position=:topright, minorgrid=true, minorticks=2, rightmargin=3mm,
+        background_color_legend=RGBA(1, 1, 1, 0.6), xlims=(0,10), ylims=(-0.2, 2.6))
+
+    t = collect(LinRange(0, 10, 21))
+    Random.seed!(12348)
+    # noisy data
+    y_obs = hcat(ODEmodel(t, θ_true)...) .+ σ * randn(21, 2)
+
+    plt1 = plot(; format..., legend_position=nothing,)
+
+    lq, uq = reference_set_generator(θ_true, testing_gen_args, 0.95)
+
+    vspan!([0, 7], label="", linealpha=0, alpha=0.15, color=4)
+    vspan!([7, 10], label="", linealpha=0, alpha=0.15, color=8)
+
+    plot!(testing_gen_args.t, lq[:,1], fillrange=uq[:,1], fillalpha=0.3, linealpha=0,
+        label="95% population reference set", ylabel=L"x(t)", color=1)
+
+    plot!(testing_gen_args.t, testing_gen_args.y_true[:,1], label="True model trajectory", lw=4, color=2)
+    scatter!(t, y_obs[:,1], label="Example observations", msw=0, ms=7,color=3)
+
+    plt2 = plot(; format...,  xlabel = L"t")
+
+    vspan!([0, 7], label="", linealpha=0, alpha=0.15, color=4)
+    vspan!([7, 10], label="", linealpha=0, alpha=0.15, color=8)
+
+    plot!([0, 1], [-100, -150], fillrange=[-200, -250], label="Estimation and prediction", linealpha=0, alpha=0.15, color=4)
+    plot!([0, 1], [-100, -150], fillrange=[-200, -250], label="Prediction only", linealpha=0, alpha=0.15, color=8)
+
+    plot!(testing_gen_args.t, lq[:, 2], fillrange=uq[:, 2], fillalpha=0.3, linealpha=0,
+    label="95% population reference set", ylabel=L"y(t)", color=1)
+    plot!(testing_gen_args.t, testing_gen_args.y_true[:, 2], label="True model trajectory", lw=4, color=2)
+    scatter!(t, y_obs[:, 2], label="Example observations", msw=0, ms=7, color=3)
+
+    plt = plot(plt1, plt2, layout=(2,1))
+
+    savefig(plt, joinpath(output_location, "lotka_volterra_example.pdf"))
+end
+
+
 if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
 
     function record_CI_LL_evaluations!(timer_df, N)

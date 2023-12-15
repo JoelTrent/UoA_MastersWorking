@@ -24,6 +24,44 @@ using Combinatorics
 # getMLE_ellipse_approximation!(model)
 # inds = [3,6]; model.ellipse_MLE_approx.Hmle[inds, inds]
 
+if !isfile(joinpath(output_location, "twospecies_logitnormal_example.pdf"))
+    using Plots
+    gr()
+    using Plots.PlotMeasures
+    using LaTeXStrings
+
+    format = (palette=:Paired, size=(500, 400), dpi=300, title="", msw=0,
+        legend_position=:bottomright, minorgrid=true, minorticks=2, rightmargin=3mm,
+        background_color_legend=RGBA(1, 1, 1, 1.0), xlims=(0, 4028))
+
+    using Random; Random.seed!(12345)
+    data_example = data_generator(θ_true, training_gen_args)
+
+    plt1 = plot(; format..., ylims=(0, 100))
+
+    lq, uq = reference_set_generator(θ_true, testing_gen_args, 0.95)
+    plot!(testing_gen_args.t, lq[:, 1], fillrange=uq[:, 1], fillalpha=0.3, linealpha=0,
+        label="95% population reference set", ylabel=L"C_1(t)" * " (%)")
+
+    plot!(testing_gen_args.t, testing_gen_args.y_true[:, 1], label="True model trajectory", lw=4)
+    scatter!(data_example.t, data_example.y_obs[:, 1], label="Example observations", msw=0, ms=7,)
+
+
+    plt2 = plot(; format..., xlabel=L"t", legend_position=nothing, ylims=(0,2.7))
+
+    lq, uq = reference_set_generator(θ_true, testing_gen_args, 0.95)
+    plot!(testing_gen_args.t, lq[:, 2], fillrange=uq[:, 2], fillalpha=0.3, linealpha=0,
+        label="95% population reference set", ylabel=L"C_2(t)" * " (%)")
+
+    plot!(testing_gen_args.t, testing_gen_args.y_true[:, 2], label="True model trajectory", lw=4)
+    scatter!(data_example.t, data_example.y_obs[:, 2], label="Example observations", msw=0, ms=7,)
+
+    plt = plot(plt1, plt2, layout=(2, 1))
+
+    savefig(plt, joinpath(output_location, "twospecies_logitnormal_example.pdf"))
+end
+
+
 
 if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
 

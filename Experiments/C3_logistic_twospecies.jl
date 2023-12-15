@@ -21,6 +21,39 @@ bivariate_combinations = vcat(collect(combinations([1,4,5,7], 2)), [[2,3]])
 # getMLE_ellipse_approximation!(model)
 # inds = [3,6]; model.ellipse_MLE_approx.Hmle[inds, inds]
 
+if !isfile(joinpath(output_location, "twospecies_example.pdf"))
+    using Plots
+    gr()
+    using Plots.PlotMeasures
+    using LaTeXStrings
+
+    format = (palette=:Paired, size=(500, 400), dpi=300, title="", msw=0,
+        legend_position=:bottomright, minorgrid=true, minorticks=2, rightmargin=3mm,
+        background_color_legend=RGBA(1, 1, 1, 0.6), xlims=(0, 4028))
+
+    plt1 = plot(; format...,ylims=(0,100))
+
+    lq, uq = reference_set_generator(θ_true, testing_gen_args, 0.95)
+    plot!(testing_gen_args.t, lq[:, 1], fillrange=uq[:, 1], fillalpha=0.3, linealpha=0,
+        label="MLE 95% population reference set", ylabel=L"C_1(t)"*" (%)")
+
+    plot!(testing_gen_args.t, testing_gen_args.y_true[:, 1], label="MLE model trajectory", lw=4)
+    scatter!(data.t, data.y_obs[:, 1], label="Real observations", msw=0, ms=7,)
+
+
+    plt2 = plot(; format..., xlabel=L"t", legend_position=nothing)
+
+    lq, uq = reference_set_generator(θ_true, testing_gen_args, 0.95)
+    plot!(testing_gen_args.t, lq[:, 2], fillrange=uq[:, 2], fillalpha=0.3, linealpha=0,
+        label="MLE 95% population reference set", ylabel=L"C_2(t)"*" (%)")
+
+    plot!(testing_gen_args.t, testing_gen_args.y_true[:, 2], label="MLE model trajectory", lw=4)
+    scatter!(data.t, data.y_obs[:, 2], label="Real observations", msw=0, ms=7,)
+
+    plt = plot(plt1, plt2, layout=(2, 1))
+
+    savefig(plt, joinpath(output_location, "twospecies_example.pdf"))
+end
 
 if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
 

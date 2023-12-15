@@ -100,9 +100,9 @@ function parameter_and_data_setup()
 
     y_true_more = predictFunc(θ_true, data, t_more)
     training_gen_args_more_data = (y_true=y_true_more, t=t_more, dist=Normal(0, θ_true[7]), is_test_set=false)
-    testing_gen_args = (y_true=y_true, t=t, dist=Normal(0, θ_true[7]), is_test_set=true)
-
+    
     t_pred=LinRange(t[1], t[end], 400)
+    testing_gen_args = (y_true=predictFunc(θ_true, data, t_pred), t=t_pred, is_test_set=true)
 
     # Bounds on model parameters 
     lb = [0.0001, 0.0001, 0.0, 60.0, 0.01, 0.001, 0.1]
