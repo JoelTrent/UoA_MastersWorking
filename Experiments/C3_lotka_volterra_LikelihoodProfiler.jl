@@ -15,7 +15,7 @@ include(joinpath("Models", "lotka_volterra.jl"))
 output_location = joinpath("Experiments", "Outputs", "lotka_volterra")
 
 # search CI with LikelihoodProfiler 
-p_best = [0.8701453152167677, 1.110429420511458, 0.8014393483147453, 0.2966370108845062]
+p_best = [0.844777247989815, 1.1007519615760186, 0.8221684258983721, 0.26537688591674813]
 num_params = length(p_best)
 
 intervals = Vector{ParamInterval}(undef, num_params)
@@ -34,7 +34,7 @@ for i in 1:num_params
         loss_crit=α,
         theta_bounds=tbounds,
         scan_bounds=sbounds[i],
-        scan_tol=1e-4,
+        scan_tol=1e-5,
         local_alg=:LN_NELDERMEAD,
     )
 end;
@@ -77,7 +77,7 @@ function record_CI_LL_evaluations!(N)
                 loss_crit=α_training,
                 theta_bounds=tbounds,
                 scan_bounds=sbounds[i],
-                scan_tol=1e-4,
+                scan_tol=1e-5,
                 local_alg=:LN_NELDERMEAD,
             )
         end

@@ -87,10 +87,10 @@ function parameter_and_data_setup()
     t, y_true, y_obs = data_setup(t, θ_true)
     
     # Named tuple of all data required within the log-likelihood function
-    data = (y_obs=y_obs, t=t)
-    training_gen_args = (y_true=y_true, t=t, dist=Normal(0,σ), is_test_set=false)
+    data = (y_obs=y_obs[1:15,:], t=t[1:15], dist=Normal(0, σ))
+    training_gen_args = (y_true=y_true[1:15,:], t=t[1:15], dist=Normal(0, σ), is_test_set=false)
 
-    t_more = LinRange(0, 10, 111)
+    t_more = LinRange(0, 7, 111)
     y_true_more = predictFunc(θ_true, data, t_more)
     training_gen_args_more_data = (y_true=y_true_more, t=t_more, dist=Normal(0, σ), is_test_set=false)
     
@@ -98,24 +98,28 @@ function parameter_and_data_setup()
     testing_gen_args = (y_true=hcat(ODEmodel(t_pred, θ_true)...), dist=Normal(0, σ), t=t_pred, is_test_set=true)
 
     # Bounds on model parameters 
-    αmin, αmax   = (0.7, 1.2)
-    βmin, βmax   = (0.7, 1.4)
-    x0min, x0max = (0.5, 1.2)
-    y0min, y0max = (0.1, 0.5)
-    σmin, σmax = (0.01, 0.6)
+    # αmin, αmax   = (0.7, 1.2)
+    # βmin, βmax   = (0.7, 1.4)
+    # x0min, x0max = (0.5, 1.2)
+    # y0min, y0max = (0.1, 0.5)
+    αmin, αmax = (0.4, 1.3)
+    βmin, βmax = (0.7, 1.6)
+    x0min, x0max = (0.4, 1.3)
+    y0min, y0max = (0.02, 0.6)
+    σmin, σmax = (0.01, 0.5)
     lb = [αmin,βmin,x0min,y0min,σmin]
     ub = [αmax,βmax,x0max,y0max,σmax]
 
-    lb_more_data = [0.84, 0.95, 0.7, 0.24, 0.14]
-    ub_more_data = [0.97, 1.2, 0.93, 0.38, 0.27]
+    lb_more_data = [0.82, 0.95, 0.68, 0.23, 0.14]
+    ub_more_data = [1.0, 1.2, 0.93, 0.42, 0.27]
 
     θG = θ_true
     θnames = [:α, :β, :x0, :y0, :σ]
     par_magnitudes = [1,1,1,1,1]
 
-    return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames, 
+    return data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, t_pred, θnames, 
         θG, lb, ub, lb_more_data, ub_more_data, par_magnitudes
 end
 
-data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, y_true, t_pred, θnames,
+data, training_gen_args, training_gen_args_more_data, testing_gen_args, θ_true, t_pred, θnames,
     θG, lb, ub, lb_more_data, ub_more_data, par_magnitudes = parameter_and_data_setup()

@@ -86,17 +86,24 @@ function parameter_and_data_setup()
     t, y_true, y_obs = data_setup(t, θ_true)
     
     # Named tuple of all data required within the log-likelihood function
-    data = (y_obs=y_obs, t=t, dist=Normal(0, σ))
-    training_gen_args = (y_true=y_true, t=t, dist=Normal(0, σ), is_test_set=false)
+    data = (y_obs=y_obs[1:15,:], t=t[1:15], dist=Normal(0, σ))
+    training_gen_args = (y_true=y_true[1:15,:], t=t[1:15], dist=Normal(0, σ), is_test_set=false)
     
     t_pred=LinRange(0,10,201)
     testing_gen_args = (y_true=hcat(ODEmodel(t_pred, θ_true)...), t=t_pred, dist=Normal(0, σ), is_test_set=true)
 
     # Bounds on model parameters 
-    αmin, αmax   = (0.7, 1.2)
-    βmin, βmax   = (0.7, 1.4)
+    αmin, αmax = (0.7, 1.2)
+    βmin, βmax = (0.7, 1.4)
     x0min, x0max = (0.5, 1.2)
     y0min, y0max = (0.1, 0.5)
+    lb_original = [αmin, βmin, x0min, y0min] .* 1.0
+    ub_original = [αmax, βmax, x0max, y0max] .* 1.0
+
+    αmin, αmax = (0.4, 1.5)
+    βmin, βmax = (0.7, 1.8)
+    x0min, x0max = (0.4, 1.3)
+    y0min, y0max = (0.02, 0.8)
     lb = [αmin,βmin,x0min,y0min]
     ub = [αmax,βmax,x0max,y0max]
 
@@ -104,9 +111,9 @@ function parameter_and_data_setup()
     θnames = [:α, :β, :x0, :y0]
     par_magnitudes = [1,1,1,1]
 
-    return data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
-        θG, lb, ub, par_magnitudes
+    return data, training_gen_args, testing_gen_args, θ_true, t_pred, θnames, 
+        θG, lb, ub, lb_original, ub_original, par_magnitudes
 end
 
-data, training_gen_args, testing_gen_args, θ_true, y_true, t_pred, θnames, 
-    θG, lb, ub, par_magnitudes = parameter_and_data_setup()
+data, training_gen_args, testing_gen_args, θ_true, t_pred, θnames, 
+    θG, lb, ub, lb_original, ub_original,  par_magnitudes = parameter_and_data_setup()

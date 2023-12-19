@@ -37,9 +37,10 @@ if isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
         CSV.write(joinpath(output_location, "full_sampling_prediction_coverage.csv"), coverage_df)
         Arrow.write(joinpath(output_location, "full_sampling_prediction_coverage.arrow"), coverage_df)
     end
+    sleep(1)
 end
 
-if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
+if isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
 
     num_points_iter = [500000, 1000000, 5000000]#, 10000000]
     coverage_df = DataFrame()
@@ -58,11 +59,11 @@ if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
     end
 end
 
-if !isfile(joinpath(output_location, "full_sampling_prediction_coverage_more_data.csv"))
+if isfile(joinpath(output_location, "full_sampling_prediction_coverage_more_data.csv"))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb_more_data, ub_more_data, par_magnitudes, optimizationsettings=opt_settings)
-    num_points_iter = [200000, 500000, 1000000]
+    num_points_iter = [50000, 100000, 200000]
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
@@ -78,16 +79,16 @@ if !isfile(joinpath(output_location, "full_sampling_prediction_coverage_more_dat
     end
 end
 
-if !isfile(joinpath(output_location, "full_sampling_realisation_coverage_more_data.csv"))
+if isfile(joinpath(output_location, "full_sampling_realisation_coverage_more_data.csv"))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb_more_data, ub_more_data, par_magnitudes, optimizationsettings=opt_settings)
-    num_points_iter = [200000, 500000, 1000000]
+    num_points_iter = [50000, 100000, 200000]
     coverage_df = DataFrame()
 
     for num_points in num_points_iter
         Random.seed!(1234)
-        new_df = check_dimensional_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred,
+        new_df = check_dimensional_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args_more_data, testing_gen_args, t_pred,
             model, 1000, num_points, θ_true, [collect(1:model.core.num_pars)],
             show_progress=true, distributed_over_parameters=false, manual_GC_calls=true)
 
