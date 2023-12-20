@@ -25,3 +25,4 @@ Manifest.toml
 .Rproj.user
 Experiments/.Rhistory
 Experiments/figure/*.png
+.vscode/settings.json

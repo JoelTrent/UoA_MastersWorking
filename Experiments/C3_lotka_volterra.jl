@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using PlaceholderLikelihood
 using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -211,7 +211,7 @@ if !isfile(joinpath(output_location, "confidence_interval_ll_calls_ellipseapprox
 end
 
 
-if isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
+if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
     uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:4), 
                         show_progress=true, distributed_over_parameters=false, optimizationsettings=opt_settings)
@@ -430,7 +430,7 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_
     TO.disable_debug_timings(PlaceholderLikelihood)
 end
 
-if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_threshold_10points_xtol_rel.csv"))
+if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_threshold_20points_xtol_rel.csv"))
     using Combinatorics
 
     function record_CI_LL_evaluations!(timer_df, N)
@@ -451,7 +451,7 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_
 
             for (i, pars) in enumerate(collect(combinations(1:model.core.num_pars, 2)))
                 TO.reset_timer!(PlaceholderLikelihood.timer)
-                bivariate_confidenceprofiles!(model, [pars], 10, method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true), existing_profiles=:overwrite,
+                bivariate_confidenceprofiles!(model, [pars], 20, method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true), existing_profiles=:overwrite,
                     use_distributed=false, use_threads=false, optimizationsettings=opt_settings, confidence_level=equiv_simul_conf_level)
 
                 total_opt_calls[i] += TO.ncalls(
@@ -480,12 +480,12 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_
 
     record_CI_LL_evaluations!(timer_df, 100)
 
-    CSV.write(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_threshold_10points_xtol_rel.csv"), timer_df)
+    CSV.write(joinpath(output_location, "confidence_boundary_ll_calls_simultaneous_threshold_20points_xtol_rel.csv"), timer_df)
 
     TO.disable_debug_timings(PlaceholderLikelihood)
 end
 
-if isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
+if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
 
     using Combinatorics
 
@@ -528,7 +528,7 @@ if isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))
     end
 end
 
-if isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
+if !isfile(joinpath(output_location, "bivariate_parameter_coverage.csv"))
     using Combinatorics
     Random.seed!(1234)
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
@@ -600,7 +600,9 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage.csv"))
     end
 end
 
-if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneous_threshold.csv"))
+if isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneous_threshold.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)    
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
     num_points_iter = collect(0:20:60)
@@ -624,6 +626,8 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneou
 end
 
 if !isfile(joinpath(output_location, "bivariate_prediction_coverage.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
@@ -636,7 +640,8 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage.csv"))
             method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
             num_internal_points=num_points,
             show_progress=true, distributed_over_parameters=false,
-            optimizationsettings=opt_settings)
+            optimizationsettings=opt_settings,
+            manual_GC_calls=true)
 
         new_df.num_points .= num_points
         global coverage_df = vcat(coverage_df, new_df)
@@ -645,7 +650,9 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage.csv"))
     end
 end
 
-if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.csv"))
+if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
@@ -661,7 +668,8 @@ if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_
             num_internal_points=num_points,
             show_progress=true, distributed_over_parameters=false,
             confidence_level=equiv_simul_conf_level,
-            optimizationsettings=opt_settings)
+            optimizationsettings=opt_settings,
+            manual_GC_calls=true)
 
         new_df.num_points .= num_points
         global coverage_df = vcat(coverage_df, new_df)
@@ -670,7 +678,7 @@ if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_
     end
 end
 
-if isfile(joinpath(output_location, "full_sampling_realisation_coverage_original_bounds.csv"))
+if !isfile(joinpath(output_location, "full_sampling_realisation_coverage_original_bounds.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb_original, ub_original, par_magnitudes, optimizationsettings=opt_settings)
 
@@ -713,6 +721,8 @@ if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
 end
 
 if !isfile(joinpath(output_location, "univariate_realisation_coverage.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
     num_points_iter = collect(0:20:60)
@@ -733,6 +743,8 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage.csv"))
 end
 
 if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
     num_points_iter = collect(0:20:60)
@@ -755,6 +767,8 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneo
 end
 
 if !isfile(joinpath(output_location, "bivariate_realisation_coverage.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
@@ -768,7 +782,8 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage.csv"))
             method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
             num_internal_points=num_points,
             show_progress=true, distributed_over_parameters=false,
-            optimizationsettings=opt_settings)
+            optimizationsettings=opt_settings,
+            manual_GC_calls=true)
 
         new_df.num_points .= num_points
         global coverage_df = vcat(coverage_df, new_df)
@@ -778,6 +793,8 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage.csv"))
 end
 
 if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold.csv"))
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
@@ -805,7 +822,7 @@ end
 
 #############################################################################################################################
 
-if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_a.csv"))
+if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_three_combinations_a.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
@@ -834,7 +851,7 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
     end
 end
 
-if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_four_combinations.csv"))
+if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_four_combinations.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
@@ -848,7 +865,7 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
 
     for num_points in num_points_iter
         Random.seed!(1234)
-        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1, 4], [2, 3], [2, 4], [3,4]],
+        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1, 3], [1,4], [2, 3], [2, 4]],
             method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
             num_internal_points=num_points,
             show_progress=true, distributed_over_parameters=false,
@@ -895,7 +912,7 @@ end
 
 #############################################################################################################################
 
-if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_less_points.csv"))
+if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_less_points.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
@@ -930,7 +947,7 @@ if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_
     using Combinatorics
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-8))
 
-    num_points_iter = collect(10:10:10)
+    num_points_iter = collect(20:10:20)
     coverage_df = DataFrame()
 
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
@@ -950,7 +967,7 @@ if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_
     end
 end
 
-if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_four_combinations_less_points_xtol_rel.csv"))
+if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_four_combinations_less_points_xtol_rel.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 
@@ -964,8 +981,8 @@ if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous
 
     for num_points in num_points_iter
         Random.seed!(1234)
-        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, [[1, 4], [2, 3], [2, 4], [3, 4]],
-            method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
+        new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 20, θ_true, [[1, 3], [1,4], [2, 3], [2, 4]],
+            method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
             num_internal_points=num_points,
             show_progress=true, distributed_over_parameters=false,
             confidence_level=equiv_simul_conf_level,
