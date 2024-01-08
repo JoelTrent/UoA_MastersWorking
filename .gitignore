@@ -26,3 +26,4 @@ Manifest.toml
 Experiments/.Rhistory
 Experiments/figure/*.png
 .vscode/settings.json
+*.json
