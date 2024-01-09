@@ -29,8 +29,8 @@ end
     return data
 end
 
-@everywhere function reference_set_generator(θtrue, generator_args::NamedTuple, confidence_level::Float64)
-    lq, uq = errorFunc(generator_args.y_true, θtrue, confidence_level)
+@everywhere function reference_set_generator(θtrue, generator_args::NamedTuple, region::Float64)
+    lq, uq = errorFunc(generator_args.y_true, θtrue, region)
     return (lq, uq)
 end
 
