@@ -852,12 +852,12 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneo
     end
 end
 
-if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold_significantly_more_data.csv"))
+if isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold_significantly_more_data.csv"))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample, ub_sample, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
-    num_points_iter = collect(0:40:40)
+    num_points_iter = collect(0:40:0)
     coverage_df = DataFrame()
     equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
 

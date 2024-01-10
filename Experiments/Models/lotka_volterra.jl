@@ -37,7 +37,7 @@ end
     return y
 end
 
-@everywhere function errorFunc(predictions, θ, bcl); normal_error_σ_known(predictions, θ, bcl, σ) end
+@everywhere function errorFunc(predictions, θ, region); normal_error_σ_known(predictions, θ, region, σ) end
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
 @everywhere function data_generator(θtrue, generator_args::NamedTuple)
