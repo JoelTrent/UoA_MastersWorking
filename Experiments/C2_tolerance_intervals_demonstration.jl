@@ -25,7 +25,7 @@ end
 
 errorfunction(a,b,c) = normal_error_σ_estimated(a,b,c, 2)
 
-model = initialise_LikelihoodModel(lnlike, predictfunction, errorfunction, data, [:μ, :σ_squared], [2.,1.], [-1., 0.01], [5., 5.], [1.,1.]);
+model = initialise_LikelihoodModel(lnlike, predictfunction, errorfunction, data, [:μ, :σ], [2.,1.], [-1., 0.01], [5., 5.], [1.,1.]);
 
 univariate_confidenceintervals!(model, num_points_in_interval=300)
 dimensional_likelihood_samples!(model, 2, 1000000)

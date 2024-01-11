@@ -1124,6 +1124,9 @@ end
 #     end
 # end
 
+#########################################################################################################################
+#########################################################################################################################
+
 if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_10points_xtol_rel.csv"))
     using Combinatorics
 
@@ -1155,7 +1158,38 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneou
     end
 end
 
-if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_eigen_10points_xtol_rel.csv"))
+if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_five_combinations_10points_xtol_rel.csv"))
+    using Combinatorics
+
+    opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
+
+    opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-8))
+
+    num_points_iter = collect(0:40:0)
+    coverage_df = DataFrame()
+
+    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
+
+    for num_points in num_points_iter
+        Random.seed!(1234)
+        new_df = check_bivariate_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 1000, 10, θ_true, [[1, 4], [1, 5], [2, 3], [2, 6], [2, 7]],
+            method=RadialMLEMethod(0.15, 0.01),
+            num_internal_points=num_points,
+            show_progress=true, distributed_over_parameters=false,
+            manual_GC_calls=true,
+            confidence_level=equiv_simul_conf_level,
+            optimizationsettings=opt_settings)
+
+        new_df.num_points .= num_points
+        global coverage_df = vcat(coverage_df, new_df)
+        CSV.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_five_combinations_10points_xtol_rel.csv"), coverage_df)
+        Arrow.write(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_five_combinations_10points_xtol_rel.arrow"), coverage_df)
+        @everywhere GC.gc()
+    end
+end
+
+if !isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_threshold_eigen_10points_xtol_rel.csv"))
     using Combinatorics
 
     opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))
@@ -1185,7 +1219,7 @@ if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_
     end
 end
 
-if isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_eigen_10points_xtol_rel.csv"))
+if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold_eigen_10points_xtol_rel.csv"))
     using Combinatorics
 
     opt_settings = create_OptimizationSettings(solve_alg=NLopt.LN_BOBYQA(), solve_kwargs=(maxtime=20,))

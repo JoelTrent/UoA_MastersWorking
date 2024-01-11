@@ -742,7 +742,7 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage.csv"))
     end
 end
 
-if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold.csv"))
+if isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneous_threshold.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
@@ -792,7 +792,7 @@ if !isfile(joinpath(output_location, "bivariate_realisation_coverage.csv"))
     end
 end
 
-if !isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold.csv"))
+if isfile(joinpath(output_location, "bivariate_realisation_coverage_simultaneous_threshold.csv"))
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
     using Combinatorics

@@ -25,7 +25,25 @@ end
 
 errorfunction(a,b,c) = normal_error_σ_estimated(a,b,c, 2)
 
-model = initialise_LikelihoodModel(lnlike, predictfunction, errorfunction, data, [:μ, :σ_squared], [2.,1.], [-1., 0.01], [5., 5.], [1.,1.]);
+# DATA GENERATION FUNCTION AND ARGUMENTS
+function data_generator(θ_true, generator_args::NamedTuple)
+    y_obs = rand(generator_args.true_dist, generator_args.n)
+    if generator_args.is_test_set; return y_obs end
+    data = (y_obs=y_obs, generator_args...)
+    return data
+end
+
+function reference_set_generator(θ_true, generator_args::NamedTuple, confidence_level::Float64)
+    lq, uq = errorfunction(generator_args.y_true, θ_true, confidence_level)
+    return (lq, uq)
+end
+
+training_gen_args = (y_true=[θ_true[1]], t=["z"], dist=Normal(0, θ_true[2]), true_dist=true_dist, is_test_set=false, n=n)
+testing_gen_args = (y_true=[θ_true[1]], t=["z"], true_dist=true_dist, is_test_set=true, n=1)
+
+#############################################################################################################
+
+model = initialise_LikelihoodModel(lnlike, predictfunction, errorfunction, data, [:μ, :σ], [2.,1.], [-1., 0.01], [5., 5.], [1.,1.]);
 
 univariate_confidenceintervals!(model, num_points_in_interval=300)
 equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, 2, 1)
@@ -98,4 +116,27 @@ vline!(ref_interval, label="Reference", lw=2)
 vline!(transpose(extrema_uni1), label="Tolerance, univariate "*L"\ell_{c,1}", linestyle=:dash, lw=2)
 vline!(transpose(extrema_uni2), label="Tolerance, univariate " * L"\ell_{c,2}", linestyle=:dash, lw=2)
 vline!(transpose(extrema_full), label="Tolerance, full " * L"\ell_{c,2}", linestyle=:dash, lw=2)
-# savefig(plt, joinpath(output_location, "interval_ranges_over_density.pdf"))
+savefig(plt, joinpath(output_location, "interval_ranges_over_density.pdf"))
+
+Random.seed!(1234)
+uni_reference_coverage_df = check_univariate_prediction_realisations_coverage(data_generator,
+    reference_set_generator, training_gen_args, testing_gen_args, ["z"], model, 2000,
+    θ_true, collect(1:model.core.num_pars),
+    # dof=model.core.num_pars,
+    num_points_in_interval=50)
+
+equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, 2, 1)
+Random.seed!(1234)
+uni_reference_coverage_df = check_univariate_prediction_realisations_coverage(data_generator,
+    reference_set_generator, training_gen_args, testing_gen_args, ["z"], model, 2000,
+    θ_true, collect(1:model.core.num_pars),
+    # dof=model.core.num_pars,
+    confidence_level=equiv_simul_conf_level,
+    num_points_in_interval=50)
+
+Random.seed!(1234)
+biv_reference_coverage_df = check_bivariate_prediction_realisations_coverage(data_generator,
+    reference_set_generator, training_gen_args, testing_gen_args, ["z"], model, 2000, 20, θ_true,
+    [[1,2]],
+    # dof=model.core.num_pars,
+    method=RadialMLEMethod())
