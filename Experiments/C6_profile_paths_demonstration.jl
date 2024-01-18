@@ -55,8 +55,6 @@ bivariate_confidenceprofiles!(model, 200, method=RadialMLEMethod(), confidence_l
 bivariate_confidenceprofiles!(model, 200, method=RadialMLEMethod())
 sample_bivariate_internal_points!(model, 200)
 
-# dimensional_likelihood_samples!(model, 2, 1000000)
-
 using Plots; gr()
 format = (size=(550, 400), dpi=300, title="", legend_position=:outerright, background_color_legend=RGBA(1, 1, 1, 0.9))
 
@@ -76,7 +74,7 @@ for j in 1:2
         plot!(plt, points[1, :], points[2, :], 
             label=[L"\psi\in\{\theta^M\}, \ell_{c,1}", L"\psi\in\{\theta^\textrm{o}\}, \ell_{c,1}",
                 L"\psi\in\{\theta^M\}, \ell_{c,2}", L"\psi\in\{\theta^\textrm{o}\}, \ell_{c,2}"][ifelse(i == 1, j, j + 2)],
-            colour=[3, 5, 4, 6][ifelse(i == 1, j, j + 2)], linestyle=[:solid, :dashdot][i], lw=[3, 4][i])
+            colour=[3, 5, 4, 6][ifelse(i == 1, j, j + 2)], linestyle=[:dash, :solid][i], lw=[3, 4][i])
     end
 end
 
@@ -87,7 +85,7 @@ for j in 1:2
 
         plot!(plt, points[1, :], points[2, :], 
             label=nothing,
-            colour=[3, 5, 4, 6][ifelse(i == 1, j, j + 2)], linestyle=[:solid, :dashdot][i], lw=[3,4][i])
+            colour=[3, 5, 4, 6][ifelse(i == 1, j, j + 2)], linestyle=[:dash, :solid][i], lw=[3,4][i])
     end
 end
 
@@ -99,8 +97,6 @@ generate_predictions_univariate!(model, ["z"], 1.0, region=0.95)
 generate_predictions_bivariate!(model, ["z"], 1.0, region=0.95)
 
 using StatsPlots
-# 2D
-# generate_predictions_dim_samples!(model, ["z"], 1.0)
 extrema1 = model.uni_predictions_dict[1].realisations.extrema
 extrema2 = model.uni_predictions_dict[2].realisations.extrema
 extrema_uni1 = [min(extrema1[1], extrema2[1]) max(extrema1[2], extrema2[2])]
