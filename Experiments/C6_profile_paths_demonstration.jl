@@ -46,12 +46,9 @@ testing_gen_args = (y_true=[θ_true[1]], t=["z"], true_dist=true_dist, is_test_s
 model = initialise_LikelihoodModel(lnlike, predictfunction, errorfunction, data, [:μ, :σ], [2.,1.], [-1., 0.01], [5., 5.], [1.,1.]);
 
 univariate_confidenceintervals!(model, num_points_in_interval=300)
-equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, 2, 1)
-univariate_confidenceintervals!(model, num_points_in_interval=300, confidence_level=equiv_simul_conf_level)
+univariate_confidenceintervals!(model, num_points_in_interval=300, dof=model.core.num_pars)
 
-
-equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, 1, 2)
-bivariate_confidenceprofiles!(model, 200, method=RadialMLEMethod(), confidence_level=equiv_simul_conf_level)
+bivariate_confidenceprofiles!(model, 200, method=RadialMLEMethod(), dof=1)
 bivariate_confidenceprofiles!(model, 200, method=RadialMLEMethod())
 sample_bivariate_internal_points!(model, 200)
 
@@ -118,21 +115,17 @@ Random.seed!(1234)
 uni_reference_coverage_df = check_univariate_prediction_realisations_coverage(data_generator,
     reference_set_generator, training_gen_args, testing_gen_args, ["z"], model, 2000,
     θ_true, collect(1:model.core.num_pars),
-    # dof=model.core.num_pars,
     num_points_in_interval=50)
 
-equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, 2, 1)
 Random.seed!(1234)
 uni_reference_coverage_df = check_univariate_prediction_realisations_coverage(data_generator,
     reference_set_generator, training_gen_args, testing_gen_args, ["z"], model, 2000,
     θ_true, collect(1:model.core.num_pars),
-    # dof=model.core.num_pars,
-    confidence_level=equiv_simul_conf_level,
+    dof=model.core.num_pars,
     num_points_in_interval=50)
 
 Random.seed!(1234)
 biv_reference_coverage_df = check_bivariate_prediction_realisations_coverage(data_generator,
     reference_set_generator, training_gen_args, testing_gen_args, ["z"], model, 2000, 20, θ_true,
     [[1,2]],
-    # dof=model.core.num_pars,
     method=RadialMLEMethod())

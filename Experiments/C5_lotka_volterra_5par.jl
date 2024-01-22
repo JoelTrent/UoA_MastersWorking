@@ -108,14 +108,13 @@ if !isfile(joinpath(output_location, "univariate_realisation_coverage_simultaneo
 
     num_points_iter = collect(0:40:80)
     coverage_df = DataFrame()
-    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
 
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_univariate_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred,
             model, 1000, θ_true, collect(1:model.core.num_pars),
             show_progress=true, num_points_in_interval=num_points, distributed_over_parameters=false,
-            confidence_level=equiv_simul_conf_level,
+            dof=model.core.num_pars,
             optimizationsettings=opt_settings)
 
         new_df.num_points .= num_points

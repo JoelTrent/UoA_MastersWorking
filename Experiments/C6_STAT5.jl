@@ -202,12 +202,11 @@ if !isfile(joinpath(output_location, "univariate_prediction_coverage_simultaneou
 
     num_points_iter = collect(20:20:20)
     coverage_df = DataFrame()
-    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 1)
 
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_univariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 100, θ_true, collect(1:model.core.num_pars),
-            num_points_in_interval=num_points, show_progress=true, distributed_over_parameters=false, confidence_level=equiv_simul_conf_level,
+            num_points_in_interval=num_points, show_progress=true, distributed_over_parameters=false, dof=model.core.num_pars,
             manual_GC_calls=true, optimizationsettings=opt_settings)
 
         new_df.num_points .= num_points
@@ -254,14 +253,12 @@ if isfile(joinpath(output_location, "bivariate_prediction_coverage_simultaneous_
     num_points_iter = collect(10:10:10)
     coverage_df = DataFrame()
 
-    equiv_simul_conf_level = PlaceholderLikelihood.get_equivalent_confidence_level_chisq(0.95, model.core.num_pars, 2)
-
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 70, num_points, θ_true, collect(combinations([1,3,4,6,7,8,9], 2)),
             method=IterativeBoundaryMethod(num_points, 5, 5, 0.15, 0.01, use_ellipse=false),
             show_progress=true, distributed_over_parameters=false,
-            confidence_level=equiv_simul_conf_level,
+            dof=model.core.num_pars,
             optimizationsettings=opt_settings,
             manual_GC_calls=true)
 
