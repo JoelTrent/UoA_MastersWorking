@@ -43,14 +43,14 @@ end
     return y
 end
 
-@everywhere function errorFunc(predictions, θ, cl)
-    THalpha = 1.0 - cl
+@everywhere function errorFunc(predictions, θ, region)
+    THdelta = 1.0 - region
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
     for i in eachindex(predictions)
         dist = Binomial(100000, predictions[i] / 100.)
-        lq[i] = quantile(dist, THalpha / 2.0) / 1000.
-        uq[i] = quantile(dist, 1 - (THalpha / 2.0)) / 1000.
+        lq[i] = quantile(dist, THdelta / 2.0) / 1000.
+        uq[i] = quantile(dist, 1 - (THdelta / 2.0)) / 1000.
     end
     return lq, uq
 end

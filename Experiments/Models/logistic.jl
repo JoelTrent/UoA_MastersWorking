@@ -18,7 +18,7 @@ end
 
 @everywhere function predictFunc(θ, data, t=data.t); solvedmodel(t, θ) end
 
-@everywhere function errorFunc(predictions, θ, cl); normal_error_σ_known(predictions, θ, cl, σ) end
+@everywhere function errorFunc(predictions, θ, region); normal_error_σ_known(predictions, θ, region, σ) end
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
 @everywhere function data_generator(θtrue, generator_args::NamedTuple)

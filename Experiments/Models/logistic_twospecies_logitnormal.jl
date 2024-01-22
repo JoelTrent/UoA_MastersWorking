@@ -46,21 +46,21 @@ end
     return y
 end
 
-@everywhere function errorFunc(predictions, θ, cl)
-    lq, uq = logitnormal_error_σ_estimated(predictions ./ 100, θ, cl, 7)
+@everywhere function errorFunc(predictions, θ, region)
+    lq, uq = logitnormal_error_σ_estimated(predictions ./ 100, θ, region, 7)
     lq .= lq .* 100
     uq .= uq .* 100
     return lq, uq
 end
 
-# @everywhere function errorFunc(predictions, θ, cl)
-#     THalpha = 1.0 - cl
+# @everywhere function errorFunc(predictions, θ, region)
+#     THdelta = 1.0 - region
 #     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
 #     for i in eachindex(predictions)
 #         dist = LogitNormal(logit(predictions[i] / 100.), θ[7])
-#         lq[i] = quantile(dist, THalpha / 2.0) * 100.
-#         uq[i] = quantile(dist, 1 - (THalpha / 2.0)) * 100.
+#         lq[i] = quantile(dist, THdelta / 2.0) * 100.
+#         uq[i] = quantile(dist, 1 - (THdelta / 2.0)) * 100.
 #     end
 #     return lq, uq
 # end
