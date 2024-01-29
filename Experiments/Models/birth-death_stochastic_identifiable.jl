@@ -96,25 +96,27 @@ function birth_death_deterministic(t, β, δ=1., N0=1)
     return N0 .* exp.((β-δ) .* t)
 end
 
-@everywhere function model_mean(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
+@everywhere function mean_correction(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
     return μ_ε + Σ_εθ*Σ_θθ_inv*(θ - μ_θ) 
 end
 
 @everywhere function loglhood(θ, data)
     μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, dist = data.surrogate_terms
 
-    μ_εgθ = model_mean(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
-    e = loglikelihood(dist, μ_εgθ .- data.y_obs)
+    y = birth_death_deterministic(data.t, θ[1], θ[2], N0)
+
+    μ_εgθ = mean_correction(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
+    e = loglikelihood(dist, y .+ μ_εgθ .- data.y_obs)
     return e
 end
 
 # predicts the mean of the data distribution
-@everywhere function predictFunc(θ, data, t=data.t)
-    μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
-    μ_εgθ = model_mean(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
-    half_len = Int(length(μ_εgθ) / 2)
-    return hcat(μ_εgθ[1:half_len], μ_εgθ[(end-half_len+1):end])
-end
+# @everywhere function predictFunc(θ, data, t=data.t)
+#     μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
+#     μ_εgθ = model_mean(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
+#     half_len = Int(length(μ_εgθ) / 2)
+#     return hcat(μ_εgθ[1:half_len], μ_εgθ[(end-half_len+1):end])
+# end
 
 @everywhere function errorFunc(predictions, θ, bcl, dist=data.surrogate_terms[5])
     THalpha = 1.0 - bcl
