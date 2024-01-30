@@ -11,7 +11,7 @@ include(joinpath("Models", "birth-death_stochastic.jl"));
 output_location = joinpath("Experiments", "Outputs", "stochastic");
 
 # do experiments
-model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes);
+model = initialise_LikelihoodModel(loglhood, predictfunction, errorfunction, data, θnames, θG, lb, ub, par_magnitudes);
 
 univariate_confidenceintervals!(model)
 get_points_in_intervals!(model, 30, additional_width=0.2)
@@ -31,7 +31,7 @@ display(plt)
 plt = plot_realisations_union(model, t_pred)
 display(plt)
 
-model_sip = initialise_LikelihoodModel(loglhood_XYtoxy_sip, predictFunc_XYtoxy_sip, errorFunc_XYtoxy_sip, data, θnames_sip, θG_sip, lb_sip, ub_sip);
+model_sip = initialise_LikelihoodModel(loglhood_XYtoxy_sip, predictfunction_XYtoxy_sip, errorfunction_XYtoxy_sip, data, θnames_sip, θG_sip, lb_sip, ub_sip);
 univariate_confidenceintervals!(model_sip)
 get_points_in_intervals!(model_sip, 30, additional_width=0.2)
 # require t_pred = data.t in this case

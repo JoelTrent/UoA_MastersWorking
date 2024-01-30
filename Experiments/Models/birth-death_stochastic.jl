@@ -122,7 +122,7 @@ end
     return y .+ mean_correction(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
 end
 
-@everywhere function errorFunc(predictions, θ, region, dist=data.surrogate_terms[5])
+@everywhere function errorfunction(predictions, θ, region, dist=data.surrogate_terms[5])
     THdelta = 1.0 - region
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
@@ -155,7 +155,7 @@ function loglhood_XYtoxy_sip(Θ,data); loglhood(XYtoxy_sip(Θ), data) end
 
 function predictFunc_XYtoxy_sip(Θ,data, t=data.t); predictFunc(XYtoxy_sip(Θ), data, t) end
 
-function errorFunc_XYtoxy_sip(predictions, Θ, region); errorFunc(predictions, XYtoxy_sip(Θ), region) end
+function errorFunc_XYtoxy_sip(predictions, Θ, region); errorfunction(predictions, XYtoxy_sip(Θ), region) end
 
 function data_generator_XYtoxy_sip(Θ, generator_args::NamedTuple); data_generator(XYtoxy_sip(Θ), generator_args) end
 

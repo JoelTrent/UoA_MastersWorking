@@ -151,7 +151,7 @@ end
     return y 
 end
 
-# @everywhere function errorFunc(predictions, θ, region, dist=data.surrogate_terms[5])
+# @everywhere function errorfunction(predictions, θ, region, dist=data.surrogate_terms[5])
 #     THdelta = 1.0 - region
 #     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
