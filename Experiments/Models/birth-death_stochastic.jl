@@ -61,17 +61,23 @@ struct SurrogateTerms
     dist::MvNormal
 end
 
+@everywhere function birth_death_deterministic(t, β, δ=1.0, N0=1)
+    return N0 .* exp.((β - δ) .* t)
+end
+
 function generate_surrogate(t, N0, lb, ub, num_points, num_dims, len_t)
     scale_range = [(lb[i], ub[i]) for i in 1:num_dims]
     grid = permutedims(scaleLHC(randomLHC(num_points, num_dims), scale_range))
 
     y_stochastic = zeros(len_t, num_points)
+    y_deterministic = zeros(len_t, num_points)
 
     Threads.@threads for i in 1:num_points
-        y_stochastic[:, i] .= birth_death_firstreact(t, grid[:,i]..., N0)[1]
+        y_stochastic[:, i] .= birth_death_firstreact(t, grid[:, i]..., N0)[1]
+        y_deterministic[:, i] .= birth_death_deterministic(t, grid[:, i]..., N0)[1]
     end
 
-    Y = vcat(y_stochastic, grid)
+    Y = vcat(y_stochastic .- y_deterministic, grid)
     μ_Nd = mean(Y, dims=2)
     μ_ε = μ_Nd[1:len_t]
     μ_θ = μ_Nd[(end-num_dims+1):end]
@@ -82,18 +88,15 @@ function generate_surrogate(t, N0, lb, ub, num_points, num_dims, len_t)
     Σ_εθ = Σ_Nd[1:len_t, (end-num_dims+1):end]
     Σ_θθ = Σ_Nd[(end-num_dims+1):end, (end-num_dims+1):end]
     Σ_θθ_inv = inv(Σ_θθ)
-    Σ_εgθ = Σ_εε - Σ_εθ*Σ_θθ_inv*Σ_εθ'
+    Σ_εgθ = Σ_εε - Σ_εθ*Σ_θθ_inv*(Σ_εθ') # this term is fixed
     Σ_εgθ .= (Σ_εgθ+Σ_εgθ') ./2.
+    # Σ_εgθ = Σ_εgθ - 1.5 * minimum(eigvals(Σ_εgθ)) * I
 
     dist = MvNormal(zeros(length(μ_ε)), Σ_εgθ)
 
     surrogate_terms = (μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, dist)
     bson(surrogate_location, Dict(:s=>SurrogateTerms(surrogate_terms...)))
     return surrogate_terms
-end
-
-function birth_death_deterministic(t, β, δ=1., N0=1)
-    return N0 .* exp.((β-δ) .* t)
 end
 
 @everywhere function mean_correction(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
@@ -110,14 +113,17 @@ end
     return e
 end
 
-# # predicts the mean of the data distribution
-# @everywhere function predictFunc(θ, data, t=data.t)
-#     μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
-#     return model_mean(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
-# end
+# predicts the mean of the stochastic data distribution
+@everywhere function predictFunc(θ, data, t=data.t)
+    μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
 
-@everywhere function errorFunc(predictions, θ, bcl, dist=data.surrogate_terms[5])
-    THalpha = 1.0 - bcl
+    y = birth_death_deterministic(t, θ[1], θ[2], N0)
+
+    return y .+ mean_correction(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
+end
+
+@everywhere function errorFunc(predictions, θ, region, dist=data.surrogate_terms[5])
+    THdelta = 1.0 - region
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
     # find pointwise HDR - note each individual sample is itself a normal distribution 
@@ -125,15 +131,15 @@ end
     samples = permutedims(rand(dist, 10000))
     for i in eachindex(predictions)
         norm_dist = fit_mle(Normal, samples[:,i])
-        lq[i] = predictions[i] + quantile(norm_dist, THalpha / 2.0)
-        uq[i] = predictions[i] + quantile(norm_dist, 1 - (THalpha / 2.0))
+        lq[i] = predictions[i] + quantile(norm_dist, THdelta / 2.0)
+        uq[i] = predictions[i] + quantile(norm_dist, 1 - (THdelta / 2.0))
     end
 
     return lq, uq
 end
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
-@everywhere function data_generator(θtrue, generator_args::NamedTuple)
+@everywhere function data_generator(θ_true, generator_args::NamedTuple)
     y_obs = birth_death_firstreact(generator_args.t, θ_true..., N0)[1]
     if generator_args.is_test_set; return y_obs end
     data = (y_obs=y_obs, generator_args...)
@@ -146,6 +152,10 @@ xytoXY_sip(xy) = [xy[1]-xy[2]; xy[1]+xy[2]]
 XYtoxy_sip(XY) = [(XY[1]+XY[2])/2.; (XY[2]-XY[1])/2.]
 
 function loglhood_XYtoxy_sip(Θ,data); loglhood(XYtoxy_sip(Θ), data) end
+
+function predictFunc_XYtoxy_sip(Θ,data, t=data.t); predictFunc(XYtoxy_sip(Θ), data, t) end
+
+function errorFunc_XYtoxy_sip(predictions, Θ, region); errorFunc(predictions, XYtoxy_sip(Θ), region) end
 
 function data_generator_XYtoxy_sip(Θ, generator_args::NamedTuple); data_generator(XYtoxy_sip(Θ), generator_args) end
 
@@ -173,9 +183,9 @@ end
 function parameter_and_data_setup()
     # true parameters
     birth_rate = 0.5; death_rate = 0.4; 
-    global N0 = 1000
+    global N0 = 5000
     θ_true = [birth_rate, death_rate]
-    t = LinRange(0.1, 3, 100)
+    t = LinRange(0.1, 2, 101)
     len_t = length(t)
     t, y_obs, new_data = data_setup(t, θ_true, N0)
 
@@ -199,7 +209,7 @@ function parameter_and_data_setup()
     training_gen_args = (t=t, surrogate_terms=surrogate_terms, is_test_set=false)
     testing_gen_args  = (t=t, surrogate_terms=surrogate_terms, is_test_set=true)
 
-    t_pred=LinRange(0.1, 3, 100)
+    t_pred=LinRange(0.1, 2, 101)
 
     θG = [birth_rate, death_rate]
     θnames = [:β, :δ]

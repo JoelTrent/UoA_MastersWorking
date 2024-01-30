@@ -56,9 +56,24 @@ end
 struct SurrogateTerms
     μ_ε::Vector{<:Float64}
     μ_θ::Vector{<:Float64}
+    Σ_εε::Matrix{<:Float64}
     Σ_εθ::Matrix{<:Float64}
     Σ_θθ_inv::Matrix{<:Float64}
-    dist::MvNormal
+    # dist::MvNormal
+end
+
+@everywhere function birth_death_deterministic_total(t, β, δ=1.0, N0=1)
+    return N0 .* exp.((β - δ) .* t)
+end
+
+@everywhere function birth_death_deterministic(t, β, δ=1.0, N0=1)
+    N = birth_death_deterministic_total(t, β, δ, N0)
+
+    f(u, p) = sum(birth_death_deterministic_total.(u, Ref(β), Ref(δ), Ref(N0)))
+    area = [solve(IntegralProblem(f, 0., t_i), QuadGKJL()).u for t_i in t]
+    δ_total = area .* δ
+
+    return N, δ_total
 end
 
 function generate_surrogate(t_single, N0, lb, ub, num_points, num_dims, len_t)
@@ -66,12 +81,17 @@ function generate_surrogate(t_single, N0, lb, ub, num_points, num_dims, len_t)
     grid = permutedims(scaleLHC(randomLHC(num_points, num_dims), scale_range))
 
     y_stochastic = zeros(len_t, num_points)
+    y_deterministic = zeros(len_t, num_points)
 
+    p = Progress(num_points; dt=1.0)
     Threads.@threads for i in 1:num_points
         y_stochastic[:, i] .= vcat(birth_death_firstreact(t_single, grid[:, i]..., N0)...)
+        y_deterministic[:, i] .= vcat(birth_death_deterministic(t_single, grid[:, i]..., N0)...)
+        next!(p)
     end
+    finish!(p)
 
-    Y = vcat(y_stochastic, grid)
+    Y = vcat(y_stochastic .- y_deterministic, grid)
     μ_Nd = mean(Y, dims=2)
     μ_ε = μ_Nd[1:len_t]
     μ_θ = μ_Nd[(end-num_dims+1):end]
@@ -82,18 +102,21 @@ function generate_surrogate(t_single, N0, lb, ub, num_points, num_dims, len_t)
     Σ_εθ = Σ_Nd[1:len_t, (end-num_dims+1):end]
     Σ_θθ = Σ_Nd[(end-num_dims+1):end, (end-num_dims+1):end]
     Σ_θθ_inv = inv(Σ_θθ)
-    Σ_εgθ = Σ_εε - Σ_εθ*Σ_θθ_inv*Σ_εθ'
-    Σ_εgθ .= (Σ_εgθ+Σ_εgθ') ./2.
+    # Σ_εgθ = Σ_εε - Σ_εθ*Σ_θθ_inv*Σ_εθ'
+    # Σ_εgθ .= (Σ_εgθ+Σ_εgθ') ./2.
 
-    dist = MvNormal(zeros(length(μ_ε)), Σ_εgθ)
+    # dist = MvNormal(zeros(length(μ_ε)), Σ_εgθ)
 
-    surrogate_terms = (μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, dist)
+    # surrogate_terms = (μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, dist)
+    surrogate_terms = (μ_ε, μ_θ, Σ_εε, Σ_εθ, Σ_θθ_inv)
     bson(surrogate_location, Dict(:s=>SurrogateTerms(surrogate_terms...)))
     return surrogate_terms
 end
 
-function birth_death_deterministic(t, β, δ=1., N0=1)
-    return N0 .* exp.((β-δ) .* t)
+@everywhere function stochastic_error(θ, y, Σ_εε, Σ_εθ, Σ_θθ_inv)
+    Σ_εgθ = Σ_εε - Σ_εθ*Σ_θθ_inv*(θ*y')/(length(θ)*length(y'))
+    Σ_εgθ .= (Σ_εgθ+Σ_εgθ') ./2.
+    return Σ_εgθ
 end
 
 @everywhere function mean_correction(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
@@ -101,9 +124,13 @@ end
 end
 
 @everywhere function loglhood(θ, data)
-    μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, dist = data.surrogate_terms
+    # μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, dist = data.surrogate_terms
+    μ_ε, μ_θ, Σ_εε, Σ_εθ, Σ_θθ_inv = data.surrogate_terms
 
-    y = birth_death_deterministic(data.t, θ[1], θ[2], N0)
+    y = vcat(birth_death_deterministic(data.t_single, θ[1], θ[2], N0)...)
+
+    Σ_εgθ = stochastic_error(θ, y, Σ_εε, Σ_εθ, Σ_θθ_inv)
+    dist = MvNormal(zeros(length(μ_ε)), Σ_εgθ)
 
     μ_εgθ = mean_correction(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
     e = loglikelihood(dist, y .+ μ_εgθ .- data.y_obs)
@@ -111,46 +138,45 @@ end
 end
 
 # predicts the mean of the data distribution
-# @everywhere function predictFunc(θ, data, t=data.t)
-#     μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
-#     μ_εgθ = model_mean(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
-#     half_len = Int(length(μ_εgθ) / 2)
-#     return hcat(μ_εgθ[1:half_len], μ_εgθ[(end-half_len+1):end])
-# end
+@everywhere function predictFunc(θ, data, t=data.t_single)
+    # μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
+    μ_ε, μ_θ, _, Σ_εθ, Σ_θθ_inv = data.surrogate_terms
 
-@everywhere function errorFunc(predictions, θ, bcl, dist=data.surrogate_terms[5])
-    THalpha = 1.0 - bcl
-    lq, uq = zeros(size(predictions)), zeros(size(predictions))
+    y = hcat(birth_death_deterministic(t, θ[1], θ[2], N0)...)
+    μ_εgθ = mean_correction(θ, μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv)
 
-    # find pointwise HDR - note each individual sample is itself a normal distribution 
-    # take a large number of samples from the MvNormal distribution
-    samples = permutedims(rand(dist, 10000))
-    for j in axes(predictions, 2)
-        for i in axes(predictions, 1)
-            norm_dist = fit_mle(Normal, samples[:, Int(j + (i-1)*size(predictions, 2))])
+    y[:,1] .= y[:,1] .+ μ_εgθ[1:size(y,1)]
+    y[:,2] .= y[:,2] .+ μ_εgθ[size(y,1)+1:end]
 
-            lq[i,j] = predictions[i,j] + quantile(norm_dist, THalpha / 2.0)
-            uq[i,j] = predictions[i,j] + quantile(norm_dist, 1 - (THalpha / 2.0))
-        end
-    end
-
-    return lq, uq
+    return y 
 end
 
+# @everywhere function errorFunc(predictions, θ, region, dist=data.surrogate_terms[5])
+#     THdelta = 1.0 - region
+#     lq, uq = zeros(size(predictions)), zeros(size(predictions))
+
+#     # find pointwise HDR - note each individual sample is itself a normal distribution 
+#     # take a large number of samples from the MvNormal distribution
+#     samples = permutedims(rand(dist, 10000))
+#     for j in axes(predictions, 2)
+#         for i in axes(predictions, 1)
+#             norm_dist = fit_mle(Normal, samples[:, Int(i + (j-1)*size(predictions, 1))])
+
+#             lq[i,j] = predictions[i,j] + quantile(norm_dist, THdelta / 2.0)
+#             uq[i,j] = predictions[i,j] + quantile(norm_dist, 1 - (THdelta / 2.0))
+#         end
+#     end
+
+#     return lq, uq
+# end
+
 # DATA GENERATION FUNCTION AND ARGUMENTS
-@everywhere function data_generator(θtrue, generator_args::NamedTuple)
+@everywhere function data_generator(θ_true, generator_args::NamedTuple)
     y_obs = vcat(birth_death_firstreact(generator_args.t_single, θ_true..., N0)...)
     if generator_args.is_test_set; return y_obs end
     data = (y_obs=y_obs, generator_args...)
     return data
 end
-
-##########################################################
-# Well informed direction
-xytoXY_sip(xy) = [xy[1]-xy[2]; xy[1]+xy[2]]
-XYtoxy_sip(XY) = [(XY[1]+XY[2])/2.; (XY[2]-XY[1])/2.]
-
-function loglhood_XYtoxy_sip(Θ,data); loglhood(XYtoxy_sip(Θ), data) end
 
 # Data setup ###########################################################################
 using Random, Distributions, Statistics, LatinHypercubeSampling
@@ -184,12 +210,13 @@ function parameter_and_data_setup()
     t, y_obs, new_data = data_setup(t, t_single, θ_true, N0)
 
     # surrogate arguments
-    lb = [0.1, 0.1]
-    ub = [1.6, 1.0]
-    num_points = 50000
+    lb = [0., 0.]
+    # ub = [2.5, 2.5]
+    ub = [2.0, 2.0]
+    num_points = 400000
     num_dims=2
 
-    if new_data || !isfile(surrogate_location)
+    if true || new_data || !isfile(surrogate_location)
         surrogate_terms = generate_surrogate(t_single, N0, lb, ub, num_points, num_dims, len_t)
     else
         st = BSON.load(surrogate_location, @__MODULE__)[:s]
@@ -197,7 +224,7 @@ function parameter_and_data_setup()
         surrogate_terms = ([getfield(st, k) for k ∈ fieldnames(SurrogateTerms)]...,)
     end
     
-    data = (t=t, y_obs=y_obs, surrogate_terms=surrogate_terms)
+    data = (t=t, t_single=t_single, y_obs=y_obs, surrogate_terms=surrogate_terms)
 
     # Named tuple of all data required within the log-likelihood function
     training_gen_args = (t=t, t_single=t_single, surrogate_terms=surrogate_terms, is_test_set=false)
