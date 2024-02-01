@@ -16,7 +16,7 @@ xy_initial = [50, 0.3]# x (i.e. n) and y (i.e. p), starting guesses
 xy_lower_bounds = [0.0001, 0.0001]
 xy_upper_bounds = [500.0, 1.0]
 # true parameter
-xy_true = [200.0, 0.2] #x,y, truth. N, p
+xy_true = [100.0, 0.2] #x,y, truth. N, p
 N_samples = 10 # measurements of model
 # generate data
 #data = rand(distrib_xy(xy_true),N_samples)
