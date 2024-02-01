@@ -236,7 +236,7 @@ newlb, newub = transformbounds(forward_parameter_transformLog, xy_lower_bounds, 
 θnames = [:ln_n, :ln_p]
 par_magnitudes = [2, 1]
 
-model = initialiseLikelihoodModel(lnlike_XY, predictFunc_XY, data, θnames, forward_parameter_transformLog(xy_initial), newlb, newub, par_magnitudes);
+model = initialise_LikelihoodModel(lnlike_XY, predictFunc_XY, data, θnames, forward_parameter_transformLog(xy_initial), newlb, newub, par_magnitudes);
 
 full_likelihood_sample!(model, 1000000, sample_type=LatinHypercubeSamples())
 
