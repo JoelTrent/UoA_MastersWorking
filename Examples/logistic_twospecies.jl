@@ -4,11 +4,11 @@
 ##############################################################################
 
 using Distributed
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 # if nprocs()==1; addprocs(8, exeflags=`--threads 1`) end
 @everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 using Plots
 gr()

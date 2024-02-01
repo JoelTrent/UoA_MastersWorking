@@ -2,7 +2,7 @@ using Random, Distributions
 using LatinHypercubeSampling
 using Statistics
 
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 
 function birth_death_firstreact(t_max, β, δ=1., N0=1, t_init=0.0)
 

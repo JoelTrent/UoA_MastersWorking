@@ -1,5 +1,5 @@
 using Revise
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 using EllipseSampling
 
 using Distributions
@@ -20,7 +20,7 @@ EllipseSampling.calculate_ellipse_parameters(Γ, 1, 2, 0.95)
 true_boundary = generate_N_equally_spaced_points(500, Γ, [0.0, 0.0], 1, 2, confidence_level=0.95, start_point_shift=0.0)
 true_boundary = hcat(true_boundary, true_boundary[:,1])
 
-loglhood(θ, data) = PlaceholderLikelihood.ellipse_loglike(θ, (θmle=[0.,0.], Hmle=Hw))
+loglhood(θ, data) = LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(θ, (θmle=[0.,0.], Hmle=Hw))
 
 model = initialise_LikelihoodModel(loglhood, (1,), [:θ1, :θ2], [0.0, 0.0], [-10.0, -10.0], [10.0, 10.0], [1.0, 1.0]);
 bivariate_confidenceprofiles!(model, 6, profile_type=LogLikelihood(), method=IterativeBoundaryMethod(3,1,1, 0.15, 1.0, use_ellipse=true))

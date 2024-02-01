@@ -2,11 +2,11 @@ using Distributed
 using Revise
 using CSV, DataFrames, Arrow
 if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
-using PlaceholderLikelihood
-using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
+using LikelihoodBasedProfileWiseAnalysis
+using LikelihoodBasedProfileWiseAnalysis.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
 @everywhere using Random, Distributions, DifferentialEquations, StaticArrays
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 @everywhere using Logging
 @everywhere Logging.disable_logging(Logging.Warn) # Disable debug, info and warn

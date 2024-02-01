@@ -1,5 +1,5 @@
 using Revise
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 using DifferentialEquations, Random, Distributions
 
 using Plots

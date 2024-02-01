@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 using Random, Distributions
 using LaTeXStrings
 
@@ -13,7 +13,7 @@ model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_mag
 
 bivariate_confidenceprofiles!(model, [[1,2]], 150, method=IterativeBoundaryMethod(20, 5,5, 0.15, 1.0, use_ellipse=true))
 true_boundary = model.biv_profiles_dict[1].confidence_boundary
-PlaceholderLikelihood.minimum_perimeter_polygon!(true_boundary)
+LikelihoodBasedProfileWiseAnalysis.minimum_perimeter_polygon!(true_boundary)
 true_boundary = hcat(true_boundary, true_boundary[:, 1])
 
 model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes);
@@ -39,7 +39,7 @@ pnts = model.biv_profiles_dict[1].confidence_boundary
 
 pnts = model.biv_profiles_dict[1].confidence_boundary
 internal_pnts = model.biv_profiles_dict[1].internal_points.points
-PlaceholderLikelihood.minimum_perimeter_polygon!(pnts)
+LikelihoodBasedProfileWiseAnalysis.minimum_perimeter_polygon!(pnts)
 pnts = pnts[:, [1:8..., 1]]
 scatter!(internal_pnts[1, :], internal_pnts[2, :], label="Internal points", marker=(:circle), color=4, msw=0, ms=5, opacity=0.75)
 plot!(pnts[1, :], pnts[2, :], label="Number of directions = 2", marker=(:circle), color=3, msw=0, ms=5)
@@ -53,7 +53,7 @@ plt = plot(true_boundary[1, :], true_boundary[2, :]; label="True boundary", form
 
 pnts = model.biv_profiles_dict[2].confidence_boundary
 internal_pnts = model.biv_profiles_dict[2].internal_points.points
-PlaceholderLikelihood.minimum_perimeter_polygon!(pnts)
+LikelihoodBasedProfileWiseAnalysis.minimum_perimeter_polygon!(pnts)
 pnts = pnts[:, [1:8..., 1]]
 scatter!(internal_pnts[1, :], internal_pnts[2, :], label="Internal points", marker=(:circle), color=4, msw=0, ms=5, opacity=0.75)
 plot!(pnts[1, :], pnts[2, :], label="Number of directions = 4", marker=(:circle), color=3, msw=0, ms=5)
@@ -69,7 +69,7 @@ plt = plot(true_boundary[1, :], true_boundary[2, :]; label="True boundary", form
 
 pnts = model.biv_profiles_dict[3].confidence_boundary
 internal_pnts = model.biv_profiles_dict[3].internal_points.points
-PlaceholderLikelihood.minimum_perimeter_polygon!(pnts)
+LikelihoodBasedProfileWiseAnalysis.minimum_perimeter_polygon!(pnts)
 pnts = pnts[:, [1:8..., 1]]
 scatter!(internal_pnts[1, :], internal_pnts[2, :], label="Internal points", marker=(:circle), color=4, msw=0, ms=5, opacity=0.75)
 plot!(pnts[1, :], pnts[2, :], label="Number of directions = 8", marker=(:circle), color=3, msw=0, ms=5)

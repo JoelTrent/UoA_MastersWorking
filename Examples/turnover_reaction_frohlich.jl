@@ -6,10 +6,10 @@
 
 using Distributed
 # if nprocs()==1; addprocs(10) end
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 @everywhere using Revise
 @everywhere using Random, Distributions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 @everywhere function solvedmodel(t, θ)
     k1, k2, s = θ

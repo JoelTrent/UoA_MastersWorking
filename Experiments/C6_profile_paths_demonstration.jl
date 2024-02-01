@@ -1,7 +1,7 @@
 using Random, Distributions
 using LaTeXStrings
 using Revise
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 
 output_location = joinpath("Experiments", "Outputs", "profile_paths_demo");
 

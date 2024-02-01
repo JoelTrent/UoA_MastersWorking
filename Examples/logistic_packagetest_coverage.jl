@@ -2,12 +2,12 @@
 # using BenchmarkTools
 
 using Distributed
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 if nprocs()==1; addprocs(10) end
 # if nprocs()==1; addprocs(4) end
 @everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 @everywhere using Logging
 @everywhere Logging.disable_logging(Logging.Warn) # Disable debug, info and warn

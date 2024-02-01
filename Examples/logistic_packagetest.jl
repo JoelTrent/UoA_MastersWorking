@@ -4,10 +4,10 @@
 using Distributed
 using Revise
 # if nprocs()==1; addprocs(10) end
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 @everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 # Workflow functions ##########################################################################
 
@@ -160,11 +160,11 @@ full_likelihood_sample!(model, 100, sample_type=UniformGridSamples(), use_distri
 
 @time univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 @time univariate_confidenceintervals!(model, profile_type=EllipseApprox(), use_distributed=false)
-PlaceholderLikelihood.TimerOutputs.enable_debug_timings(PlaceholderLikelihood)
-PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)
-PlaceholderLikelihood.TimerOutputs.reset_timer!(PlaceholderLikelihood.timer)
+LikelihoodBasedProfileWiseAnalysis.TimerOutputs.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+LikelihoodBasedProfileWiseAnalysis.TimerOutputs.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+LikelihoodBasedProfileWiseAnalysis.TimerOutputs.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 univariate_confidenceintervals!(model, profile_type=LogLikelihood(), existing_profiles=:overwrite)
-display(PlaceholderLikelihood.timer)
+display(LikelihoodBasedProfileWiseAnalysis.timer)
 @time get_points_in_intervals!(model, 101, additional_width=0.2, use_threads=true)
 
 @time bivariate_confidenceprofiles!(model, 50, profile_type=LogLikelihood(), method=RadialMLEMethod(0.0), existing_profiles=:overwrite, use_distributed=false)

@@ -1,7 +1,7 @@
 using Distributed
 # addprocs(6)
 @everywhere using DifferentialEquations, Random, Distributions, StaticArrays
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 # Workflow functions ##########################################################################
 # Section 2: Define ODE model

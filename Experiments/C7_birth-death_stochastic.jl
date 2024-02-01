@@ -2,10 +2,10 @@ using Distributed
 using Revise
 using CSV, DataFrames
 # if nprocs()==1; addprocs(10) end
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 @everywhere using Revise
 @everywhere using Random, Distributions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 include(joinpath("Models", "birth-death_stochastic.jl"));
 output_location = joinpath("Experiments", "Outputs", "stochastic");

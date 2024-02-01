@@ -1,12 +1,12 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
-using PlaceholderLikelihood
-using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
+# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+using LikelihoodBasedProfileWiseAnalysis
+using LikelihoodBasedProfileWiseAnalysis.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
 @everywhere using Random, Distributions, DifferentialEquations
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 include(joinpath("Models", "logistic_twospecies.jl"))
 output_location = joinpath("Experiments", "Outputs", "logistic_twospecies");
@@ -74,12 +74,12 @@ if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
                 univariate_confidenceintervals!(model, [i], existing_profiles=:overwrite, optimizationsettings=opt_settings)
 
                 total_opt_calls[i] += TO.ncalls(
-                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"])
+                    LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"])
 
                 total_ll_calls[i] += TO.ncalls(
-                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                    LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
 
-                TO.reset_timer!(PlaceholderLikelihood.timer)
+                TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
             end
         end
 
@@ -94,14 +94,14 @@ if !isfile(joinpath(output_location, "confidence_interval_ll_calls.csv"))
         optimisation_calls=zeros(len),
         likelihood_calls=zeros(len))
 
-    TO.enable_debug_timings(PlaceholderLikelihood)
-    TO.reset_timer!(PlaceholderLikelihood.timer)
+    TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+    TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
     record_CI_LL_evaluations!(timer_df, 1)
 
     CSV.write(joinpath(output_location, "confidence_interval_ll_calls.csv"), timer_df)
 
-    TO.disable_debug_timings(PlaceholderLikelihood)
+    TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 end
 
 if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
@@ -278,11 +278,11 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
             bivariate_confidenceprofiles!(model, [pars], num_points, method=method, θlb_nuisance=lb_nuisance, θub_nuisance=ub_nuisance, existing_profiles=:overwrite, use_distributed=false, use_threads=false)
 
             timer_df[i+len_combos*(iter-1), :] .= pars, method_key, num_points, TO.ncalls(
-                PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]),
+                LikelihoodBasedProfileWiseAnalysis.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]),
             TO.ncalls(
-                PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                LikelihoodBasedProfileWiseAnalysis.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
 
-            TO.reset_timer!(PlaceholderLikelihood.timer)
+            TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
         end
         return nothing
     end
@@ -300,8 +300,8 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
     method_df = DataFrame(method_key=collect(1:length(methods)),
         method_name=string.(methods))
 
-    TO.enable_debug_timings(PlaceholderLikelihood)
-    TO.reset_timer!(PlaceholderLikelihood.timer)
+    TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+    TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
     iter = 1
     for (method_key, method) in enumerate(methods)
@@ -314,7 +314,7 @@ if !isfile(joinpath(output_location, "confidence_boundary_ll_calls.csv"))
     CSV.write(joinpath(output_location, "confidence_boundary_ll_calls.csv"), timer_df)
     CSV.write(joinpath(output_location, "methods.csv"), method_df)
 
-    TO.disable_debug_timings(PlaceholderLikelihood)
+    TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 end
 
 if !isfile(joinpath(output_location, "bivariate_boundary_coverage.csv"))

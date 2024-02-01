@@ -3,11 +3,11 @@ using Revise
 using CSV, DataFrames
 using Integrals
 # if nprocs()==1; addprocs(10) end
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 using ProgressMeter
 @everywhere using Revise
 @everywhere using Random, Distributions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 include(joinpath("Models", "birth-death_stochastic_identifiable.jl"));
 output_location = joinpath("Experiments", "Outputs", "stochastic_identifiable")

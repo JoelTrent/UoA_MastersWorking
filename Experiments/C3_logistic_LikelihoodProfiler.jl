@@ -3,7 +3,7 @@ using LikelihoodProfiler
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 @everywhere using Revise
 @everywhere using Random, Distributions
 

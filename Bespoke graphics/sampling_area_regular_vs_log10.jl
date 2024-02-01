@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 using Random, Distributions
 using LaTeXStrings
 
@@ -12,7 +12,7 @@ model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_mag
 
 bivariate_confidenceprofiles!(model, [[1,2]], 150, method=IterativeBoundaryMethod(20, 5,5, 0.15, 1.0, use_ellipse=true))
 true_boundary = model.biv_profiles_dict[1].confidence_boundary
-PlaceholderLikelihood.minimum_perimeter_polygon!(true_boundary)
+LikelihoodBasedProfileWiseAnalysis.minimum_perimeter_polygon!(true_boundary)
 true_boundary = hcat(true_boundary, true_boundary[:, 1])
 
 using Plots; gr()

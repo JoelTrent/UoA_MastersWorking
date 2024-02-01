@@ -2,11 +2,11 @@ using Distributed
 using Revise
 using CSV, DataFrames, Arrow
 if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
-using PlaceholderLikelihood
-using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
+using LikelihoodBasedProfileWiseAnalysis
+using LikelihoodBasedProfileWiseAnalysis.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
 @everywhere using DifferentialEquations, Random, Distributions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 
 include(joinpath("Models", "STAT5.jl"))
 output_location = joinpath("Experiments", "Outputs", "STAT5");
@@ -26,13 +26,13 @@ generate_predictions_univariate!(model, t_pred, 1.0, use_distributed=false)
 # for i in eachindex(plots); display(plots[i]) end
 # plot = plot_predictions_union(model, t_pred)
 
-if isdefined(PlaceholderLikelihood, :find_zero_algo) || !isfile(joinpath(output_location, "confidence_interval_ll_calls_algos.csv"))
+if isdefined(LikelihoodBasedProfileWiseAnalysis, :find_zero_algo) || !isfile(joinpath(output_location, "confidence_interval_ll_calls_algos.csv"))
 
     using Roots
     function record_CI_LL_evaluations!(timer_df, algo, algo_key, iter)
         model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes)
 
-        PlaceholderLikelihood.find_zero_algo = algo
+        LikelihoodBasedProfileWiseAnalysis.find_zero_algo = algo
 
         display(algo)
         sleep(0.5)
@@ -41,11 +41,11 @@ if isdefined(PlaceholderLikelihood, :find_zero_algo) || !isfile(joinpath(output_
             univariate_confidenceintervals!(model, [i], existing_profiles=:overwrite)
 
             timer_df[i+model.core.num_pars*(iter-1), :] .= i, algo_key, TO.ncalls(
-                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
+                LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
             TO.ncalls(
-                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
 
-            TO.reset_timer!(PlaceholderLikelihood.timer)
+            TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
         end
         return nothing
     end
@@ -62,8 +62,8 @@ if isdefined(PlaceholderLikelihood, :find_zero_algo) || !isfile(joinpath(output_
     algo_df = DataFrame(algo_key=collect(1:length(find_zero_algos)),
         algo_name=string.(find_zero_algos))
 
-    TO.enable_debug_timings(PlaceholderLikelihood)
-    TO.reset_timer!(PlaceholderLikelihood.timer)
+    TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+    TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
     iter = 1
     for (i, algo) in enumerate(find_zero_algos)
@@ -74,10 +74,10 @@ if isdefined(PlaceholderLikelihood, :find_zero_algo) || !isfile(joinpath(output_
     CSV.write(joinpath(output_location, "confidence_interval_ll_calls_algos.csv"), timer_df)
     CSV.write(joinpath(output_location, "algos.csv"), algo_df)
 
-    TO.disable_debug_timings(PlaceholderLikelihood)
+    TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 end
 
-if !isdefined(PlaceholderLikelihood, :find_zero_algo)
+if !isdefined(LikelihoodBasedProfileWiseAnalysis, :find_zero_algo)
     if !isfile(joinpath(output_location, "confidence_interval_ll_calls_xtol_rel.csv"))
 
         function record_CI_LL_evaluations!(timer_df, xtol_rel, iter)
@@ -90,11 +90,11 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
                 univariate_confidenceintervals!(model, [i], existing_profiles=:overwrite, optimizationsettings=opt_settings)
 
                 timer_df[i+model.core.num_pars*(iter-1), :] .= i, xtol_rel, TO.ncalls(
-                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
+                    LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
                 TO.ncalls(
-                    PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                    LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
 
-                TO.reset_timer!(PlaceholderLikelihood.timer)
+                TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
             end
             return nothing
         end
@@ -105,8 +105,8 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
             optimisation_calls=zeros(Int, len),
             likelihood_calls=zeros(Int, len))
 
-        TO.enable_debug_timings(PlaceholderLikelihood)
-        TO.reset_timer!(PlaceholderLikelihood.timer)
+        TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+        TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
         for (iter, xtol_rel) in enumerate(xtol_rel_iter)
             record_CI_LL_evaluations!(timer_df, xtol_rel, iter)
@@ -114,7 +114,7 @@ if !isdefined(PlaceholderLikelihood, :find_zero_algo)
 
         CSV.write(joinpath(output_location, "confidence_interval_ll_calls_xtol_rel.csv"), timer_df)
 
-        TO.disable_debug_timings(PlaceholderLikelihood)
+        TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
     end
 
     if !isfile(joinpath(output_location, "univariate_parameter_coverage.csv"))
