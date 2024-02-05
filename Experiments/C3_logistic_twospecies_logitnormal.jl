@@ -598,7 +598,7 @@ end
 
 if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
 
-    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample, ub_sample, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
@@ -608,6 +608,7 @@ if !isfile(joinpath(output_location, "full_sampling_prediction_coverage.csv"))
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 200, num_points, θ_true, [collect(1:model.core.num_pars)],
+            lb=lb_sample, ub=ub_sample,
             show_progress=true, distributed_over_parameters=true, use_threads=true, manual_GC_calls=true)
 
         new_df = filter(:θname => !=(""), new_df)
@@ -745,7 +746,7 @@ end
 
 if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
 
-    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb_sample, ub_sample, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
+    model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θ_true, lb, ub, par_magnitudes, optimizationsettings=create_OptimizationSettings(solve_kwargs=(maxtime=20,)))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, xtol_rel=1e-12))
 
@@ -755,7 +756,7 @@ if !isfile(joinpath(output_location, "full_sampling_realisation_coverage.csv"))
     for num_points in num_points_iter
         Random.seed!(1234)
         new_df = check_dimensional_prediction_realisations_coverage(data_generator, reference_set_generator, training_gen_args, testing_gen_args, t_pred,
-            model, 200, num_points, θ_true, [collect(1:model.core.num_pars)],
+            model, 200, num_points, θ_true, [collect(1:model.core.num_pars)], lb=lb_sample, ub=ub_sample,
             show_progress=true, distributed_over_parameters=true, use_threads=true, manual_GC_calls=true)
 
         new_df = filter(:θname => !=(:union), new_df)
