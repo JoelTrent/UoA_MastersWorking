@@ -1,5 +1,5 @@
 # UoA_MastersWorking
-A repository for investigating the Julia implementation of profile likelihood and uncertainty quantification/propogation for mechanistic models
+A repository for investigating the Julia implementation of profile likelihood and uncertainty quantification/propogation for mechanistic models - an initial example on a stochastic model is also considered. Pairs with the Julia package [LikelihoodBasedProfileWiseAnalysis](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl).
 
 Contains files used to fulfil the requirements of a Masters of Engineering at The University of Auckland by Joel Trent between March 2023 and February 2024.
 
