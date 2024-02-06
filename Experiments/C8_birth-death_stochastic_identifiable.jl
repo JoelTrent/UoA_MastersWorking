@@ -13,20 +13,30 @@ include(joinpath("Models", "birth-death_stochastic_identifiable.jl"));
 output_location = joinpath("Experiments", "Outputs", "stochastic_identifiable")
 
 # do experiments
-model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes);
+model = initialise_LikelihoodModel(loglhood, predictfunction, errorfunction, data, θnames, θG, lb, ub, par_magnitudes);
 
 # the parameter range used to create surrogate impacts Σ_εgθ and thus all other things:
 # confidence intervals get wider as more parameter range is included AND the 
-# surrogate correction used to create reference tolerance intervals also gets inflated!!!
+# surrogate correction used to create reference tolerance intervals also gets inflated
 univariate_confidenceintervals!(model)
 get_points_in_intervals!(model, 30, additional_width=0.2)
 
 generate_predictions_univariate!(model, t_pred, 1.0, use_distributed=false)
 
-using Plots; gr()
+using Plots, LaTeXStrings; gr()
 
-plts = plot_univariate_profiles(model, 0.2, 0.4, palette_to_use=:Spectral_8)
-for i in eachindex(plts); display(plts[i]) end
+plts = plot_univariate_profiles(model, 0.2, 0.2)
+
+for i in eachindex(plts)
+    vline!(plts[i], [θ_true[i]], lw=3, linestyle=:dash,
+        label="true value", title="", legend_position=ifelse(i == 1, false, :topright))
+    xlabel!(plts[i], ifelse(i == 1, L"\beta", L"\delta"))
+
+    display(plts[i])
+end
+
+plt = plot(plts..., layout=(1, 2), size=(500, 400), dpi=(300))
+savefig(plt, joinpath(output_location, "uni_profiles_identifiable.pdf"))
 
 plt = plot_predictions_union(model, t_pred)
 display(plt)

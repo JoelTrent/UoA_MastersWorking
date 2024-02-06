@@ -138,7 +138,7 @@ end
 end
 
 # predicts the mean of the data distribution
-@everywhere function predictFunc(θ, data, t=data.t_single)
+@everywhere function predictfunction(θ, data, t=data.t_single)
     # μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
     μ_ε, μ_θ, _, Σ_εθ, Σ_θθ_inv = data.surrogate_terms
 
@@ -151,24 +151,24 @@ end
     return y 
 end
 
-# @everywhere function errorfunction(predictions, θ, region, dist=data.surrogate_terms[5])
-#     THdelta = 1.0 - region
-#     lq, uq = zeros(size(predictions)), zeros(size(predictions))
+@everywhere function errorfunction(predictions, θ, region, dist=data.surrogate_terms[5])
+    THdelta = 1.0 - region
+    lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
-#     # find pointwise HDR - note each individual sample is itself a normal distribution 
-#     # take a large number of samples from the MvNormal distribution
-#     samples = permutedims(rand(dist, 10000))
-#     for j in axes(predictions, 2)
-#         for i in axes(predictions, 1)
-#             norm_dist = fit_mle(Normal, samples[:, Int(i + (j-1)*size(predictions, 1))])
+    # find pointwise HDR - note each individual sample is itself a normal distribution 
+    # take a large number of samples from the MvNormal distribution
+    samples = permutedims(rand(dist, 10000))
+    for j in axes(predictions, 2)
+        for i in axes(predictions, 1)
+            norm_dist = fit_mle(Normal, samples[:, Int(i + (j-1)*size(predictions, 1))])
 
-#             lq[i,j] = predictions[i,j] + quantile(norm_dist, THdelta / 2.0)
-#             uq[i,j] = predictions[i,j] + quantile(norm_dist, 1 - (THdelta / 2.0))
-#         end
-#     end
+            lq[i,j] = predictions[i,j] + quantile(norm_dist, THdelta / 2.0)
+            uq[i,j] = predictions[i,j] + quantile(norm_dist, 1 - (THdelta / 2.0))
+        end
+    end
 
-#     return lq, uq
-# end
+    return lq, uq
+end
 
 # DATA GENERATION FUNCTION AND ARGUMENTS
 @everywhere function data_generator(θ_true, generator_args::NamedTuple)
@@ -210,13 +210,13 @@ function parameter_and_data_setup()
     t, y_obs, new_data = data_setup(t, t_single, θ_true, N0)
 
     # surrogate arguments
-    lb = [0., 0.]
+    lb = [0.01, 0.01]
     # ub = [2.5, 2.5]
     ub = [2.0, 2.0]
-    num_points = 400000
+    num_points = 100000
     num_dims=2
 
-    if true || new_data || !isfile(surrogate_location)
+    if new_data || !isfile(surrogate_location)
         surrogate_terms = generate_surrogate(t_single, N0, lb, ub, num_points, num_dims, len_t)
     else
         st = BSON.load(surrogate_location, @__MODULE__)[:s]

@@ -114,7 +114,7 @@ end
 end
 
 # predicts the mean of the stochastic data distribution
-@everywhere function predictFunc(θ, data, t=data.t)
+@everywhere function predictfunction(θ, data, t=data.t)
     μ_ε, μ_θ, Σ_εθ, Σ_θθ_inv, _ = data.surrogate_terms
 
     y = birth_death_deterministic(t, θ[1], θ[2], N0)

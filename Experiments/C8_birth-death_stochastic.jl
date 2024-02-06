@@ -19,11 +19,21 @@ get_points_in_intervals!(model, 30, additional_width=0.2)
 # require t_pred = data.t in this case
 generate_predictions_univariate!(model, t_pred, 1.0)
 
-using Plots; gr()
+using Plots, LaTeXStrings; gr()
 # using StatsPlots
 
-plts = plot_univariate_profiles(model, 0.2, 0.4, palette_to_use=:Spectral_8)
-for i in eachindex(plts); display(plts[i]) end
+plts = plot_univariate_profiles(model, 0.2, 0.2)
+
+for i in eachindex(plts)
+    vline!(plts[i], [θ_true[i]], lw=3, linestyle=:dash, xlims=(0.01, 1.9), 
+    label="true value", title="", xticks=0.2:0.4:2.0, legend_position=ifelse(i==1, false, :topright)) 
+    xlabel!(plts[i], ifelse(i==1, L"\beta", L"\delta"))
+
+    display(plts[i])
+end
+
+plt = plot(plts..., layout=(1,2), size=(500,400), dpi=(300))
+savefig(plt, joinpath(output_location, "uni_profiles_nonidentifiable.pdf"))
 
 plt = plot_predictions_union(model, t_pred)
 display(plt)
