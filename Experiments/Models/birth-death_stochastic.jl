@@ -183,11 +183,11 @@ end
 function parameter_and_data_setup()
     # true parameters
     birth_rate = 0.5; death_rate = 0.4; 
-    global N0 = 5000
+    global N0 = 1000
     θ_true = [birth_rate, death_rate]
-    t = LinRange(0.1, 2, 101)
+    t = LinRange(0.1, 3, 100)
     len_t = length(t)
-    t, y_obs, new_data = data_setup(t, θ_true, N0)
+    t, y_obs, new_data = data_setup(t, θ_true, N0, true)
 
     # surrogate arguments
     lb = [0.01, 0.01]
@@ -209,7 +209,7 @@ function parameter_and_data_setup()
     training_gen_args = (t=t, surrogate_terms=surrogate_terms, is_test_set=false)
     testing_gen_args  = (t=t, surrogate_terms=surrogate_terms, is_test_set=true)
 
-    t_pred=LinRange(0.1, 2, 101)
+    t_pred=LinRange(0.1, 3, 100)
 
     θG = [birth_rate, death_rate]
     θnames = [:β, :δ]
