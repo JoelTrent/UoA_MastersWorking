@@ -187,7 +187,7 @@ function parameter_and_data_setup()
     θ_true = [birth_rate, death_rate]
     t = LinRange(0.1, 3, 100)
     len_t = length(t)
-    t, y_obs, new_data = data_setup(t, θ_true, N0, true)
+    t, y_obs, new_data = data_setup(t, θ_true, N0)
 
     # surrogate arguments
     lb = [0.01, 0.01]
