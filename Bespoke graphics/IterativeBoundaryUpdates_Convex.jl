@@ -79,5 +79,6 @@ plot!(pnts_start[1, :], pnts_start[2, :], label="Boundary polygon", marker=(:cir
 output_location=joinpath("Bespoke graphics", "iterativeboundaryupdates", "convex")
 for (i, plt) in enumerate((plt1, plt2, plt3, plt4))
     if i!=1; plot!(plt, legend_position=nothing) end
+    display(plt)
     savefig(plt, joinpath(output_location, "update"*string(i)*".pdf"))
 end

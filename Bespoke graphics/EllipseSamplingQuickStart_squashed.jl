@@ -1,8 +1,8 @@
 using EllipseSampling
 using Plots; gr()
 Plots.reset_defaults()
-default(palette=:seaborn_colorblind6, msw=0, markeralpha=0.7, aspect_ratio=:equal, label=nothing, dpi=300, size=(500,400))
-Plots.scalefontsizes(0.75)
+default(palette=:seaborn_colorblind6, msw=0, markeralpha=0.7, aspect_ratio=:equal, label=nothing, dpi=300, size=(500,400)./1.25)
+# Plots.scalefontsizes()
 
 output_location = joinpath("Bespoke graphics", "EllipseSampling_squashed")
 function main()

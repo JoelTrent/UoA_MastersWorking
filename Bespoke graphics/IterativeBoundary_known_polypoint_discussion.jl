@@ -2,7 +2,7 @@ using Plots; gr()
 using Plots.PlotMeasures
 using EllipseSampling
 
-format = (size=(500, 400), dpi=300, xlabel="x", ylabel="y", title="", aspect_ratio=:equal,
+format = (size=(500, 400)./1.25, dpi=300, xlabel="x", ylabel="y", title="", aspect_ratio=:equal,
     legend_position=:bottomright, palette=:Paired_7, leftmargin=3mm, bottommargin=3mm,
      xticks=-3:10, yticks=-3:5, xlims=(-2, 7), ylims=(-3,4.3))
 
