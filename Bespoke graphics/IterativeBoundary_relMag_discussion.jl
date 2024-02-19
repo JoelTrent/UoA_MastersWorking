@@ -4,7 +4,7 @@ using Plots.PlotMeasures
 points = [0 10 10 0 0; 0 0 1 1 0]
 tri = points[:,[1,2,3,1]]
 
-format = (size=(1000, 400), dpi=300, xlabel="x", ylabel="y", title="", aspect_ratio=:equal,
+format = (size=(800, 400), dpi=300, xlabel="x", ylabel="y", title="", aspect_ratio=:equal,
     legend_position=:bottomright, palette=:Paired_7, leftmargin=3mm, bottommargin=3mm, xticks=0:10)
 
 plt = plot(points[1,:], points[2,:]; marker=(:circle), label="True Boundary", lw=4, opacity=1.0, mw=8, msw=0, format...)

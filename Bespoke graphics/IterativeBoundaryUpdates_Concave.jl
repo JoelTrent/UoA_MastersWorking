@@ -42,7 +42,7 @@ bivariate_confidenceprofiles!(model, 200, method=IterativeBoundaryMethod(3,1,1, 
 
 using Plots; gr()
 
-format = (size=(400, 400), dpi=300, #xlabel=:θ1, ylabel=:θ2, 
+format = (size=(400, 400)./1.4, dpi=300, #xlabel=:θ1, ylabel=:θ2, 
     xlims=(20.0, 70),
     ylims=(0.2, 0.7),
     yticks=0.2:0.1:0.7,
@@ -135,7 +135,7 @@ for (i, plt) in enumerate((plt1, plt2, plt3, plt4, plt5, plt6))
     savefig(plt, joinpath(output_location, "update"*string(i)*".pdf"))
 end
 
-format = (size=(600, 400), dpi=300, #xlabel=:θ1, ylabel=:θ2, 
+format = (size=(500, 400), dpi=300, #xlabel=:θ1, ylabel=:θ2, 
     # xlims=(20.0, 100),
     title="",
     # aspect_ratio=:equal, 

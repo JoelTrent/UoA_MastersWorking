@@ -31,7 +31,7 @@ univariate_confidenceintervals!(model, num_points_in_interval=300)
 dimensional_likelihood_samples!(model, 2, 1000000)
 
 using Plots; gr()
-format=(size=(400,400), dpi=300, title="", legend_position=:topright)
+format=(size=(400,400)./1.4, dpi=300, title="", legend_position=:topright)
 
 
 plt = plot_univariate_profiles(model; format...)
@@ -42,14 +42,13 @@ display(plt[2])
 savefig(plt[1], joinpath(output_location, "theta1_profile.pdf"))
 savefig(plt[2], joinpath(output_location, "theta2_profile.pdf"))
 
-plt = plot_bivariate_profiles(model; for_dim_samples=true, markeralpha=0.4, max_internal_points=10000, ylabel=latexstring("\\theta^\\textrm{o}"), xlabel=latexstring("\\theta^M"), format...)
+plt = plot_bivariate_profiles(model; for_dim_samples=true, markeralpha=0.3, max_internal_points=10000, ylabel=latexstring("\\theta^\\textrm{o}"), xlabel=latexstring("\\theta^M"), format...)
 scatter!(plt[1], [θ_true[1]], [θ_true[2]], label="θtrue", color="black", ms=5, msw=0)
 display(plt[1])
 savefig(plt[1], joinpath(output_location, "theta_confidence_set.pdf"))
 
-generate_predictions_univariate!(model, ["z"], 1.0)
-
 # 1D
+generate_predictions_univariate!(model, ["z"], 1.0)
 lq = model.uni_predictions_dict[1].realisations.lq
 uq = model.uni_predictions_dict[1].realisations.uq
 

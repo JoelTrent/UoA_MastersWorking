@@ -4,7 +4,7 @@ using Interpolations
 
 llstar = -1.92
 
-format = (size=(400, 400), dpi=300, title="", legend_position=:topright, 
+format = (size=(400, 400)./1.4, dpi=300, title="", legend_position=:topright, 
     ylims=[llstar + llstar*0.2, 0.1], xlims=(0.4,2.1), xticks=0.5:0.5:2.0,
     palette=:Paired, 
     xlabel=L"\psi", ylabel=L"\hat{\ell_p}", legend=false)

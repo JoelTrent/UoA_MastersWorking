@@ -21,8 +21,8 @@ model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_mag
 using Plots; gr()
 using Plots.PlotMeasures
 
-format = (size=(400, 400), dpi=300, #xlabel=:θ1, ylabel=:θ2, 
-    xlims=(0.005, 0.025),
+format = (size=(400, 400)./1.4, dpi=300, #xlabel=:θ1, ylabel=:θ2, 
+    xlims=(0.005, 0.025), background_color_legend=RGBA(1, 1, 1, 0.9),
     # ylims=(0.1,0.8),
     xlabel=θnames[1],
     ylabel=θnames[2],

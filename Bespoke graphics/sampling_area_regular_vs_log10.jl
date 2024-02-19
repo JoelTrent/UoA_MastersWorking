@@ -18,7 +18,7 @@ true_boundary = hcat(true_boundary, true_boundary[:, 1])
 using Plots; gr()
 using Plots.PlotMeasures
 
-format = (size=(500, 400), dpi=300, #xlabel=:θ1, ylabel=:θ2, 
+format = (size=(500, 400)./1.25, dpi=300, #xlabel=:θ1, ylabel=:θ2, 
     xlims=(lb[1], ub[1]),
     ylims=(lb[2], ub[2]),
     xticks=lb[1]:0.01:ub[1],
@@ -40,7 +40,7 @@ plt = plot(true_boundary[1, :], true_boundary[2, :]; label="True boundary", form
 savefig(plt, joinpath(output_location, "logistic_standard.pdf"))
 display(plt)
 
-format = (size=(500, 400), dpi=300, #xlabel=:θ1, ylabel=:θ2, 
+format = (size=(500, 400)./1.25, dpi=300, #xlabel=:θ1, ylabel=:θ2, 
     xlims=(log10(lb[1]+0.00000000000000000001), log10(ub[1])),
     ylims=(log10(lb[2]), log10(ub[2])),
     xticks=-20:2:0,

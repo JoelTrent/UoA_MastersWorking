@@ -27,7 +27,7 @@ bivariate_confidenceprofiles!(model, 6, profile_type=LogLikelihood(), method=Ite
 
 using Plots; gr()
 
-format = (size=(400, 400), dpi=300, xlabel=:θ1, ylabel=:θ2, title="", aspect_ratio=:equal, legend_position=:bottomright, palette=:Paired_7)
+format = (size=(400, 400)./1.4, dpi=300, xlabel=:θ1, ylabel=:θ2, title="", aspect_ratio=:equal, legend_position=:right, palette=:Paired_7)
 
 ###################### PLOT 1 #########################################
 plt1 = plot(true_boundary[1,:], true_boundary[2,:]; label="True boundary", format...);
