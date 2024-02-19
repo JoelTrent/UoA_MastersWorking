@@ -146,13 +146,14 @@ if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
 
     using Plots
     gr()
-    format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
+    format = (size=(400, 400)./1.4, dpi=300, title="", legend_position=:topright)
     plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
 
     for (i, plt) in enumerate(plts)
         if i < length(plts)
             plot!(plts[i], legend_position=nothing)
         end
+        plot!(plts[i], xticks= [0.0025:0.0005:0.0035, 0:0.005:0.01, 0:0.002:0.004, 76:2:82, 0:0.2:0.6, 0:0.25:1, 1.2:0.4:2.6][i])
         savefig(plts[i], joinpath(output_location, "uni_profile_" * string(i) * ".pdf"))
     end
 end
@@ -200,13 +201,14 @@ if !isfile(joinpath(output_location, "uni_profile_no_nuisance_1.pdf"))
 
     using Plots
     gr()
-    format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
+    format = (size=(400, 400)./1.4, dpi=300, title="", legend_position=:topright)
     plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
 
     for (i, plt) in enumerate(plts)
         if i < length(plts)
             plot!(plts[i], legend_position=nothing)
         end
+        plot!(plts[i], xticks= [0.0025:0.0005:0.0035, 0:0.005:0.01, 0:0.002:0.004, 76:2:82, 0:0.2:0.6, 0:0.25:1, 1.2:0.4:2.6][i])
         savefig(plts[i], joinpath(output_location, "uni_profile_no_nuisance_" * string(i) * ".pdf"))
     end
 end

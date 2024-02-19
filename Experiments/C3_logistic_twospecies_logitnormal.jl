@@ -1,7 +1,7 @@
 using Distributed
 using Revise
 using CSV, DataFrames, Arrow
-if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
+# if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 using LikelihoodBasedProfileWiseAnalysis
 using LikelihoodBasedProfileWiseAnalysis.TimerOutputs: TimerOutputs as TO
 @everywhere using Revise
@@ -270,18 +270,19 @@ if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
 
     using Plots
     gr()
-    format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
+    format = (size=(400, 400)./1.4, dpi=300, title="", legend_position=:topright)
     plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
 
     for (i, plt) in enumerate(plts)
         if i < length(plts)
             plot!(plts[i], legend_position=nothing)
         end
+        plot!(plts[i], xticks= [0.002:0.0004:0.0032, 0:0.0005:0.001, 0:0.0005:0.001, 70:5:90, 0:0.2:0.8, 0:0.5:2.5, 0.3:0.1:0.6][i])
         savefig(plts[i], joinpath(output_location, "uni_profile_" * string(i) * ".pdf"))
     end
 end
 
-if !isfile(joinpath(output_location, "biv_profile_1.pdf"))
+if isfile(joinpath(output_location, "biv_profile_1.pdf"))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=20, ))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
@@ -293,13 +294,14 @@ if !isfile(joinpath(output_location, "biv_profile_1.pdf"))
 
     using Plots
     gr()
-    format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
+    format = (size=(400, 400)./1.4, dpi=300, title="", legend_position=:topright)
     plts = plot_bivariate_profiles_comparison(model; label_only_MLE=true, format...)
 
     for (i, plt) in enumerate(plts)
         if i < length(plts)
             plot!(plts[i], legend_position=nothing)
         end
+        if i in 7:15; plot!(plts[i], xticks=-0.0004:0.0008:0.0012) end 
         savefig(plts[i], joinpath(output_location, "biv_profile_" * string(i) * ".pdf"))
     end
 end

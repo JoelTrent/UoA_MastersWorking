@@ -517,7 +517,7 @@ if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
     univariate_confidenceintervals!(model, profile_type=LogLikelihood(), num_points_in_interval=n, additional_width=additional_width)
 
     using Plots; gr()
-    format=(size=(400,400), dpi=300, title="", legend_position=:topright)
+    format=(size=(400,400)./1.4, dpi=300, title="", legend_position=:topright)
     plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
 
     for (i, plt) in enumerate(plts)
@@ -526,7 +526,7 @@ if !isfile(joinpath(output_location, "uni_profile_1.pdf"))
     end
 end
 
-if !isfile(joinpath(output_location, "uni_profile_ellipse_1.pdf"))
+if isfile(joinpath(output_location, "uni_profile_ellipse_1.pdf"))
 
     opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, abstol=0.0))
     model = initialise_LikelihoodModel(loglhood, predictFunc, errorFunc, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
@@ -538,11 +538,12 @@ if !isfile(joinpath(output_location, "uni_profile_ellipse_1.pdf"))
 
     using Plots
     gr()
-    format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
+    format = (size=(400, 400)./1.4, dpi=300, title="", legend_position=:topright)
     plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
 
     for (i, plt) in enumerate(plts)
         if i<length(plts); plot!(plts[i], legend_position=nothing) end
+        if i==1; plot!(plts[i], xticks=0.004:0.004:0.016) end
         savefig(plts[i], joinpath(output_location, "uni_profile_ellipse_" * string(i) * ".pdf"))
     end
 end
@@ -560,7 +561,7 @@ if !isfile(joinpath(output_location, "uni_profile_ellipse_adjustlbup_1.pdf"))
 
     using Plots
     gr()
-    format = (size=(400, 400), dpi=300, title="")
+    format = (size=(400, 400)./1.4, dpi=300, title="", xticks=0.004:0.004:0.016)
     plts = plot_univariate_profiles_comparison(model; label_only_lines=true, format...)
 
     for (i, plt) in enumerate(plts)
@@ -597,7 +598,7 @@ if !isfile(joinpath(output_location, "biv_profile_1.pdf"))
 
     using Plots
     gr()
-    format = (size=(400, 400), dpi=300, title="", legend_position=:topright)
+    format = (size=(400, 400)./1.4, dpi=300, title="", legend_position=:topright)
     plts = plot_bivariate_profiles_comparison(model; label_only_MLE=true, format...)
 
     for (i, plt) in enumerate(plts)
