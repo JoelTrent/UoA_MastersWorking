@@ -32,7 +32,7 @@ for i in eachindex(plts)
     display(plts[i])
 end
 
-plt = plot(plts..., layout=(1,2), size=(500,400), dpi=(300))
+plt = plot(plts..., layout=(1,2), size=(450,400), dpi=(300))
 savefig(plt, joinpath(output_location, "uni_profiles_nonidentifiable.pdf"))
 
 plt = plot_predictions_union(model, t_pred)
